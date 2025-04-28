@@ -1,0 +1,40 @@
+import express, { Express, Request, Response, Router } from 'express';
+
+// Alternativa para resolver o problema de tipagem
+const createRouter = (): Router => {
+  const router = express.Router();
+  
+  router.post('/login', (req: Request, res: Response) => {
+    const { email, password } = req.body;
+    
+    // Validação básica
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email e senha são obrigatórios' });
+    }
+    
+    // Mock de usuário para teste
+    if (email && password.length >= 6) {
+      const mockUser = {
+        id: 'user-123',
+        name: 'Usuário Teste Backend',
+        email: email,
+        avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
+      };
+      
+      // Em um ambiente real, usaríamos JWT
+      const token = 'mock-jwt-token-123456';
+      
+      return res.json({
+        message: 'Login bem-sucedido',
+        token,
+        user: mockUser
+      });
+    } else {
+      return res.status(401).json({ message: 'Email ou senha inválidos' });
+    }
+  });
+  
+  return router;
+};
+
+export default createRouter;
