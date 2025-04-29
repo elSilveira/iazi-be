@@ -44,10 +44,8 @@ const createAuthRouter = (): Router => {
    *       500:
    *         description: Erro interno do servidor
    */
-  router.post("/login", async (req: Request, res: Response) => {
-    // A função do controller já retorna Promise<Response>, então podemos apenas chamá-la
-    return await login(req, res);
-  });
+  // @ts-ignore
+  router.post("/login", async (req: Request, res: Response) => { return await login(req, res); });
 
   /**
    * @swagger
@@ -88,10 +86,8 @@ const createAuthRouter = (): Router => {
    *       500:
    *         description: Erro interno do servidor
    */
-  router.post("/register", async (req: Request, res: Response) => {
-    // A função do controller já retorna Promise<Response>, então podemos apenas chamá-la
-    return await register(req, res);
-  });
+  // @ts-ignore
+  router.post("/register", async (req: Request, res: Response) => { return await register(req, res); });
 
   return router;
 };

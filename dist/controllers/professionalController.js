@@ -8,10 +8,21 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteProfessional = exports.updateProfessional = exports.createProfessional = exports.getProfessionalById = exports.getAllProfessionals = void 0;
 const professionalRepository_1 = require("../repositories/professionalRepository");
-const client_1 = require("@prisma/client"); // Revertido: Importar de @prisma/client
+const client_1 = require("@prisma/client");
 // Obter todos os profissionais (opcionalmente filtrados por companyId)
 const getAllProfessionals = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { companyId } = req.query;
@@ -44,13 +55,22 @@ exports.getProfessionalById = getProfessionalById;
 // Criar um novo profissional
 const createProfessional = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const data = req.body;
+    // Extrair dados do corpo da requisição
+    const { name, role, image, companyId } = req.body;
     // Validação básica
-    if (!data.name || !data.role || !data.companyId) {
+    if (!name || !role || !companyId) {
         return res.status(400).json({ message: "Nome, cargo e ID da empresa são obrigatórios" });
     }
     try {
-        const newProfessional = yield professionalRepository_1.professionalRepository.create(data);
+        // Montar o objeto de dados para o Prisma usando 'connect'
+        const dataToCreate = {
+            name,
+            role,
+            image: image, // image é opcional
+            company: { connect: { id: companyId } },
+            // rating e appointments são definidos por padrão no schema
+        };
+        const newProfessional = yield professionalRepository_1.professionalRepository.create(dataToCreate);
         // TODO: Implementar lógica para conectar a serviços (ProfessionalService) após criar o profissional.
         return res.status(201).json(newProfessional);
     }
@@ -70,9 +90,10 @@ exports.createProfessional = createProfessional;
 // Atualizar um profissional existente
 const updateProfessional = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
-    const data = req.body;
+    // Não permitir atualização do companyId via este endpoint
+    const _a = req.body, { companyId } = _a, dataToUpdate = __rest(_a, ["companyId"]);
     try {
-        const updatedProfessional = yield professionalRepository_1.professionalRepository.update(id, data);
+        const updatedProfessional = yield professionalRepository_1.professionalRepository.update(id, dataToUpdate);
         if (!updatedProfessional) {
             return res.status(404).json({ message: "Profissional não encontrado para atualização" });
         }
@@ -81,7 +102,6 @@ const updateProfessional = (req, res) => __awaiter(void 0, void 0, void 0, funct
     }
     catch (error) {
         console.error(`Erro ao atualizar profissional ${id}:`, error);
-        // O erro P2025 (Not Found) já é tratado pelo retorno null do repositório
         return res.status(500).json({ message: "Erro interno do servidor" });
     }
 });
@@ -90,7 +110,6 @@ exports.updateProfessional = updateProfessional;
 const deleteProfessional = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     try {
-        // O repositório já lida com a exclusão de ProfessionalService
         const deletedProfessional = yield professionalRepository_1.professionalRepository.delete(id);
         if (!deletedProfessional) {
             return res.status(404).json({ message: "Profissional não encontrado para exclusão" });
@@ -99,8 +118,6 @@ const deleteProfessional = (req, res) => __awaiter(void 0, void 0, void 0, funct
     }
     catch (error) {
         console.error(`Erro ao deletar profissional ${id}:`, error);
-        // O erro P2025 (Not Found) já é tratado pelo retorno null do repositório
-        // Tratar erro P2003 se houver FKs não tratadas (ex: Appointment, Review)
         if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
             return res.status(409).json({ message: "Não é possível excluir o profissional pois existem registros associados (ex: agendamentos, avaliações)." });
         }

@@ -68,8 +68,8 @@ export const createService = async (req: Request, res: Response): Promise<Respon
     const dataToCreate: Prisma.ServiceCreateInput = {
       name,
       description: description, // opcional
-      price: numericPrice,
-      duration: numericDuration, // opcional
+      price: String(numericPrice),
+      duration: numericDuration !== undefined ? String(numericDuration) : "", // opcional, default to empty string
       image: image, // opcional
       category: category, // opcional
       company: { connect: { id: companyId } },

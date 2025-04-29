@@ -24,7 +24,7 @@ app.use('/api/auth', createAuthRouter());
 app.use('/api/services', createServiceRouter());
 app.use('/api/companies', createCompanyRouter());
 
-app.listen(port, () => {
+app.listen(Number(port), '0.0.0.0', () => {
   console.log(`[server]: Servidor rodando em http://localhost:${port}`);
   console.log(`[swagger]: Documentação da API disponível em http://localhost:${port}/api-docs`);
 });

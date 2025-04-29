@@ -23,7 +23,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth', (0, authRoutes_1.default)());
 app.use('/api/services', (0, serviceRoutes_1.default)());
 app.use('/api/companies', (0, companyRoutes_1.default)());
-app.listen(port, () => {
+app.listen(Number(port), '0.0.0.0', () => {
     console.log(`[server]: Servidor rodando em http://localhost:${port}`);
     console.log(`[swagger]: Documentação da API disponível em http://localhost:${port}/api-docs`);
 });

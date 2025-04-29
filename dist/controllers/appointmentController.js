@@ -11,25 +11,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteAppointment = exports.cancelAppointment = exports.updateAppointmentStatus = exports.createAppointment = exports.getAppointmentById = exports.getAllAppointments = void 0;
 const appointmentRepository_1 = require("../repositories/appointmentRepository");
-const client_1 = require("@prisma/client"); // Revertido: Importar de @prisma/client
+const client_1 = require("@prisma/client");
 // Função auxiliar para tratamento de erros
 const handleError = (res, error, message) => {
     console.error(message, error);
     if (error instanceof client_1.Prisma.PrismaClientKnownRequestError) {
-        // Erros específicos do Prisma
         if (error.code === 'P2003') {
             return res.status(400).json({ message: 'Um ou mais IDs fornecidos (usuário, serviço ou profissional) são inválidos.' });
         }
         if (error.code === 'P2025') {
-            // Este erro geralmente indica que o registro não foi encontrado para update/delete
-            // A lógica do repositório já retorna null, então o controlador trata isso
-            // Mas podemos logar especificamente se quisermos
             console.error("Prisma Error P2025: Record not found.");
-            // Não retornamos aqui, pois o controlador já trata o null
         }
-        // Adicionar outros códigos de erro do Prisma conforme necessário
     }
-    // Erro genérico
     return res.status(500).json({ message: 'Erro interno do servidor' });
 };
 // Obter todos os agendamentos (com filtros opcionais)
@@ -70,18 +63,32 @@ const getAppointmentById = (req, res) => __awaiter(void 0, void 0, void 0, funct
 exports.getAppointmentById = getAppointmentById;
 // Criar um novo agendamento
 const createAppointment = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const data = req.body;
-    if (!data.date || !data.userId || !data.serviceId || !data.professionalId) {
+    // Extrair dados do corpo da requisição
+    const { date, userId, serviceId, professionalId, notes } = req.body;
+    // Validação básica de entrada
+    if (!date || !userId || !serviceId || !professionalId) {
         return res.status(400).json({
             message: 'Data, ID do usuário, ID do serviço e ID do profissional são obrigatórios'
         });
     }
     try {
-        const appointmentDate = new Date(data.date);
+        const appointmentDate = new Date(date);
+        if (isNaN(appointmentDate.getTime())) {
+            return res.status(400).json({ message: 'Formato de data inválido.' });
+        }
         if (appointmentDate < new Date()) {
             return res.status(400).json({ message: 'A data do agendamento deve ser futura' });
         }
-        const newAppointment = yield appointmentRepository_1.appointmentRepository.create(data);
+        // Montar o objeto de dados para o Prisma usando 'connect'
+        const dataToCreate = {
+            date: appointmentDate,
+            user: { connect: { id: userId } },
+            service: { connect: { id: serviceId } },
+            professional: { connect: { id: professionalId } },
+            notes: notes, // notes é opcional
+            // status é definido por padrão no schema
+        };
+        const newAppointment = yield appointmentRepository_1.appointmentRepository.create(dataToCreate);
         return res.status(201).json(newAppointment);
     }
     catch (error) {
@@ -142,7 +149,6 @@ const deleteAppointment = (req, res) => __awaiter(void 0, void 0, void 0, functi
         });
     }
     catch (error) {
-        // O repositório já trata P2025 retornando null
         return handleError(res, error, `Erro ao deletar agendamento ${id}:`);
     }
 });

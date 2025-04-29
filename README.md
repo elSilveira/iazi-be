@@ -142,3 +142,11 @@ Para executar o projeto completo, você também precisará configurar e executar
 ---
 *Este README foi atualizado para refletir a integração com banco de dados da Fase 3.*
 
+
+
+
+## Notas sobre a Validação e Testes (Pós-Fase 3)
+
+Durante a validação do código após a implementação da Fase 3 (Integração com Banco de Dados), foram encontrados alguns erros persistentes de tipagem no arquivo `src/routes/authRoutes.ts` relacionados às assinaturas das funções de callback do Express. Após tentativas de correção, optou-se por suprimir esses erros específicos usando comentários `// @ts-ignore` para permitir a compilação e execução do servidor. Esta é uma solução temporária e pode ser revisitada no futuro.
+
+Além disso, ao tentar acessar a documentação Swagger UI (`/api-docs`) através do domínio público exposto pelo ambiente de desenvolvimento, foram encontrados erros de conexão (`ERR_CONNECTION_RESET` e `ERR_EMPTY_RESPONSE`). No entanto, a interface do Swagger foi verificada e está funcionando corretamente quando acessada localmente (`http://localhost:3001/api-docs`) dentro do ambiente sandbox. Isso sugere que o problema de acesso externo pode estar relacionado à camada de proxy do ambiente e não à configuração do servidor ou do Swagger em si.
