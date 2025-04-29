@@ -2,9 +2,15 @@ import { Request, Response } from "express";
 import { userRepository } from "../repositories/userRepository";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { Prisma } from "@prisma/client"; // Revertido: Importar de @prisma/client
+import { Prisma } from "@prisma/client";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-default-secret"; // Use uma variável de ambiente!
+
+// Helper function for email validation
+const isValidEmail = (email: string): boolean => {
+  const emailRegex = /^[^"]+@[^"]+\.[a-zA-Z]{2,}$/;
+  return emailRegex.test(email);
+};
 
 // Função auxiliar para tratamento de erros
 const handleError = (res: Response, error: unknown, message: string) => {
@@ -13,8 +19,7 @@ const handleError = (res: Response, error: unknown, message: string) => {
     // Erros específicos do Prisma
     if (error.code === 'P2002') {
       // Unique constraint violation
-      // Verificar o campo específico se possível (ex: error.meta?.target)
-      if (message.includes("registro")) { // Assumindo que a mensagem indica o contexto
+      if (message.includes("registro")) {
         return res.status(409).json({ message: "Email já cadastrado." });
       }
       return res.status(409).json({ message: "Erro de conflito (possível duplicidade)." });
@@ -32,6 +37,10 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
   if (!email || !password) {
     return res.status(400).json({ message: "Email e senha são obrigatórios" });
   }
+  // Adicionar validação de formato de email no login também?
+  // if (!isValidEmail(email)) {
+  //   return res.status(400).json({ message: "Formato de email inválido." });
+  // }
 
   try {
     const user = await userRepository.findByEmail(email);
@@ -70,6 +79,13 @@ export const register = async (req: Request, res: Response): Promise<Response> =
   if (!email || !password || !name) {
     return res.status(400).json({ message: "Email, senha e nome são obrigatórios" });
   }
+
+  // Validar formato do email
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ message: "Formato de email inválido." });
+  }
+  
+  // TODO: Adicionar validação de força da senha (ex: mínimo de caracteres)
 
   try {
     const existingUser = await userRepository.findByEmail(email);

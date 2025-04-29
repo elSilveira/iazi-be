@@ -2,6 +2,12 @@ import { Request, Response } from "express";
 import { appointmentRepository } from '../repositories/appointmentRepository';
 import { Prisma, AppointmentStatus } from "@prisma/client";
 
+// Helper function for UUID validation
+const isValidUUID = (uuid: string): boolean => {
+  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  return uuidRegex.test(uuid);
+};
+
 // Função auxiliar para tratamento de erros
 const handleError = (res: Response, error: unknown, message: string) => {
   console.error(message, error);
@@ -11,6 +17,7 @@ const handleError = (res: Response, error: unknown, message: string) => {
     }
     if (error.code === 'P2025') {
       console.error("Prisma Error P2025: Record not found.");
+      // O repositório deve retornar null, e o controlador deve tratar isso com 404
     }
   }
   return res.status(500).json({ message: 'Erro interno do servidor' });
@@ -19,6 +26,20 @@ const handleError = (res: Response, error: unknown, message: string) => {
 // Obter todos os agendamentos (com filtros opcionais)
 export const getAllAppointments = async (req: Request, res: Response): Promise<Response> => {
   const { userId, professionalId, status } = req.query;
+
+  // Validar IDs se fornecidos
+  if (userId && !isValidUUID(userId as string)) {
+    return res.status(400).json({ message: 'Formato de ID do usuário inválido.' });
+  }
+  if (professionalId && !isValidUUID(professionalId as string)) {
+    return res.status(400).json({ message: 'Formato de ID do profissional inválido.' });
+  }
+  // Validar status se fornecido
+  if (status && !Object.values(AppointmentStatus).includes(status as AppointmentStatus)) {
+     return res.status(400).json({ 
+      message: 'Status inválido. Valores permitidos: ' + Object.values(AppointmentStatus).join(', ') 
+    });
+  }
   
   try {
     let appointments;
@@ -33,6 +54,8 @@ export const getAllAppointments = async (req: Request, res: Response): Promise<R
       appointments = await appointmentRepository.findByProfessional(professionalId as string);
     } 
     else {
+      // Permitir buscar todos? Ou exigir filtro?
+      // Por enquanto, vamos exigir um filtro para evitar retornar muitos dados
       return res.status(400).json({ message: 'É necessário fornecer userId ou professionalId para filtrar os agendamentos' });
     }
     
@@ -45,6 +68,10 @@ export const getAllAppointments = async (req: Request, res: Response): Promise<R
 // Obter um agendamento específico pelo ID
 export const getAppointmentById = async (req: Request, res: Response): Promise<Response> => {
   const { id } = req.params;
+  // Validar formato do ID
+  if (!isValidUUID(id)) {
+    return res.status(400).json({ message: "Formato de ID inválido." });
+  }
   
   try {
     const appointment = await appointmentRepository.findById(id);
@@ -68,14 +95,27 @@ export const createAppointment = async (req: Request, res: Response): Promise<Re
       message: 'Data, ID do usuário, ID do serviço e ID do profissional são obrigatórios' 
     });
   }
+  // Validar formato dos IDs
+  if (!isValidUUID(userId)) {
+    return res.status(400).json({ message: 'Formato de ID do usuário inválido.' });
+  }
+  if (!isValidUUID(serviceId)) {
+    return res.status(400).json({ message: 'Formato de ID do serviço inválido.' });
+  }
+  if (!isValidUUID(professionalId)) {
+    return res.status(400).json({ message: 'Formato de ID do profissional inválido.' });
+  }
 
   try {
     const appointmentDate = new Date(date);
     if (isNaN(appointmentDate.getTime())) {
       return res.status(400).json({ message: 'Formato de data inválido.' });
     }
-    if (appointmentDate < new Date()) {
-      return res.status(400).json({ message: 'A data do agendamento deve ser futura' });
+    // Permitir agendamentos no mesmo dia, mas não no passado?
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // Comparar apenas a data
+    if (appointmentDate < now) {
+      return res.status(400).json({ message: 'A data do agendamento não pode ser no passado' });
     }
 
     // Montar o objeto de dados para o Prisma usando 'connect'
@@ -98,6 +138,10 @@ export const createAppointment = async (req: Request, res: Response): Promise<Re
 // Atualizar o status de um agendamento
 export const updateAppointmentStatus = async (req: Request, res: Response): Promise<Response> => {
   const { id } = req.params;
+  // Validar formato do ID
+  if (!isValidUUID(id)) {
+    return res.status(400).json({ message: "Formato de ID inválido." });
+  }
   const { status } = req.body;
   
   if (!status || !Object.values(AppointmentStatus).includes(status as AppointmentStatus)) {
@@ -120,6 +164,10 @@ export const updateAppointmentStatus = async (req: Request, res: Response): Prom
 // Cancelar um agendamento (caso especial de atualização de status)
 export const cancelAppointment = async (req: Request, res: Response): Promise<Response> => {
   const { id } = req.params;
+  // Validar formato do ID
+  if (!isValidUUID(id)) {
+    return res.status(400).json({ message: "Formato de ID inválido." });
+  }
   
   try {
     const updatedAppointment = await appointmentRepository.updateStatus(id, AppointmentStatus.CANCELLED);
@@ -138,6 +186,10 @@ export const cancelAppointment = async (req: Request, res: Response): Promise<Re
 // Deletar um agendamento (geralmente não recomendado, preferir cancelamento)
 export const deleteAppointment = async (req: Request, res: Response): Promise<Response> => {
   const { id } = req.params;
+  // Validar formato do ID
+  if (!isValidUUID(id)) {
+    return res.status(400).json({ message: "Formato de ID inválido." });
+  }
 
   try {
     const deletedAppointment = await appointmentRepository.delete(id);

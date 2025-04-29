@@ -2,6 +2,12 @@ import { Request, Response } from "express";
 import { reviewRepository } from "../repositories/reviewRepository";
 import { Prisma } from "@prisma/client";
 
+// Helper function for UUID validation
+const isValidUUID = (uuid: string): boolean => {
+  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  return uuidRegex.test(uuid);
+};
+
 // Função auxiliar para tratamento de erros
 const handleError = (res: Response, error: unknown, message: string) => {
   console.error(message, error);
@@ -10,9 +16,8 @@ const handleError = (res: Response, error: unknown, message: string) => {
       return res.status(400).json({ message: 'Um ou mais IDs fornecidos (usuário, serviço, profissional ou empresa) são inválidos.' });
     }
     if (error.code === 'P2025') {
-      // O repositório já trata P2025 retornando null, mas podemos logar
       console.error("Prisma Error P2025: Record not found.");
-      // Não retornamos aqui, pois o controlador já trata o null
+      // O repositório deve retornar null, e o controlador deve tratar isso com 404
     }
   }
   return res.status(500).json({ message: 'Erro interno do servidor' });
@@ -21,6 +26,17 @@ const handleError = (res: Response, error: unknown, message: string) => {
 // Obter avaliações com filtros opcionais
 export const getReviews = async (req: Request, res: Response): Promise<Response> => {
   const { serviceId, professionalId, companyId } = req.query;
+
+  // Validar IDs se fornecidos
+  if (serviceId && !isValidUUID(serviceId as string)) {
+    return res.status(400).json({ message: 'Formato de ID do serviço inválido.' });
+  }
+  if (professionalId && !isValidUUID(professionalId as string)) {
+    return res.status(400).json({ message: 'Formato de ID do profissional inválido.' });
+  }
+  if (companyId && !isValidUUID(companyId as string)) {
+    return res.status(400).json({ message: 'Formato de ID da empresa inválido.' });
+  }
   
   try {
     let reviews;
@@ -49,6 +65,10 @@ export const getReviews = async (req: Request, res: Response): Promise<Response>
 // Obter uma avaliação específica pelo ID
 export const getReviewById = async (req: Request, res: Response): Promise<Response> => {
   const { id } = req.params;
+  // Validar formato do ID
+  if (!isValidUUID(id)) {
+    return res.status(400).json({ message: "Formato de ID inválido." });
+  }
   
   try {
     const review = await reviewRepository.findById(id);
@@ -72,6 +92,19 @@ export const createReview = async (req: Request, res: Response): Promise<Respons
       message: "Avaliação (rating), ID do usuário e pelo menos um ID de serviço, profissional ou empresa são obrigatórios" 
     });
   }
+  // Validar formato dos IDs
+  if (!isValidUUID(userId)) {
+    return res.status(400).json({ message: 'Formato de ID do usuário inválido.' });
+  }
+  if (serviceId && !isValidUUID(serviceId)) {
+    return res.status(400).json({ message: 'Formato de ID do serviço inválido.' });
+  }
+  if (professionalId && !isValidUUID(professionalId)) {
+    return res.status(400).json({ message: 'Formato de ID do profissional inválido.' });
+  }
+  if (companyId && !isValidUUID(companyId)) {
+    return res.status(400).json({ message: 'Formato de ID da empresa inválido.' });
+  }
 
   // Validar a avaliação (rating)
   const numericRating = Number(rating);
@@ -91,10 +124,9 @@ export const createReview = async (req: Request, res: Response): Promise<Respons
       ...(companyId && { company: { connect: { id: companyId } } }),
     };
 
+    // O repositório agora trata a atualização da média
     const newReview = await reviewRepository.create(dataToCreate);
-    
-    // TODO: Implementar lógica para atualizar a média de avaliação na entidade relacionada
-    
+        
     return res.status(201).json(newReview);
   } catch (error) {
     return handleError(res, error, 'Erro ao criar avaliação:');
@@ -104,6 +136,10 @@ export const createReview = async (req: Request, res: Response): Promise<Respons
 // Atualizar uma avaliação existente
 export const updateReview = async (req: Request, res: Response): Promise<Response> => {
   const { id } = req.params;
+  // Validar formato do ID
+  if (!isValidUUID(id)) {
+    return res.status(400).json({ message: "Formato de ID inválido." });
+  }
   // Não permitir alterar userId, serviceId, professionalId, companyId via update
   const { userId, serviceId, professionalId, companyId, ...dataToUpdate } = req.body;
   
@@ -117,13 +153,12 @@ export const updateReview = async (req: Request, res: Response): Promise<Respons
   }
 
   try {
+    // O repositório agora trata a atualização da média
     const updatedReview = await reviewRepository.update(id, dataToUpdate as Prisma.ReviewUpdateInput);
     if (!updatedReview) {
       return res.status(404).json({ message: "Avaliação não encontrada para atualização" });
     }
-    
-    // TODO: Implementar lógica para recalcular a média de avaliação na entidade relacionada
-    
+        
     return res.json(updatedReview);
   } catch (error) {
     return handleError(res, error, `Erro ao atualizar avaliação ${id}:`);
@@ -133,15 +168,18 @@ export const updateReview = async (req: Request, res: Response): Promise<Respons
 // Deletar uma avaliação
 export const deleteReview = async (req: Request, res: Response): Promise<Response> => {
   const { id } = req.params;
+  // Validar formato do ID
+  if (!isValidUUID(id)) {
+    return res.status(400).json({ message: "Formato de ID inválido." });
+  }
 
   try {
+    // O repositório agora trata a atualização da média
     const deletedReview = await reviewRepository.delete(id);
     if (!deletedReview) {
       return res.status(404).json({ message: "Avaliação não encontrada para exclusão" });
     }
-    
-    // TODO: Implementar lógica para recalcular a média de avaliação na entidade relacionada
-    
+        
     return res.status(200).json({ 
       message: "Avaliação excluída com sucesso", 
       review: deletedReview 

@@ -2,6 +2,12 @@ import { Request, Response } from "express";
 import { serviceRepository } from "../repositories/serviceRepository";
 import { Prisma } from "@prisma/client";
 
+// Helper function for UUID validation
+const isValidUUID = (uuid: string): boolean => {
+  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  return uuidRegex.test(uuid);
+};
+
 // Função auxiliar para tratamento de erros
 const handleError = (res: Response, error: unknown, message: string) => {
   console.error(message, error);
@@ -21,6 +27,10 @@ const handleError = (res: Response, error: unknown, message: string) => {
 // Obter todos os serviços (opcionalmente filtrados por companyId)
 export const getAllServices = async (req: Request, res: Response): Promise<Response> => {
   const { companyId } = req.query;
+  // Validar companyId se fornecido
+  if (companyId && !isValidUUID(companyId as string)) {
+     return res.status(400).json({ message: "Formato de ID da empresa inválido." });
+  }
   try {
     const services = await serviceRepository.getAll(companyId as string | undefined);
     return res.json(services);
@@ -32,6 +42,10 @@ export const getAllServices = async (req: Request, res: Response): Promise<Respo
 // Obter um serviço específico pelo ID
 export const getServiceById = async (req: Request, res: Response): Promise<Response> => {
   const { id } = req.params;
+  // Validar formato do ID
+  if (!isValidUUID(id)) {
+    return res.status(400).json({ message: "Formato de ID inválido." });
+  }
   try {
     const service = await serviceRepository.findById(id);
     if (!service) {
@@ -51,6 +65,10 @@ export const createService = async (req: Request, res: Response): Promise<Respon
   // Validação básica
   if (!name || price === undefined || !companyId) {
     return res.status(400).json({ message: "Nome, preço e ID da empresa são obrigatórios" });
+  }
+  // Validar formato do companyId
+  if (!isValidUUID(companyId)) {
+    return res.status(400).json({ message: "Formato de ID da empresa inválido." });
   }
 
   const numericPrice = Number(price);
@@ -86,6 +104,10 @@ export const createService = async (req: Request, res: Response): Promise<Respon
 // Atualizar um serviço existente
 export const updateService = async (req: Request, res: Response): Promise<Response> => {
   const { id } = req.params;
+  // Validar formato do ID
+  if (!isValidUUID(id)) {
+    return res.status(400).json({ message: "Formato de ID inválido." });
+  }
   // Não permitir atualização do companyId via este endpoint
   const { companyId, ...dataToUpdate } = req.body;
 
@@ -95,7 +117,7 @@ export const updateService = async (req: Request, res: Response): Promise<Respon
     if (isNaN(numericPrice) || numericPrice < 0) {
       return res.status(400).json({ message: "O preço deve ser um valor numérico não negativo." });
     }
-    dataToUpdate.price = numericPrice;
+    dataToUpdate.price = String(numericPrice); // Manter como string no DB
   }
 
   // Validar duração se fornecida
@@ -104,7 +126,7 @@ export const updateService = async (req: Request, res: Response): Promise<Respon
     if (isNaN(numericDuration) || numericDuration <= 0) {
       return res.status(400).json({ message: "A duração deve ser um valor numérico positivo." });
     }
-    dataToUpdate.duration = numericDuration;
+    dataToUpdate.duration = String(numericDuration); // Manter como string no DB
   }
 
   try {
@@ -121,6 +143,10 @@ export const updateService = async (req: Request, res: Response): Promise<Respon
 // Deletar um serviço
 export const deleteService = async (req: Request, res: Response): Promise<Response> => {
   const { id } = req.params;
+  // Validar formato do ID
+  if (!isValidUUID(id)) {
+    return res.status(400).json({ message: "Formato de ID inválido." });
+  }
 
   try {
     const deletedService = await serviceRepository.delete(id);

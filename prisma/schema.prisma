@@ -117,8 +117,8 @@ model Appointment {
   userId        String
   service       Service   @relation(fields: [serviceId], references: [id])
   serviceId     String
-  professional  Professional @relation(fields: [professionalId], references: [id])
-  professionalId String
+  professional  Professional? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
+  professionalId String?
   notes         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
