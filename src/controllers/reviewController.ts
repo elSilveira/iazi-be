@@ -1,6 +1,22 @@
 import { Request, Response } from "express";
 import { reviewRepository } from "../repositories/reviewRepository";
-import { Prisma } from "@prisma/client"; // Revertido: Importar de @prisma/client
+import { Prisma } from "@prisma/client";
+
+// Função auxiliar para tratamento de erros
+const handleError = (res: Response, error: unknown, message: string) => {
+  console.error(message, error);
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === 'P2003') {
+      return res.status(400).json({ message: 'Um ou mais IDs fornecidos (usuário, serviço, profissional ou empresa) são inválidos.' });
+    }
+    if (error.code === 'P2025') {
+      // O repositório já trata P2025 retornando null, mas podemos logar
+      console.error("Prisma Error P2025: Record not found.");
+      // Não retornamos aqui, pois o controlador já trata o null
+    }
+  }
+  return res.status(500).json({ message: 'Erro interno do servidor' });
+};
 
 // Obter avaliações com filtros opcionais
 export const getReviews = async (req: Request, res: Response): Promise<Response> => {
@@ -9,19 +25,15 @@ export const getReviews = async (req: Request, res: Response): Promise<Response>
   try {
     let reviews;
     
-    // Filtrar por serviço
     if (serviceId) {
       reviews = await reviewRepository.findByService(serviceId as string);
     } 
-    // Filtrar por profissional
     else if (professionalId) {
       reviews = await reviewRepository.findByProfessional(professionalId as string);
     } 
-    // Filtrar por empresa
     else if (companyId) {
       reviews = await reviewRepository.findByCompany(companyId as string);
     } 
-    // Caso contrário, retornar erro (exigir um filtro para evitar consultas muito grandes)
     else {
       return res.status(400).json({ 
         message: "É necessário fornecer serviceId, professionalId ou companyId para filtrar as avaliações" 
@@ -30,8 +42,7 @@ export const getReviews = async (req: Request, res: Response): Promise<Response>
     
     return res.json(reviews);
   } catch (error) {
-    console.error("Erro ao buscar avaliações:", error);
-    return res.status(500).json({ message: "Erro interno do servidor" });
+    return handleError(res, error, 'Erro ao buscar avaliações:');
   }
 };
 
@@ -46,70 +57,76 @@ export const getReviewById = async (req: Request, res: Response): Promise<Respon
     }
     return res.json(review);
   } catch (error) {
-    console.error(`Erro ao buscar avaliação ${id}:`, error);
-    return res.status(500).json({ message: "Erro interno do servidor" });
+    return handleError(res, error, `Erro ao buscar avaliação ${id}:`);
   }
 };
 
 // Criar uma nova avaliação
 export const createReview = async (req: Request, res: Response): Promise<Response> => {
-  const data: Prisma.ReviewCreateInput = req.body;
-  
+  // Extrair dados do corpo da requisição
+  const { rating, comment, userId, serviceId, professionalId, companyId } = req.body;
+
   // Validação básica
-  if (!data.rating || !data.userId || (!data.serviceId && !data.professionalId && !data.companyId)) {
+  if (!rating || !userId || (!serviceId && !professionalId && !companyId)) {
     return res.status(400).json({ 
       message: "Avaliação (rating), ID do usuário e pelo menos um ID de serviço, profissional ou empresa são obrigatórios" 
     });
   }
 
   // Validar a avaliação (rating)
-  if (data.rating < 1 || data.rating > 5) {
-    return res.status(400).json({ message: "A avaliação deve ser um valor entre 1 e 5" });
+  const numericRating = Number(rating);
+  if (isNaN(numericRating) || numericRating < 1 || numericRating > 5) {
+    return res.status(400).json({ message: "A avaliação deve ser um valor numérico entre 1 e 5" });
   }
 
   try {
-    const newReview = await reviewRepository.create(data);
+    // Montar o objeto de dados para o Prisma usando 'connect'
+    const dataToCreate: Prisma.ReviewCreateInput = {
+      rating: numericRating,
+      comment: comment, // comment é opcional
+      user: { connect: { id: userId } },
+      // Conectar apenas à entidade relevante (service, professional ou company)
+      ...(serviceId && { service: { connect: { id: serviceId } } }),
+      ...(professionalId && { professional: { connect: { id: professionalId } } }),
+      ...(companyId && { company: { connect: { id: companyId } } }),
+    };
+
+    const newReview = await reviewRepository.create(dataToCreate);
     
     // TODO: Implementar lógica para atualizar a média de avaliação na entidade relacionada
-    // (Service, Professional ou Company) após criar a avaliação.
     
     return res.status(201).json(newReview);
   } catch (error) {
-    console.error("Erro ao criar avaliação:", error);
-    // Verificar erros de chave estrangeira
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
-      return res.status(400).json({ message: "Um ou mais IDs fornecidos (usuário, serviço, profissional ou empresa) são inválidos." });
-    }
-    return res.status(500).json({ message: "Erro interno do servidor" });
+    return handleError(res, error, 'Erro ao criar avaliação:');
   }
 };
 
 // Atualizar uma avaliação existente
 export const updateReview = async (req: Request, res: Response): Promise<Response> => {
   const { id } = req.params;
-  const data: Prisma.ReviewUpdateInput = req.body;
+  // Não permitir alterar userId, serviceId, professionalId, companyId via update
+  const { userId, serviceId, professionalId, companyId, ...dataToUpdate } = req.body;
   
   // Validar a avaliação (rating) se fornecida
-  if (data.rating !== undefined && (data.rating as number < 1 || data.rating as number > 5)) {
-    return res.status(400).json({ message: "A avaliação deve ser um valor entre 1 e 5" });
+  if (dataToUpdate.rating !== undefined) {
+    const numericRating = Number(dataToUpdate.rating);
+    if (isNaN(numericRating) || numericRating < 1 || numericRating > 5) {
+      return res.status(400).json({ message: "A avaliação deve ser um valor numérico entre 1 e 5" });
+    }
+    dataToUpdate.rating = numericRating; // Garantir que seja número
   }
 
   try {
-    const updatedReview = await reviewRepository.update(id, data);
+    const updatedReview = await reviewRepository.update(id, dataToUpdate as Prisma.ReviewUpdateInput);
     if (!updatedReview) {
       return res.status(404).json({ message: "Avaliação não encontrada para atualização" });
     }
     
     // TODO: Implementar lógica para recalcular a média de avaliação na entidade relacionada
-    // após atualizar a avaliação.
     
     return res.json(updatedReview);
   } catch (error) {
-    console.error(`Erro ao atualizar avaliação ${id}:`, error);
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-      return res.status(404).json({ message: "Avaliação não encontrada para atualização." });
-    }
-    return res.status(500).json({ message: "Erro interno do servidor" });
+    return handleError(res, error, `Erro ao atualizar avaliação ${id}:`);
   }
 };
 
@@ -124,17 +141,13 @@ export const deleteReview = async (req: Request, res: Response): Promise<Respons
     }
     
     // TODO: Implementar lógica para recalcular a média de avaliação na entidade relacionada
-    // após deletar a avaliação.
     
     return res.status(200).json({ 
       message: "Avaliação excluída com sucesso", 
       review: deletedReview 
     });
   } catch (error) {
-    console.error(`Erro ao deletar avaliação ${id}:`, error);
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-      return res.status(404).json({ message: "Avaliação não encontrada para exclusão." });
-    }
-    return res.status(500).json({ message: "Erro interno do servidor" });
+    return handleError(res, error, `Erro ao deletar avaliação ${id}:`);
   }
 };
+

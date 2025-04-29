@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { professionalRepository } from "../repositories/professionalRepository";
-import { Prisma } from "@prisma/client"; // Revertido: Importar de @prisma/client
+import { Prisma } from "@prisma/client";
 
 // Obter todos os profissionais (opcionalmente filtrados por companyId)
 export const getAllProfessionals = async (req: Request, res: Response): Promise<Response> => {
@@ -31,14 +31,25 @@ export const getProfessionalById = async (req: Request, res: Response): Promise<
 
 // Criar um novo profissional
 export const createProfessional = async (req: Request, res: Response): Promise<Response> => {
-  const data: Prisma.ProfessionalCreateInput = req.body;
+  // Extrair dados do corpo da requisição
+  const { name, role, image, companyId } = req.body;
+
   // Validação básica
-  if (!data.name || !data.role || !data.companyId) {
+  if (!name || !role || !companyId) {
     return res.status(400).json({ message: "Nome, cargo e ID da empresa são obrigatórios" });
   }
 
   try {
-    const newProfessional = await professionalRepository.create(data);
+    // Montar o objeto de dados para o Prisma usando 'connect'
+    const dataToCreate: Prisma.ProfessionalCreateInput = {
+      name,
+      role,
+      image: image, // image é opcional
+      company: { connect: { id: companyId } },
+      // rating e appointments são definidos por padrão no schema
+    };
+
+    const newProfessional = await professionalRepository.create(dataToCreate);
     // TODO: Implementar lógica para conectar a serviços (ProfessionalService) após criar o profissional.
     return res.status(201).json(newProfessional);
   } catch (error) {
@@ -57,10 +68,11 @@ export const createProfessional = async (req: Request, res: Response): Promise<R
 // Atualizar um profissional existente
 export const updateProfessional = async (req: Request, res: Response): Promise<Response> => {
   const { id } = req.params;
-  const data: Prisma.ProfessionalUpdateInput = req.body;
+  // Não permitir atualização do companyId via este endpoint
+  const { companyId, ...dataToUpdate } = req.body;
 
   try {
-    const updatedProfessional = await professionalRepository.update(id, data);
+    const updatedProfessional = await professionalRepository.update(id, dataToUpdate as Prisma.ProfessionalUpdateInput);
     if (!updatedProfessional) {
       return res.status(404).json({ message: "Profissional não encontrado para atualização" });
     }
@@ -68,7 +80,6 @@ export const updateProfessional = async (req: Request, res: Response): Promise<R
     return res.json(updatedProfessional);
   } catch (error) {
     console.error(`Erro ao atualizar profissional ${id}:`, error);
-    // O erro P2025 (Not Found) já é tratado pelo retorno null do repositório
     return res.status(500).json({ message: "Erro interno do servidor" });
   }
 };
@@ -78,7 +89,6 @@ export const deleteProfessional = async (req: Request, res: Response): Promise<R
   const { id } = req.params;
 
   try {
-    // O repositório já lida com a exclusão de ProfessionalService
     const deletedProfessional = await professionalRepository.delete(id);
     if (!deletedProfessional) {
       return res.status(404).json({ message: "Profissional não encontrado para exclusão" });
@@ -86,11 +96,10 @@ export const deleteProfessional = async (req: Request, res: Response): Promise<R
     return res.status(200).json({ message: "Profissional excluído com sucesso", professional: deletedProfessional });
   } catch (error) {
     console.error(`Erro ao deletar profissional ${id}:`, error);
-    // O erro P2025 (Not Found) já é tratado pelo retorno null do repositório
-    // Tratar erro P2003 se houver FKs não tratadas (ex: Appointment, Review)
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
         return res.status(409).json({ message: "Não é possível excluir o profissional pois existem registros associados (ex: agendamentos, avaliações)." });
     }
     return res.status(500).json({ message: "Erro interno do servidor" });
   }
 };
+

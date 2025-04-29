@@ -1,25 +1,18 @@
 import { Request, Response } from "express";
 import { appointmentRepository } from '../repositories/appointmentRepository';
-import { Prisma, AppointmentStatus } from "@prisma/client"; // Revertido: Importar de @prisma/client
+import { Prisma, AppointmentStatus } from "@prisma/client";
 
 // Função auxiliar para tratamento de erros
 const handleError = (res: Response, error: unknown, message: string) => {
   console.error(message, error);
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    // Erros específicos do Prisma
     if (error.code === 'P2003') {
       return res.status(400).json({ message: 'Um ou mais IDs fornecidos (usuário, serviço ou profissional) são inválidos.' });
     }
     if (error.code === 'P2025') {
-      // Este erro geralmente indica que o registro não foi encontrado para update/delete
-      // A lógica do repositório já retorna null, então o controlador trata isso
-      // Mas podemos logar especificamente se quisermos
       console.error("Prisma Error P2025: Record not found.");
-      // Não retornamos aqui, pois o controlador já trata o null
     }
-    // Adicionar outros códigos de erro do Prisma conforme necessário
   }
-  // Erro genérico
   return res.status(500).json({ message: 'Erro interno do servidor' });
 };
 
@@ -66,21 +59,36 @@ export const getAppointmentById = async (req: Request, res: Response): Promise<R
 
 // Criar um novo agendamento
 export const createAppointment = async (req: Request, res: Response): Promise<Response> => {
-  const data: Prisma.AppointmentCreateInput = req.body;
-  
-  if (!data.date || !data.userId || !data.serviceId || !data.professionalId) {
+  // Extrair dados do corpo da requisição
+  const { date, userId, serviceId, professionalId, notes } = req.body;
+
+  // Validação básica de entrada
+  if (!date || !userId || !serviceId || !professionalId) {
     return res.status(400).json({ 
       message: 'Data, ID do usuário, ID do serviço e ID do profissional são obrigatórios' 
     });
   }
 
   try {
-    const appointmentDate = new Date(data.date);
+    const appointmentDate = new Date(date);
+    if (isNaN(appointmentDate.getTime())) {
+      return res.status(400).json({ message: 'Formato de data inválido.' });
+    }
     if (appointmentDate < new Date()) {
       return res.status(400).json({ message: 'A data do agendamento deve ser futura' });
     }
+
+    // Montar o objeto de dados para o Prisma usando 'connect'
+    const dataToCreate: Prisma.AppointmentCreateInput = {
+      date: appointmentDate,
+      user: { connect: { id: userId } },
+      service: { connect: { id: serviceId } },
+      professional: { connect: { id: professionalId } },
+      notes: notes, // notes é opcional
+      // status é definido por padrão no schema
+    };
     
-    const newAppointment = await appointmentRepository.create(data);
+    const newAppointment = await appointmentRepository.create(dataToCreate);
     return res.status(201).json(newAppointment);
   } catch (error) {
     return handleError(res, error, 'Erro ao criar agendamento:');
@@ -141,7 +149,7 @@ export const deleteAppointment = async (req: Request, res: Response): Promise<Re
       appointment: deletedAppointment 
     });
   } catch (error) {
-    // O repositório já trata P2025 retornando null
     return handleError(res, error, `Erro ao deletar agendamento ${id}:`);
   }
 };
+
