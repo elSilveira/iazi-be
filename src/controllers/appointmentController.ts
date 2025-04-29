@@ -1,6 +1,27 @@
-import { Request, Response } from 'express';
+import { Request, Response } from "express";
 import { appointmentRepository } from '../repositories/appointmentRepository';
-import { Prisma, AppointmentStatus } from '@prisma/client';
+import { Prisma, AppointmentStatus } from "@prisma/client"; // Revertido: Importar de @prisma/client
+
+// Função auxiliar para tratamento de erros
+const handleError = (res: Response, error: unknown, message: string) => {
+  console.error(message, error);
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    // Erros específicos do Prisma
+    if (error.code === 'P2003') {
+      return res.status(400).json({ message: 'Um ou mais IDs fornecidos (usuário, serviço ou profissional) são inválidos.' });
+    }
+    if (error.code === 'P2025') {
+      // Este erro geralmente indica que o registro não foi encontrado para update/delete
+      // A lógica do repositório já retorna null, então o controlador trata isso
+      // Mas podemos logar especificamente se quisermos
+      console.error("Prisma Error P2025: Record not found.");
+      // Não retornamos aqui, pois o controlador já trata o null
+    }
+    // Adicionar outros códigos de erro do Prisma conforme necessário
+  }
+  // Erro genérico
+  return res.status(500).json({ message: 'Erro interno do servidor' });
+};
 
 // Obter todos os agendamentos (com filtros opcionais)
 export const getAllAppointments = async (req: Request, res: Response): Promise<Response> => {
@@ -9,27 +30,22 @@ export const getAllAppointments = async (req: Request, res: Response): Promise<R
   try {
     let appointments;
     
-    // Filtrar por usuário se userId for fornecido
     if (userId) {
       appointments = await appointmentRepository.findByUser(
         userId as string, 
         status as AppointmentStatus | undefined
       );
     } 
-    // Filtrar por profissional se professionalId for fornecido
     else if (professionalId) {
-      // Opcionalmente, poderia aceitar uma data para filtrar
       appointments = await appointmentRepository.findByProfessional(professionalId as string);
     } 
-    // Caso contrário, retornar erro ou implementar busca geral (com paginação)
     else {
       return res.status(400).json({ message: 'É necessário fornecer userId ou professionalId para filtrar os agendamentos' });
     }
     
     return res.json(appointments);
   } catch (error) {
-    console.error('Erro ao buscar agendamentos:', error);
-    return res.status(500).json({ message: 'Erro interno do servidor' });
+    return handleError(res, error, 'Erro ao buscar agendamentos:');
   }
 };
 
@@ -44,8 +60,7 @@ export const getAppointmentById = async (req: Request, res: Response): Promise<R
     }
     return res.json(appointment);
   } catch (error) {
-    console.error(`Erro ao buscar agendamento ${id}:`, error);
-    return res.status(500).json({ message: 'Erro interno do servidor' });
+    return handleError(res, error, `Erro ao buscar agendamento ${id}:`);
   }
 };
 
@@ -53,7 +68,6 @@ export const getAppointmentById = async (req: Request, res: Response): Promise<R
 export const createAppointment = async (req: Request, res: Response): Promise<Response> => {
   const data: Prisma.AppointmentCreateInput = req.body;
   
-  // Validação básica
   if (!data.date || !data.userId || !data.serviceId || !data.professionalId) {
     return res.status(400).json({ 
       message: 'Data, ID do usuário, ID do serviço e ID do profissional são obrigatórios' 
@@ -61,22 +75,15 @@ export const createAppointment = async (req: Request, res: Response): Promise<Re
   }
 
   try {
-    // Verificar se a data é futura
     const appointmentDate = new Date(data.date);
     if (appointmentDate < new Date()) {
       return res.status(400).json({ message: 'A data do agendamento deve ser futura' });
     }
     
-    // Criar o agendamento
     const newAppointment = await appointmentRepository.create(data);
     return res.status(201).json(newAppointment);
   } catch (error) {
-    console.error('Erro ao criar agendamento:', error);
-    // Verificar erros de chave estrangeira
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
-      return res.status(400).json({ message: 'Um ou mais IDs fornecidos são inválidos.' });
-    }
-    return res.status(500).json({ message: 'Erro interno do servidor' });
+    return handleError(res, error, 'Erro ao criar agendamento:');
   }
 };
 
@@ -85,7 +92,6 @@ export const updateAppointmentStatus = async (req: Request, res: Response): Prom
   const { id } = req.params;
   const { status } = req.body;
   
-  // Validar o status
   if (!status || !Object.values(AppointmentStatus).includes(status as AppointmentStatus)) {
     return res.status(400).json({ 
       message: 'Status inválido. Valores permitidos: ' + Object.values(AppointmentStatus).join(', ') 
@@ -99,8 +105,7 @@ export const updateAppointmentStatus = async (req: Request, res: Response): Prom
     }
     return res.json(updatedAppointment);
   } catch (error) {
-    console.error(`Erro ao atualizar status do agendamento ${id}:`, error);
-    return res.status(500).json({ message: 'Erro interno do servidor' });
+    return handleError(res, error, `Erro ao atualizar status do agendamento ${id}:`);
   }
 };
 
@@ -118,8 +123,7 @@ export const cancelAppointment = async (req: Request, res: Response): Promise<Re
       appointment: updatedAppointment 
     });
   } catch (error) {
-    console.error(`Erro ao cancelar agendamento ${id}:`, error);
-    return res.status(500).json({ message: 'Erro interno do servidor' });
+    return handleError(res, error, `Erro ao cancelar agendamento ${id}:`);
   }
 };
 
@@ -137,7 +141,7 @@ export const deleteAppointment = async (req: Request, res: Response): Promise<Re
       appointment: deletedAppointment 
     });
   } catch (error) {
-    console.error(`Erro ao deletar agendamento ${id}:`, error);
-    return res.status(500).json({ message: 'Erro interno do servidor' });
+    // O repositório já trata P2025 retornando null
+    return handleError(res, error, `Erro ao deletar agendamento ${id}:`);
   }
 };

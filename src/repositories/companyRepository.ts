@@ -1,52 +1,59 @@
 import { prisma } from "../lib/prisma";
-import { Prisma, Company } from "@prisma/client";
+import { Prisma, Company, Address } from "@prisma/client"; // Revertido: Importar de @prisma/client
 
 export const companyRepository = {
-  async findById(id: string): Promise<Company | null> {
-    return prisma.company.findUnique({
-      where: { id },
-      include: { 
-        address: true, 
-        services: true, 
-        professionals: true, 
-        reviews: true 
-      }, // Incluir relações
+  async getAll(): Promise<Company[]> {
+    return prisma.company.findMany({
+      include: { address: true }, // Incluir endereço
     });
   },
 
-  async getAll(): Promise<Company[]> {
-    return prisma.company.findMany({
-      include: { address: true }, // Incluir endereço na listagem geral
+  async findById(id: string): Promise<(Company & { address: Address | null }) | null> {
+    return prisma.company.findUnique({
+      where: { id },
+      include: { address: true }, // Incluir endereço
     });
   },
 
   async create(data: Prisma.CompanyCreateInput): Promise<Company> {
-    // Prisma não suporta criação aninhada direta de um-para-um (Address) ou um-para-muitos (Services, Professionals) desta forma simples.
-    // A criação de relações precisa ser tratada separadamente ou com transações.
-    // Por enquanto, vamos focar na criação da empresa básica.
-    const { address, services, professionals, reviews, ...companyData } = data;
+    // A criação do endereço deve ser tratada aqui ou no serviço
+    // Exemplo: Se data.address for fornecido, usar connectOrCreate ou create
     return prisma.company.create({
-      data: companyData,
+      data,
+      // include: { address: true } // Opcional incluir endereço no retorno
     });
-    // TODO: Implementar lógica para criar/conectar relações (Address, Services, Professionals)
   },
 
   async update(id: string, data: Prisma.CompanyUpdateInput): Promise<Company | null> {
-    // Similar à criação, a atualização de relações precisa de tratamento especial.
-    const { address, services, professionals, reviews, ...companyData } = data;
-    return prisma.company.update({
-      where: { id },
-      data: companyData,
-    });
-    // TODO: Implementar lógica para atualizar/conectar relações
+    // A atualização do endereço também precisa ser tratada
+    try {
+      return await prisma.company.update({
+        where: { id },
+        data,
+        // include: { address: true } // Opcional incluir endereço no retorno
+      });
+    } catch (error) {
+      // Tratar erro P2025 (Registro não encontrado) se necessário, embora findById já possa fazer isso
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return null;
+      }
+      throw error;
+    }
   },
 
   async delete(id: string): Promise<Company | null> {
-    // A exclusão em cascata está configurada no schema, então o endereço, serviços, etc., relacionados devem ser excluídos.
-    return prisma.company.delete({
-      where: { id },
-    });
+    // Considerar o que fazer com o endereço associado (onDelete: Cascade no schema?)
+    try {
+      // Se não houver cascade, deletar o endereço primeiro ou desconectar
+      // await prisma.address.delete({ where: { companyId: id } }); // Exemplo
+      return await prisma.company.delete({
+        where: { id },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return null;
+      }
+      throw error;
+    }
   },
-
-  // Adicionar outras funções conforme necessário
 };

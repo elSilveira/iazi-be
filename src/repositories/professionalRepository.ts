@@ -1,48 +1,58 @@
 import { prisma } from "../lib/prisma";
-import { Prisma, Professional } from "@prisma/client";
+import { Prisma, Professional } from "@prisma/client"; // Revertido: Importar de @prisma/client
 
 export const professionalRepository = {
-  async findById(id: string): Promise<Professional | null> {
-    return prisma.professional.findUnique({
-      where: { id },
-      include: { 
-        company: true, 
-        services: { include: { service: true } }, // Incluir serviços que o profissional oferece
-        scheduledAppointments: true, 
-        reviews: true 
-      }, // Incluir relações
+  async getAll(companyId?: string): Promise<Professional[]> {
+    return prisma.professional.findMany({
+      where: companyId ? { companyId } : {},
+      include: { services: { include: { service: true } } }, // Incluir serviços associados
     });
   },
 
-  async getAll(companyId?: string): Promise<Professional[]> {
-    return prisma.professional.findMany({
-      where: companyId ? { companyId } : undefined,
-      include: { company: true }, // Incluir empresa na listagem geral
+  async findById(id: string): Promise<Professional | null> {
+    return prisma.professional.findUnique({
+      where: { id },
+      include: { services: { include: { service: true } } }, // Incluir serviços associados
     });
   },
 
   async create(data: Prisma.ProfessionalCreateInput): Promise<Professional> {
-    // A criação de relações (como conectar a serviços) pode precisar de tratamento especial.
+    // A conexão com serviços (ProfessionalService) deve ser tratada separadamente
     return prisma.professional.create({
       data,
     });
-    // TODO: Implementar lógica para conectar a serviços (ProfessionalService)
   },
 
   async update(id: string, data: Prisma.ProfessionalUpdateInput): Promise<Professional | null> {
-    return prisma.professional.update({
-      where: { id },
-      data,
-    });
-    // TODO: Implementar lógica para atualizar/conectar relações
+    // A atualização da conexão com serviços deve ser tratada separadamente
+    try {
+      return await prisma.professional.update({
+        where: { id },
+        data,
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return null;
+      }
+      throw error;
+    }
   },
 
   async delete(id: string): Promise<Professional | null> {
-    // A exclusão em cascata está configurada no schema.
-    return prisma.professional.delete({
-      where: { id },
-    });
+    try {
+      // Desconectar de ProfessionalService antes de deletar
+      await prisma.professionalService.deleteMany({ where: { professionalId: id } });
+      // Considerar o que fazer com agendamentos e avaliações associados
+      // await prisma.appointment.updateMany({ where: { professionalId: id }, data: { professionalId: null } }); // Exemplo: Desassociar
+      // await prisma.review.updateMany({ where: { professionalId: id }, data: { professionalId: null } }); // Exemplo: Desassociar
+      return await prisma.professional.delete({
+        where: { id },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return null;
+      }
+      throw error;
+    }
   },
-
-  // Adicionar outras funções conforme necessário
 };

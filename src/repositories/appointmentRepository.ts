@@ -1,27 +1,18 @@
 import { prisma } from "../lib/prisma";
-import { Prisma, Appointment, AppointmentStatus } from "@prisma/client";
+import { Prisma, Appointment, AppointmentStatus } from "@prisma/client"; // Revertido: Importar de @prisma/client
 
 export const appointmentRepository = {
-  async findById(id: string): Promise<Appointment | null> {
-    return prisma.appointment.findUnique({
-      where: { id },
-      include: { 
-        user: true, 
-        service: true, 
-        professional: true 
-      }, // Incluir relações
-    });
-  },
-
+  // Encontrar agendamentos por usuário (opcionalmente por status)
   async findByUser(userId: string, status?: AppointmentStatus): Promise<Appointment[]> {
     return prisma.appointment.findMany({
       where: {
         userId,
-        status: status ? status : undefined,
+        ...(status && { status }), // Adiciona status ao where se fornecido
       },
       include: { 
-        service: { include: { company: true } }, // Incluir serviço e empresa
-        professional: true 
+        service: true, 
+        professional: true, 
+        user: { select: { id: true, name: true, email: true, avatar: true } } // Incluir dados relevantes do usuário
       },
       orderBy: {
         date: 'asc', // Ordenar por data
@@ -29,16 +20,27 @@ export const appointmentRepository = {
     });
   },
 
-  async findByProfessional(professionalId: string, date?: Date): Promise<Appointment[]> {
-    // Pode ser útil para verificar disponibilidade
+  // Encontrar agendamentos por profissional (poderia adicionar filtro de data)
+  async findByProfessional(professionalId: string): Promise<Appointment[]> {
     return prisma.appointment.findMany({
-      where: {
-        professionalId,
-        date: date ? { gte: date } : undefined, // Buscar a partir de uma data específica
-        status: { notIn: [AppointmentStatus.CANCELLED, AppointmentStatus.COMPLETED] } // Excluir cancelados/completos
+      where: { professionalId },
+      include: { 
+        service: true, 
+        user: { select: { id: true, name: true, email: true, avatar: true } } // Incluir dados relevantes do usuário
       },
       orderBy: {
         date: 'asc',
+      },
+    });
+  },
+
+  async findById(id: string): Promise<Appointment | null> {
+    return prisma.appointment.findUnique({
+      where: { id },
+      include: { 
+        service: true, 
+        professional: true, 
+        user: { select: { id: true, name: true, email: true, avatar: true } }
       },
     });
   },
@@ -50,17 +52,29 @@ export const appointmentRepository = {
   },
 
   async updateStatus(id: string, status: AppointmentStatus): Promise<Appointment | null> {
-    return prisma.appointment.update({
-      where: { id },
-      data: { status },
-    });
+    try {
+      return await prisma.appointment.update({
+        where: { id },
+        data: { status },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return null; // Agendamento não encontrado
+      }
+      throw error;
+    }
   },
 
   async delete(id: string): Promise<Appointment | null> {
-    return prisma.appointment.delete({
-      where: { id },
-    });
+    try {
+      return await prisma.appointment.delete({
+        where: { id },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return null; // Agendamento não encontrado
+      }
+      throw error;
+    }
   },
-
-  // Adicionar outras funções conforme necessário
 };

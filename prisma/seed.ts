@@ -1,4 +1,5 @@
 import { PrismaClient } from "../src/generated/prisma";
+import { Prisma } from "../src/generated/prisma";
 import bcrypt from "bcrypt";
 
 // Criar uma nova instância do PrismaClient

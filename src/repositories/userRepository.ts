@@ -1,5 +1,5 @@
 import { prisma } from "../lib/prisma";
-import { Prisma, User } from "@prisma/client";
+import { Prisma, User } from "@prisma/client"; // Revertido: Importar de @prisma/client
 
 export const userRepository = {
   async findByEmail(email: string): Promise<User | null> {
@@ -20,5 +20,5 @@ export const userRepository = {
     });
   },
 
-  // Adicionar outras funções conforme necessário (update, delete, etc.)
+  // Adicionar outros métodos conforme necessário (update, delete, etc.)
 };

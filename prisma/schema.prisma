@@ -3,7 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  // output   = "../src/generated/prisma" // Removido: Usar local padrão node_modules/.prisma/client
 }
 
 datasource db {
@@ -148,3 +148,4 @@ enum AppointmentStatus {
   COMPLETED
   CANCELLED
 }
+

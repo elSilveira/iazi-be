@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client"; // Revertido: Importação padrão
 
 // Singleton para o cliente Prisma
 class PrismaInstance {
