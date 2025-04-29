@@ -238,7 +238,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "/home/ubuntu/serviconnect-backend/src/generated/prisma",
+      "value": "C:\\Users\\duti_\\apps\\iazi-be\\src\\generated\\prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -247,12 +247,12 @@ const config = {
     "binaryTargets": [
       {
         "fromEnvVar": null,
-        "value": "debian-openssl-3.0.x",
+        "value": "windows",
         "native": true
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "/home/ubuntu/serviconnect-backend/prisma/schema.prisma",
+    "sourceFilePath": "C:\\Users\\duti_\\apps\\iazi-be\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
@@ -266,12 +266,11 @@ const config = {
     "db"
   ],
   "activeProvider": "postgresql",
-  "postinstall": false,
   "inlineDatasources": {
     "db": {
       "url": {
         "fromEnvVar": "DATABASE_URL",
-        "value": null
+        "value": "postgresql://serviconnect_user:Zuchy@021@localhost:5432/serviconnect_db?schema=public"
       }
     }
   },
