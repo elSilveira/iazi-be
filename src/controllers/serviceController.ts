@@ -1,53 +1,87 @@
 import { Request, Response } from 'express';
-import { Service } from '../models/Service';
+import { serviceRepository } from '../repositories/serviceRepository';
+import { Prisma } from '@prisma/client';
 
-// Mock data based on frontend's mock-services.ts
-const mockServicesDb: Service[] = [
-  {
-    id: 1,
-    name: "Limpeza de Pele Profunda",
-    category: "Tratamento Facial",
-    company: "Clínica DermaBem",
-    professional: "Dra. Ana Silva",
-    image: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881",
-    rating: 4.8,
-    reviews: 87,
-    price: "R$180",
-    duration: "60 min",
-    availability: "Hoje",
-    company_id: "clinica-dermabem-123",
-    professional_id: "dra-ana-silva-456",
-    description: "Limpeza de pele completa com extração de cravos e espinhas, esfoliação e hidratação profunda para todos os tipos de pele.",
-  },
-  {
-    id: 2,
-    name: "Quiropraxia",
-    category: "Fisioterapia",
-    company: "FisioSaúde",
-    professional: "Dr. Carlos Mendes",
-    image: "https://images.unsplash.com/photo-1552693673-1bf958298935",
-    rating: 4.9,
-    reviews: 112,
-    price: "R$150",
-    duration: "45 min",
-    availability: "Amanhã",
-    company_id: "fisiosaude-789",
-    professional_id: "dr-carlos-mendes-101",
-    description: "Tratamento quiroprático para alinhamento da coluna, alívio de tensões musculares e melhora da postura corporal.",
-  },
-  // Add more mock services if needed based on mock-services.ts
-];
-
-export const getAllServices = (req: Request, res: Response): Response => {
-  return res.json(mockServicesDb);
+// Obter todos os serviços (opcionalmente filtrados por companyId)
+export const getAllServices = async (req: Request, res: Response): Promise<Response> => {
+  const { companyId } = req.query;
+  try {
+    const services = await serviceRepository.getAll(companyId as string | undefined);
+    return res.json(services);
+  } catch (error) {
+    console.error('Erro ao buscar serviços:', error);
+    return res.status(500).json({ message: 'Erro interno do servidor' });
+  }
 };
 
-export const getServiceById = (req: Request, res: Response): Response => {
-  const id = parseInt(req.params.id, 10);
-  const service = mockServicesDb.find((s) => s.id === id);
-  if (service) {
+// Obter um serviço específico pelo ID
+export const getServiceById = async (req: Request, res: Response): Promise<Response> => {
+  const { id } = req.params;
+  try {
+    const service = await serviceRepository.findById(id);
+    if (!service) {
+      return res.status(404).json({ message: 'Serviço não encontrado' });
+    }
     return res.json(service);
-  } else {
-    return res.status(404).json({ message: 'Serviço não encontrado' });
+  } catch (error) {
+    console.error(`Erro ao buscar serviço ${id}:`, error);
+    return res.status(500).json({ message: 'Erro interno do servidor' });
+  }
+};
+
+// Criar um novo serviço
+export const createService = async (req: Request, res: Response): Promise<Response> => {
+  const data: Prisma.ServiceCreateInput = req.body;
+  // Validação básica (pode ser expandida com bibliotecas como Zod)
+  if (!data.name || !data.price || !data.duration || !data.companyId) {
+    return res.status(400).json({ message: 'Nome, preço, duração e ID da empresa são obrigatórios' });
+  }
+
+  try {
+    const newService = await serviceRepository.create(data);
+    return res.status(201).json(newService);
+  } catch (error) {
+    console.error('Erro ao criar serviço:', error);
+    // Verificar erros específicos do Prisma (ex: chave estrangeira inválida)
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2003') { // Foreign key constraint failed
+        return res.status(400).json({ message: 'ID da empresa inválido.' });
+      }
+    }
+    return res.status(500).json({ message: 'Erro interno do servidor' });
+  }
+};
+
+// Atualizar um serviço existente
+export const updateService = async (req: Request, res: Response): Promise<Response> => {
+  const { id } = req.params;
+  const data: Prisma.ServiceUpdateInput = req.body;
+
+  try {
+    const updatedService = await serviceRepository.update(id, data);
+    if (!updatedService) {
+      return res.status(404).json({ message: 'Serviço não encontrado para atualização' });
+    }
+    return res.json(updatedService);
+  } catch (error) {
+    console.error(`Erro ao atualizar serviço ${id}:`, error);
+    return res.status(500).json({ message: 'Erro interno do servidor' });
+  }
+};
+
+// Deletar um serviço
+export const deleteService = async (req: Request, res: Response): Promise<Response> => {
+  const { id } = req.params;
+
+  try {
+    const deletedService = await serviceRepository.delete(id);
+    if (!deletedService) {
+      return res.status(404).json({ message: 'Serviço não encontrado para exclusão' });
+    }
+    // Retorna 204 No Content ou o objeto deletado
+    return res.status(200).json({ message: 'Serviço excluído com sucesso', service: deletedService });
+  } catch (error) {
+    console.error(`Erro ao deletar serviço ${id}:`, error);
+    return res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };

@@ -1,14 +1,14 @@
-import express, { Express, Request, Response, Router } from 'express';
+import express, { Router } from 'express';
+import { login, register } from '../controllers/authController'; // Importar as funções refatoradas
 
-// Alternativa para resolver o problema de tipagem
 const createRouter = (): Router => {
   const router = express.Router();
-  
+
   /**
    * @swagger
    * tags:
    *   name: Autenticação
-   *   description: Endpoints de autenticação de usuários
+   *   description: Endpoints de autenticação e registro de usuários
    */
 
   /**
@@ -53,38 +53,64 @@ const createRouter = (): Router => {
    *         description: Requisição inválida (email ou senha faltando)
    *       401:
    *         description: Não autorizado (email ou senha inválidos)
+   *       500:
+   *         description: Erro interno do servidor
    */
-  router.post('/login', (req: Request, res: Response) => {
-    const { email, password } = req.body;
-    
-    // Validação básica
-    if (!email || !password) {
-      res.status(400).json({ message: 'Email e senha são obrigatórios' });
-      return;
-    }
-    
-    // Mock de usuário para teste
-    if (email && password.length >= 6) {
-      const mockUser = {
-        id: 'user-123',
-        name: 'Usuário Teste Backend',
-        email: email,
-        avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
-      };
-      
-      // Em um ambiente real, usaríamos JWT
-      const token = 'mock-jwt-token-123456';
-      
-      res.json({
-        message: 'Login bem-sucedido',
-        token,
-        user: mockUser
-      });
-    } else {
-      res.status(401).json({ message: 'Email ou senha inválidos' });
-    }
-  });
-  
+  router.post('/login', login); // Usar a função login refatorada
+
+  /**
+   * @swagger
+   * /api/auth/register:
+   *   post:
+   *     summary: Registra um novo usuário
+   *     tags: [Autenticação]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - email
+   *               - name
+   *               - password
+   *             properties:
+   *               email:
+   *                 type: string
+   *                 format: email
+   *                 description: Email do novo usuário
+   *               name:
+   *                 type: string
+   *                 description: Nome do novo usuário
+   *               password:
+   *                 type: string
+   *                 format: password
+   *                 description: Senha do novo usuário (mínimo 6 caracteres)
+   *               avatar:
+   *                 type: string
+   *                 format: url
+   *                 description: URL da imagem de avatar (opcional)
+   *     responses:
+   *       201:
+   *         description: Usuário criado com sucesso
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                 user:
+   *                   $ref: '#/components/schemas/User' # Retorna o usuário criado (sem senha)
+   *       400:
+   *         description: Requisição inválida (dados faltando)
+   *       409:
+   *         description: Conflito (email já cadastrado)
+   *       500:
+   *         description: Erro interno do servidor
+   */
+  router.post('/register', register); // Adicionar a rota de registro
+
   return router;
 };
 

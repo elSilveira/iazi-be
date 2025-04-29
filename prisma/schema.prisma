@@ -1,0 +1,150 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo de Usuário
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String
+  password      String
+  avatar        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  appointments  Appointment[]
+  reviews       Review[]
+}
+
+// Modelo de Empresa
+model Company {
+  id            String    @id @default(uuid())
+  name          String
+  description   String
+  logo          String?
+  coverImage    String?
+  rating        Float     @default(0)
+  totalReviews  Int       @default(0)
+  yearEstablished String?
+  phone         String?
+  email         String?
+  address       Address?
+  workingHours  Json?
+  categories    String[]
+  services      Service[]
+  professionals Professional[]
+  reviews       Review[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Modelo de Endereço (relacionado com Company)
+model Address {
+  id            String    @id @default(uuid())
+  street        String
+  number        String
+  complement    String?
+  neighborhood  String
+  city          String
+  state         String
+  zipCode       String
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId     String    @unique
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Modelo de Serviço
+model Service {
+  id            String    @id @default(uuid())
+  name          String
+  description   String
+  price         String
+  duration      String
+  category      String
+  image         String?
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId     String
+  professionals ProfessionalService[]
+  appointments  Appointment[]
+  reviews       Review[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Modelo de Profissional
+model Professional {
+  id            String    @id @default(uuid())
+  name          String
+  role          String
+  image         String?
+  rating        Float     @default(0)
+  appointments  Int       @default(0)
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId     String
+  services      ProfessionalService[]
+  scheduledAppointments Appointment[]
+  reviews       Review[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Tabela de relacionamento entre Profissional e Serviço
+model ProfessionalService {
+  professional  Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  professionalId String
+  service       Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId     String
+  price         String?      // Preço específico deste profissional para este serviço (pode ser diferente do preço padrão)
+  
+  @@id([professionalId, serviceId])
+}
+
+// Modelo de Agendamento
+model Appointment {
+  id            String    @id @default(uuid())
+  date          DateTime
+  status        AppointmentStatus @default(PENDING)
+  user          User      @relation(fields: [userId], references: [id])
+  userId        String
+  service       Service   @relation(fields: [serviceId], references: [id])
+  serviceId     String
+  professional  Professional @relation(fields: [professionalId], references: [id])
+  professionalId String
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Modelo de Avaliação
+model Review {
+  id            String    @id @default(uuid())
+  rating        Float
+  comment       String?
+  user          User      @relation(fields: [userId], references: [id])
+  userId        String
+  service       Service?  @relation(fields: [serviceId], references: [id])
+  serviceId     String?
+  professional  Professional? @relation(fields: [professionalId], references: [id])
+  professionalId String?
+  company       Company?  @relation(fields: [companyId], references: [id])
+  companyId     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Enumeração para status de agendamento
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}

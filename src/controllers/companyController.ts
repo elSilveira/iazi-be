@@ -1,104 +1,110 @@
 import { Request, Response } from 'express';
-import { Company } from '../models/Company';
+import { companyRepository } from '../repositories/companyRepository';
+import { Prisma } from '@prisma/client';
 
-// Mock data based on frontend's mock-company.ts
-const mockCompanyDb: Company[] = [
-  {
-    id: "123",
-    name: "Barbearia Vintage",
-    description: "Barbearia especializada em cortes modernos e tradicionais",
-    logo: "https://images.unsplash.com/photo-1512690459411-b9245aed614b?w=300",
-    coverImage: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=1200",
-    rating: 4.8,
-    totalReviews: 156,
-    categories: ["Barbearia", "Estética Masculina"],
-    yearEstablished: "2020",
-    address: {
-      street: "Rua Augusta",
-      number: "1000",
-      complement: "Loja 2",
-      neighborhood: "Consolação",
-      city: "São Paulo",
-      state: "SP",
-      zipCode: "01304-001"
-    },
-    phone: "(11) 98765-4321",
-    email: "contato@barbeariavintage.com.br",
-    workingHours: {
-      monday: { open: "09:00", close: "20:00", isOpen: true },
-      tuesday: { open: "09:00", close: "20:00", isOpen: true },
-      wednesday: { open: "09:00", close: "20:00", isOpen: true },
-      thursday: { open: "09:00", close: "20:00", isOpen: true },
-      friday: { open: "09:00", close: "22:00", isOpen: true },
-      saturday: { open: "09:00", close: "18:00", isOpen: true },
-      sunday: { open: "10:00", close: "16:00", isOpen: false }
-    },
-    services: [
-      {
-        id: "1",
-        name: "Corte de Cabelo",
-        description: "Corte moderno ou tradicional com acabamento perfeito",
-        price: "R$ 60,00",
-        duration: "45",
-        category: "Cabelo"
-      },
-      {
-        id: "2",
-        name: "Barba",
-        description: "Alinhamento e acabamento de barba com toalha quente",
-        price: "R$ 45,00",
-        duration: "30",
-        category: "Barba"
-      },
-      {
-        id: "3",
-        name: "Combo Cabelo + Barba",
-        description: "Corte de cabelo e barba com produtos premium",
-        price: "R$ 95,00",
-        duration: "75",
-        category: "Combo"
-      }
-    ],
-    staff: [
-      {
-        id: "1",
-        name: "João Silva",
-        role: "Barbeiro Senior",
-        image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200",
-        rating: 4.9,
-        appointments: 450
-      },
-      {
-        id: "2",
-        name: "Pedro Santos",
-        role: "Barbeiro",
-        image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200",
-        rating: 4.7,
-        appointments: 280
-      },
-      {
-        id: "3",
-        name: "Carlos Oliveira",
-        role: "Barbeiro",
-        image: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=200",
-        rating: 4.8,
-        appointments: 320
-      }
-    ]
+// Obter todas as empresas
+export const getAllCompanies = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const companies = await companyRepository.getAll();
+    return res.json(companies);
+  } catch (error) {
+    console.error('Erro ao buscar empresas:', error);
+    return res.status(500).json({ message: 'Erro interno do servidor' });
   }
-  // Add more mock companies if needed
-];
-
-export const getAllCompanies = (req: Request, res: Response): Response => {
-  return res.json(mockCompanyDb);
 };
 
-export const getCompanyById = (req: Request, res: Response): Response => {
-  const id = req.params.id;
-  const company = mockCompanyDb.find((c) => c.id === id);
-  if (company) {
+// Obter uma empresa específica pelo ID
+export const getCompanyById = async (req: Request, res: Response): Promise<Response> => {
+  const { id } = req.params;
+  try {
+    // Usar o método do repositório que inclui as relações
+    const company = await companyRepository.findById(id);
+    if (!company) {
+      return res.status(404).json({ message: 'Empresa não encontrada' });
+    }
     return res.json(company);
-  } else {
-    return res.status(404).json({ message: 'Empresa não encontrada' });
+  } catch (error) {
+    console.error(`Erro ao buscar empresa ${id}:`, error);
+    return res.status(500).json({ message: 'Erro interno do servidor' });
+  }
+};
+
+// Criar uma nova empresa
+export const createCompany = async (req: Request, res: Response): Promise<Response> => {
+  // A criação de relações (Address, Services, Professionals) precisa ser tratada.
+  // Por enquanto, focamos na criação da empresa básica.
+  const { address, services, professionals, reviews, ...companyData }: Prisma.CompanyCreateInput = req.body;
+
+  // Validação básica
+  if (!companyData.name || !companyData.description) {
+    return res.status(400).json({ message: 'Nome e descrição são obrigatórios' });
+  }
+
+  try {
+    // Criar a empresa básica primeiro
+    const newCompany = await companyRepository.create(companyData);
+
+    // TODO: Implementar lógica para criar/conectar Address, Services, Professionals após criar a empresa.
+    // Exemplo para Address (se enviado no body):
+    // if (address) {
+    //   await prisma.address.create({ data: { ...address, companyId: newCompany.id } });
+    // }
+
+    // Recarregar a empresa com as relações (se a lógica de criação de relações for implementada)
+    const companyWithRelations = await companyRepository.findById(newCompany.id);
+
+    return res.status(201).json(companyWithRelations || newCompany);
+  } catch (error) {
+    console.error('Erro ao criar empresa:', error);
+    return res.status(500).json({ message: 'Erro interno do servidor' });
+  }
+};
+
+// Atualizar uma empresa existente
+export const updateCompany = async (req: Request, res: Response): Promise<Response> => {
+  const { id } = req.params;
+  const { address, services, professionals, reviews, ...companyData }: Prisma.CompanyUpdateInput = req.body;
+
+  try {
+    // Atualizar dados básicos da empresa
+    const updatedCompany = await companyRepository.update(id, companyData);
+
+    if (!updatedCompany) {
+      return res.status(404).json({ message: 'Empresa não encontrada para atualização' });
+    }
+
+    // TODO: Implementar lógica para atualizar/conectar Address, Services, Professionals.
+
+    // Recarregar a empresa com as relações atualizadas
+    const companyWithRelations = await companyRepository.findById(updatedCompany.id);
+
+    return res.json(companyWithRelations || updatedCompany);
+  } catch (error) {
+    console.error(`Erro ao atualizar empresa ${id}:`, error);
+    // Verificar erros específicos do Prisma (ex: registro não encontrado para atualização)
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return res.status(404).json({ message: 'Empresa não encontrada para atualização.' });
+    }
+    return res.status(500).json({ message: 'Erro interno do servidor' });
+  }
+};
+
+// Deletar uma empresa
+export const deleteCompany = async (req: Request, res: Response): Promise<Response> => {
+  const { id } = req.params;
+
+  try {
+    const deletedCompany = await companyRepository.delete(id);
+    if (!deletedCompany) {
+      return res.status(404).json({ message: 'Empresa não encontrada para exclusão' });
+    }
+    return res.status(200).json({ message: 'Empresa excluída com sucesso', company: deletedCompany });
+  } catch (error) {
+    console.error(`Erro ao deletar empresa ${id}:`, error);
+    // Verificar erros específicos do Prisma (ex: registro não encontrado para exclusão)
+     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return res.status(404).json({ message: 'Empresa não encontrada para exclusão.' });
+    }
+    return res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
