@@ -1,4 +1,4 @@
-import express, { Express, Request, Response, Router } from 'express';
+import express, { Express, Request, Response, Router, RequestHandler } from 'express';
 import { Service } from '../models/Service'; // Import the Service type
 
 // Mock data based on frontend's mock-services.ts
@@ -65,9 +65,11 @@ const createRouter = (): Router => {
    *               items:
    *                 $ref: '#/components/schemas/Service'
    */
-  router.get('/', (req: Request, res: Response) => {
-    return res.json(mockServicesDb);
-  });
+  // Removido o tipo explícito RequestHandler
+  const getAllServicesHandler = (req: Request, res: Response) => {
+    res.json(mockServicesDb); // Removido return
+  };
+  router.get('/', getAllServicesHandler);
 
   /**
    * @swagger
@@ -92,15 +94,17 @@ const createRouter = (): Router => {
    *       404:
    *         description: Serviço não encontrado
    */
-  router.get('/:id', (req: Request, res: Response) => {
+  // Removido o tipo explícito RequestHandler
+  const getServiceByIdHandler = (req: Request, res: Response) => {
     const id = parseInt(req.params.id, 10);
     const service = mockServicesDb.find((s) => s.id === id);
     if (service) {
-      return res.json(service);
+      res.json(service); // Removido return
     } else {
-      return res.status(404).json({ message: 'Serviço não encontrado' });
+      res.status(404).json({ message: 'Serviço não encontrado' }); // Removido return
     }
-  });
+  };
+  router.get('/:id', getServiceByIdHandler);
 
   return router;
 };

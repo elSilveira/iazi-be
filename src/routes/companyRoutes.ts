@@ -1,4 +1,4 @@
-import express, { Express, Request, Response, Router } from 'express';
+import express, { Express, Request, Response, Router, RequestHandler } from 'express';
 import { Company } from '../models/Company'; // Import the Company type
 
 // Mock data based on frontend's mock-company.ts
@@ -116,9 +116,11 @@ const createRouter = (): Router => {
    *               items:
    *                 $ref: '#/components/schemas/Company'
    */
-  router.get('/', (req: Request, res: Response) => {
-    return res.json(mockCompanyDb);
-  });
+  // Removido o tipo explícito RequestHandler
+  const getAllCompaniesHandler = (req: Request, res: Response) => {
+    res.json(mockCompanyDb); // Removido return
+  };
+  router.get('/', getAllCompaniesHandler);
 
   /**
    * @swagger
@@ -143,15 +145,17 @@ const createRouter = (): Router => {
    *       404:
    *         description: Empresa não encontrada
    */
-  router.get('/:id', (req: Request, res: Response) => {
+  // Removido o tipo explícito RequestHandler
+  const getCompanyByIdHandler = (req: Request, res: Response) => {
     const id = req.params.id;
     const company = mockCompanyDb.find((c) => c.id === id);
     if (company) {
-      return res.json(company);
+      res.json(company); // Removido return
     } else {
-      return res.status(404).json({ message: 'Empresa não encontrada' });
+      res.status(404).json({ message: 'Empresa não encontrada' }); // Removido return
     }
-  });
+  };
+  router.get('/:id', getCompanyByIdHandler);
 
   return router;
 };

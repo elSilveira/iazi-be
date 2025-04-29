@@ -4,12 +4,63 @@ import express, { Express, Request, Response, Router } from 'express';
 const createRouter = (): Router => {
   const router = express.Router();
   
+  /**
+   * @swagger
+   * tags:
+   *   name: Autenticação
+   *   description: Endpoints de autenticação de usuários
+   */
+
+  /**
+   * @swagger
+   * /api/auth/login:
+   *   post:
+   *     summary: Realiza o login do usuário
+   *     tags: [Autenticação]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - email
+   *               - password
+   *             properties:
+   *               email:
+   *                 type: string
+   *                 format: email
+   *                 description: Email do usuário
+   *               password:
+   *                 type: string
+   *                 format: password
+   *                 description: Senha do usuário
+   *     responses:
+   *       200:
+   *         description: Login bem-sucedido
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                 token:
+   *                   type: string
+   *                 user:
+   *                   $ref: '#/components/schemas/User'
+   *       400:
+   *         description: Requisição inválida (email ou senha faltando)
+   *       401:
+   *         description: Não autorizado (email ou senha inválidos)
+   */
   router.post('/login', (req: Request, res: Response) => {
     const { email, password } = req.body;
     
     // Validação básica
     if (!email || !password) {
-      return res.status(400).json({ message: 'Email e senha são obrigatórios' });
+      res.status(400).json({ message: 'Email e senha são obrigatórios' });
+      return;
     }
     
     // Mock de usuário para teste
@@ -24,13 +75,13 @@ const createRouter = (): Router => {
       // Em um ambiente real, usaríamos JWT
       const token = 'mock-jwt-token-123456';
       
-      return res.json({
+      res.json({
         message: 'Login bem-sucedido',
         token,
         user: mockUser
       });
     } else {
-      return res.status(401).json({ message: 'Email ou senha inválidos' });
+      res.status(401).json({ message: 'Email ou senha inválidos' });
     }
   });
   
