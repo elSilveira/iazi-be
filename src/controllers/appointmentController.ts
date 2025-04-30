@@ -2,6 +2,14 @@ import { Request, Response, NextFunction } from "express"; // Import NextFunctio
 import { appointmentRepository } from '../repositories/appointmentRepository';
 import { Prisma, AppointmentStatus } from "@prisma/client";
 
+// Extend Express Request type to include user property from auth middleware
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    // Add other user properties if needed from the token payload
+  };
+}
+
 // Helper function for UUID validation
 const isValidUUID = (uuid: string): boolean => {
   const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
@@ -9,11 +17,17 @@ const isValidUUID = (uuid: string): boolean => {
 };
 
 // Obter todos os agendamentos (com filtros opcionais)
-export const getAllAppointments = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Added next, void return
-  const { userId, professionalId, status } = req.query;
+export const getAllAppointments = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => { // Use AuthenticatedRequest
+  const { professionalId, status } = req.query;
+  let userId = req.query.userId as string | undefined;
+
+  // If userId query param is not provided, try to get it from the authenticated user
+  if (!userId && req.user?.id) {
+    userId = req.user.id;
+  }
 
   // Validar IDs se fornecidos
-  if (userId && !isValidUUID(userId as string)) {
+  if (userId && !isValidUUID(userId)) {
     res.status(400).json({ message: 'Formato de ID do usuário inválido.' });
     return;
   }
@@ -34,14 +48,13 @@ export const getAllAppointments = async (req: Request, res: Response, next: Next
     
     // Simplificando a lógica de busca - o repositório pode lidar com filtros
     const filters: Prisma.AppointmentWhereInput = {};
-    if (userId) filters.userId = userId as string;
+    if (userId) filters.userId = userId;
     if (professionalId) filters.professionalId = professionalId as string;
     if (status) filters.status = status as AppointmentStatus;
 
-    // Se nenhum filtro principal for fornecido, retornar erro ou buscar todos?
-    // Decisão: Exigir pelo menos um filtro principal (userId ou professionalId) por enquanto.
+    // Se nenhum filtro principal for fornecido (nem userId da query/token, nem professionalId), retornar erro.
     if (!userId && !professionalId) {
-        res.status(400).json({ message: 'É necessário fornecer userId ou professionalId para filtrar os agendamentos' });
+        res.status(400).json({ message: 'É necessário fornecer userId (ou estar autenticado) ou professionalId para filtrar os agendamentos' });
         return;
     }
 
@@ -77,19 +90,24 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
 };
 
 // Criar um novo agendamento
-export const createAppointment = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Added next, void return
+export const createAppointment = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => { // Use AuthenticatedRequest
   // Extrair dados do corpo da requisição
-  const { date, userId, serviceId, professionalId, notes } = req.body;
+  const { date, serviceId, professionalId, notes } = req.body;
+  const userId = req.user?.id; // Get userId from authenticated user
 
   // Validação (Idealmente feita com express-validator)
-  if (!date || !userId || !serviceId || !professionalId) {
+  if (!date || !serviceId || !professionalId) {
     res.status(400).json({ 
-      message: 'Data, ID do usuário, ID do serviço e ID do profissional são obrigatórios' 
+      message: 'Data, ID do serviço e ID do profissional são obrigatórios' 
     });
     return;
   }
-  if (!isValidUUID(userId) || !isValidUUID(serviceId) || !isValidUUID(professionalId)) {
-    res.status(400).json({ message: 'Formato de ID inválido para usuário, serviço ou profissional.' });
+  if (!userId) { // Check if userId was obtained from token
+      res.status(401).json({ message: 'Usuário não autenticado.' });
+      return;
+  }
+  if (!isValidUUID(serviceId) || !isValidUUID(professionalId)) {
+    res.status(400).json({ message: 'Formato de ID inválido para serviço ou profissional.' });
     return;
   }
 
@@ -108,7 +126,7 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
 
     const dataToCreate: Prisma.AppointmentCreateInput = {
       date: appointmentDate,
-      user: { connect: { id: userId } },
+      user: { connect: { id: userId } }, // Use userId from token
       service: { connect: { id: serviceId } },
       professional: { connect: { id: professionalId } },
       notes: notes,
@@ -119,8 +137,23 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
   } catch (error) {
     console.error('Erro ao criar agendamento:', error);
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
-      res.status(400).json({ message: 'Um ou mais IDs fornecidos (usuário, serviço ou profissional) são inválidos.' });
+      // Check which foreign key constraint failed
+      const target = (error.meta as any)?.target;
+      if (target && target.includes('userId')) {
+          res.status(400).json({ message: 'ID do usuário inválido.' });
+      } else if (target && target.includes('serviceId')) {
+          res.status(400).json({ message: 'ID do serviço inválido.' });
+      } else if (target && target.includes('professionalId')) {
+          res.status(400).json({ message: 'ID do profissional inválido.' });
+      } else {
+          res.status(400).json({ message: 'Um ou mais IDs fornecidos são inválidos.' });
+      }
       return;
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        // This can happen if serviceId or professionalId doesn't exist
+        res.status(404).json({ message: 'Serviço ou Profissional não encontrado.' });
+        return;
     }
     next(error); // Pass other errors to error handler
   }
@@ -143,6 +176,7 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
   }
 
   try {
+    // TODO: Add authorization check - does the authenticated user own this appointment or is a professional/admin?
     const updatedAppointment = await appointmentRepository.updateStatus(id, status as AppointmentStatus);
     if (!updatedAppointment) {
       res.status(404).json({ message: 'Agendamento não encontrado para atualização' });
@@ -168,6 +202,7 @@ export const cancelAppointment = async (req: Request, res: Response, next: NextF
   }
   
   try {
+    // TODO: Add authorization check - does the authenticated user own this appointment?
     const updatedAppointment = await appointmentRepository.updateStatus(id, AppointmentStatus.CANCELLED);
     if (!updatedAppointment) {
       res.status(404).json({ message: 'Agendamento não encontrado para cancelamento' });
@@ -196,6 +231,7 @@ export const deleteAppointment = async (req: Request, res: Response, next: NextF
   }
 
   try {
+    // TODO: Add authorization check - does the authenticated user own this appointment?
     const deletedAppointment = await appointmentRepository.delete(id);
     if (!deletedAppointment) {
       res.status(404).json({ message: 'Agendamento não encontrado para exclusão' });
