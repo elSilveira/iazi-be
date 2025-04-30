@@ -25,7 +25,6 @@ const options = {
             id: { type: 'string', format: 'uuid', description: 'ID único do usuário (UUID)' },
             email: { type: 'string', format: 'email', description: 'Email único do usuário' },
             name: { type: 'string', description: 'Nome do usuário' },
-            // password: { type: 'string', description: 'Senha (não retornada em respostas)' },
             avatar: { type: 'string', format: 'url', nullable: true, description: 'URL do avatar do usuário' },
             createdAt: { type: 'string', format: 'date-time', description: 'Data de criação' },
             updatedAt: { type: 'string', format: 'date-time', description: 'Data da última atualização' },
@@ -138,83 +137,80 @@ const options = {
             companyId: { type: 'string', format: 'uuid', nullable: true, description: 'ID da empresa avaliada (opcional)' },
             createdAt: { type: 'string', format: 'date-time', description: 'Data de criação' },
             updatedAt: { type: 'string', format: 'date-time', description: 'Data da última atualização' },
-            required: ['id', 'rating', 'userId', 'createdAt', 'updatedAt'],
           },
-          Category: { // Added Category schema
-            type: 'object',
-            properties: {
-              id: { type: 'integer', description: 'ID único da categoria' },
-              name: { type: 'string', description: 'Nome da categoria' },
-              icon: { type: 'string', nullable: true, description: 'Nome do ícone associado (ex: "brush", "wrench")' },
-              createdAt: { type: 'string', format: 'date-time', description: 'Data de criação' },
-              updatedAt: { type: 'string', format: 'date-time', description: 'Data da última atualização' },
-            },
-            required: ['id', 'name', 'createdAt', 'updatedAt'],
-          },
-
-          // --- Enumerações ---
-          AppointmentStatus: {
-            type: 'string',
-            enum: ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'],
-            description: 'Status do agendamento',
-          },
-
-          // --- Schemas para Requisições (Inputs) ---
-          // Adicionar schemas específicos para bodies de POST/PUT se necessário
-          // Exemplo:
-          CreateCompanyInput: {
-            type: 'object',
-            properties: {
-              name: { type: 'string' },
-              description: { type: 'string' },
-              email: { type: 'string', format: 'email', nullable: true },
-              phone: { type: 'string', nullable: true },
-              categories: { type: 'array', items: { type: 'string' } },
-              yearEstablished: { type: 'string', nullable: true },
-              address: { $ref: '#/components/schemas/CreateAddressInput', nullable: true },
-              // logo, coverImage, workingHours podem ser adicionados depois
-            },
-            required: ['name', 'description', 'categories'],
-          },
-          CreateAddressInput: {
-            type: 'object',
-            properties: {
-              street: { type: 'string' },
-              number: { type: 'string' },
-              complement: { type: 'string', nullable: true },
-              neighborhood: { type: 'string' },
-              city: { type: 'string' },
-              state: { type: 'string' },
-              zipCode: { type: 'string' },
-            },
-            required: ['street', 'number', 'neighborhood', 'city', 'state', 'zipCode'],
-          },
-          // ... outros inputs ...
-
+          required: ['id', 'rating', 'userId', 'createdAt', 'updatedAt'],
         },
-        securitySchemes: {
-          bearerAuth: { // Define o esquema de autenticação Bearer
-            type: 'http',
-            scheme: 'bearer',
-            bearerFormat: 'JWT',
-            description: 'Autenticação JWT. Use o token obtido no login no cabeçalho `Authorization: Bearer <token>`',
+        Category: { // Moved Category schema to the top level
+          type: 'object',
+          properties: {
+            id: { type: 'integer', description: 'ID único da categoria' },
+            name: { type: 'string', description: 'Nome da categoria' },
+            icon: { type: 'string', nullable: true, description: 'Nome do ícone associado (ex: "brush", "wrench")' },
+            createdAt: { type: 'string', format: 'date-time', description: 'Data de criação' },
+            updatedAt: { type: 'string', format: 'date-time', description: 'Data da última atualização' },
           },
+          required: ['id', 'name', 'createdAt', 'updatedAt'],
+        },
+
+        // --- Enumerações ---
+        AppointmentStatus: {
+          type: 'string',
+          enum: ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'],
+          description: 'Status do agendamento',
+        },
+
+        // --- Schemas para Requisições (Inputs) ---
+        CreateCompanyInput: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            description: { type: 'string' },
+            email: { type: 'string', format: 'email', nullable: true },
+            phone: { type: 'string', nullable: true },
+            categories: { type: 'array', items: { type: 'string' } },
+            yearEstablished: { type: 'string', nullable: true },
+            address: { $ref: '#/components/schemas/CreateAddressInput', nullable: true },
+          },
+          required: ['name', 'description', 'categories'],
+        },
+        CreateAddressInput: {
+          type: 'object',
+          properties: {
+            street: { type: 'string' },
+            number: { type: 'string' },
+            complement: { type: 'string', nullable: true },
+            neighborhood: { type: 'string' },
+            city: { type: 'string' },
+            state: { type: 'string' },
+            zipCode: { type: 'string' },
+          },
+          required: ['street', 'number', 'neighborhood', 'city', 'state', 'zipCode'],
+        },
+        // ... outros inputs ...
+      },
+      securitySchemes: {
+        bearerAuth: { // Define o esquema de autenticação Bearer
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'Autenticação JWT. Use o token obtido no login no cabeçalho `Authorization: Bearer <token>`',
         },
       },
-      security: [
-        {
-          bearerAuth: [], // Aplica a autenticação Bearer globalmente (opcional, pode ser definido por rota)
-        },
-      ],
     },
+    security: [
+      {
+        bearerAuth: [], // Aplica a autenticação Bearer globalmente (opcional, pode ser definido por rota)
+      },
+    ],
   },
-  apis: ['./src/routes/*.ts', './src/controllers/*.ts'], 
-}
+  apis: ['./src/routes/*.ts'], // Only include routes, controllers are not needed here
+};
 
 const swaggerSpec = swaggerJsdoc(options);
 
 export const setupSwagger = (app: Express) => {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
   console.log(`[swagger]: Documentação da API disponível em /api-docs`);
+  console.log(`[swagger]: Documentação da API disponível em http://localhost:3001/api-docs`); // Log the full URL
 };
 
