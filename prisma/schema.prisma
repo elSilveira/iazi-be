@@ -16,7 +16,7 @@ model User {
   email         String    @unique
   name          String
   password      String
-  avatarUrl     String?   // Renamed from avatar, added based on controller/frontend usage
+  avatar     String?   // Renamed from avatar, added based on controller/frontend usage
   bio           String?   // Added bio field based on controller/frontend usage
   phone         String?   // Added phone field based on controller/frontend usage
   address       String?   // Added address field based on controller/frontend usage

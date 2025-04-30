@@ -64,7 +64,7 @@ router.get("/me", getUserProfile);
  *                 type: string
  *                 description: Nova biografia do usuário.
  *                 example: "Desenvolvedor apaixonado por tecnologia."
- *               avatarUrl:
+ *               avatar:
  *                 type: string
  *                 format: url
  *                 description: Nova URL do avatar do usuário.

@@ -2,7 +2,7 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import { Express } from 'express';
 
-const options: swaggerJsdoc.Options = {
+const options = {
   definition: {
     openapi: '3.0.0',
     info: {
@@ -77,7 +77,7 @@ const options: swaggerJsdoc.Options = {
             name: { type: 'string', description: 'Nome do serviço' },
             description: { type: 'string', description: 'Descrição do serviço' },
             price: { type: 'string', description: 'Preço do serviço' },
-            duration: { type: 'string', description: 'Duração do serviço (ex: \'45min\')' },
+            duration: { type: 'string', description: 'Duração do serviço (ex: "45min")' },
             category: { type: 'string', description: 'Categoria do serviço' },
             image: { type: 'string', format: 'url', nullable: true, description: 'URL da imagem do serviço' },
             companyId: { type: 'string', format: 'uuid', description: 'ID da empresa que oferece o serviço' },
@@ -138,77 +138,78 @@ const options: swaggerJsdoc.Options = {
             companyId: { type: 'string', format: 'uuid', nullable: true, description: 'ID da empresa avaliada (opcional)' },
             createdAt: { type: 'string', format: 'date-time', description: 'Data de criação' },
             updatedAt: { type: 'string', format: 'date-time', description: 'Data da última atualização' },
-                  required: [\'id\', \'rating\', \'userId\', \'createdAt\', \'updatedAt\'],
-        },
-        Category: { // Added Category schema
-          type: \'object\',
-          properties: {
-            id: { type: \'integer\', description: \'ID único da categoria\' },
-            name: { type: \'string\', description: \'Nome da categoria\' },
-            icon: { type: \'string\', nullable: true, description: \'Nome do ícone associado (ex: \'brush\', \'wrench\')\' },
-            createdAt: { type: \'string\', format: \'date-time\', description: \'Data de criação\' },
-            updatedAt: { type: \'string\', format: \'date-time\', description: \'Data da última atualização\' },
+            required: ['id', 'rating', 'userId', 'createdAt', 'updatedAt'],
           },
-          required: [\'id\', \'name\', \'createdAt\', \'updatedAt\'],
-        },
-
-        // --- Enumerações ---    AppointmentStatus: {
-          type: 'string',
-          enum: ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'],
-          description: 'Status do agendamento',
-        },
-
-        // --- Schemas para Requisições (Inputs) ---
-        // Adicionar schemas específicos para bodies de POST/PUT se necessário
-        // Exemplo:
-        CreateCompanyInput: {
-          type: 'object',
-          properties: {
-            name: { type: 'string' },
-            description: { type: 'string' },
-            email: { type: 'string', format: 'email', nullable: true },
-            phone: { type: 'string', nullable: true },
-            categories: { type: 'array', items: { type: 'string' } },
-            yearEstablished: { type: 'string', nullable: true },
-            address: { $ref: '#/components/schemas/CreateAddressInput', nullable: true },
-            // logo, coverImage, workingHours podem ser adicionados depois
+          Category: { // Added Category schema
+            type: 'object',
+            properties: {
+              id: { type: 'integer', description: 'ID único da categoria' },
+              name: { type: 'string', description: 'Nome da categoria' },
+              icon: { type: 'string', nullable: true, description: 'Nome do ícone associado (ex: "brush", "wrench")' },
+              createdAt: { type: 'string', format: 'date-time', description: 'Data de criação' },
+              updatedAt: { type: 'string', format: 'date-time', description: 'Data da última atualização' },
+            },
+            required: ['id', 'name', 'createdAt', 'updatedAt'],
           },
-          required: ['name', 'description', 'categories'],
-        },
-        CreateAddressInput: {
-          type: 'object',
-          properties: {
-            street: { type: 'string' },
-            number: { type: 'string' },
-            complement: { type: 'string', nullable: true },
-            neighborhood: { type: 'string' },
-            city: { type: 'string' },
-            state: { type: 'string' },
-            zipCode: { type: 'string' },
-          },
-          required: ['street', 'number', 'neighborhood', 'city', 'state', 'zipCode'],
-        },
-        // ... outros inputs ...
 
+          // --- Enumerações ---
+          AppointmentStatus: {
+            type: 'string',
+            enum: ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'],
+            description: 'Status do agendamento',
+          },
+
+          // --- Schemas para Requisições (Inputs) ---
+          // Adicionar schemas específicos para bodies de POST/PUT se necessário
+          // Exemplo:
+          CreateCompanyInput: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              description: { type: 'string' },
+              email: { type: 'string', format: 'email', nullable: true },
+              phone: { type: 'string', nullable: true },
+              categories: { type: 'array', items: { type: 'string' } },
+              yearEstablished: { type: 'string', nullable: true },
+              address: { $ref: '#/components/schemas/CreateAddressInput', nullable: true },
+              // logo, coverImage, workingHours podem ser adicionados depois
+            },
+            required: ['name', 'description', 'categories'],
+          },
+          CreateAddressInput: {
+            type: 'object',
+            properties: {
+              street: { type: 'string' },
+              number: { type: 'string' },
+              complement: { type: 'string', nullable: true },
+              neighborhood: { type: 'string' },
+              city: { type: 'string' },
+              state: { type: 'string' },
+              zipCode: { type: 'string' },
+            },
+            required: ['street', 'number', 'neighborhood', 'city', 'state', 'zipCode'],
+          },
+          // ... outros inputs ...
+
+        },
+        securitySchemes: {
+          bearerAuth: { // Define o esquema de autenticação Bearer
+            type: 'http',
+            scheme: 'bearer',
+            bearerFormat: 'JWT',
+            description: 'Autenticação JWT. Use o token obtido no login no cabeçalho `Authorization: Bearer <token>`',
+          },
+        },
       },
-      securitySchemes: {
-        bearerAuth: { // Define o esquema de autenticação Bearer
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
-          description: 'Autenticação JWT. Use o token obtido no login no cabeçalho `Authorization: Bearer <token>`',
+      security: [
+        {
+          bearerAuth: [], // Aplica a autenticação Bearer globalmente (opcional, pode ser definido por rota)
         },
-      },
+      ],
     },
-    security: [
-      {
-        bearerAuth: [], // Aplica a autenticação Bearer globalmente (opcional, pode ser definido por rota)
-      },
-    ],
   },
-  // Caminho para os arquivos que contêm as anotações da API (rotas e controllers)
   apis: ['./src/routes/*.ts', './src/controllers/*.ts'], 
-};
+}
 
 const swaggerSpec = swaggerJsdoc(options);
 

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { userRepository } from "../repositories/userRepository";
 import { Prisma } from "@prisma/client";
 import bcrypt from "bcrypt";
+import { prisma } from "../lib/prisma";
 
 // Extend Request to include user property from authMiddleware
 interface AuthRequest extends Request {

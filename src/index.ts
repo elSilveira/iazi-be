@@ -36,9 +36,9 @@ app.use('/api/services', serviceRouter);
 app.use('/api/companies', companyRouter);
 app.use('/api/professionals', professionalRouter); // Descomentado
 app.use('/api/appointments', appointmentRouter); // Descomentado
-app.use(\'/api/reviews\', reviewRouter); // Descomentado
-app.use(\'/api/users\', userRouter); // Added for user profile
-app.use(\'/api/categories\', categoryRouter); // Added for categories// TODO: Implementar um middleware de tratamento de erros global
+app.use('/api/reviews', reviewRouter); // Descomentado
+app.use('/api/users', userRouter); // Added for user profile
+app.use('/api/categories', categoryRouter); // Added for categories// TODO: Implementar um middleware de tratamento de erros global
 // app.use(globalErrorHandler);
 
 // Exportar o app para uso em testes de integração

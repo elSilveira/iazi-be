@@ -6,6 +6,15 @@ import userRouter from "../routes/userRoutes"; // Adjust path as needed
 import { authMiddleware } from "../middlewares/authMiddleware"; // Adjust path
 import { Request, Response, NextFunction } from "express";
 
+// Extend Express Request interface for 'user' property
+declare global {
+  namespace Express {
+    interface Request {
+      user?: { id: string };
+    }
+  }
+}
+
 // Mock the Prisma client
 const prismaMock = mockDeep<PrismaClient>();
 
@@ -50,7 +59,7 @@ describe("User Routes", () => {
         role: "USER",
         createdAt: new Date(),
         updatedAt: new Date(),
-        avatarUrl: null,
+        avatar: null,
         bio: null,
       };
 
@@ -75,7 +84,7 @@ describe("User Routes", () => {
           phone: true,
           address: true,
           role: true,
-          avatarUrl: true,
+          avatar: true,
           bio: true,
           createdAt: true,
           updatedAt: true,
@@ -118,7 +127,7 @@ describe("User Routes", () => {
         role: "USER",
         createdAt: new Date(),
         updatedAt: new Date(),
-        avatarUrl: null,
+        avatar: null,
         bio: null,
       };
 
@@ -145,7 +154,7 @@ describe("User Routes", () => {
           phone: true,
           address: true,
           role: true,
-          avatarUrl: true,
+          avatar: true,
           bio: true,
           createdAt: true,
           updatedAt: true,
