@@ -150,3 +150,40 @@ Para executar o projeto completo, você também precisará configurar e executar
 Durante a validação do código após a implementação da Fase 3 (Integração com Banco de Dados), foram encontrados alguns erros persistentes de tipagem no arquivo `src/routes/authRoutes.ts` relacionados às assinaturas das funções de callback do Express. Após tentativas de correção, optou-se por suprimir esses erros específicos usando comentários `// @ts-ignore` para permitir a compilação e execução do servidor. Esta é uma solução temporária e pode ser revisitada no futuro.
 
 Além disso, ao tentar acessar a documentação Swagger UI (`/api-docs`) através do domínio público exposto pelo ambiente de desenvolvimento, foram encontrados erros de conexão (`ERR_CONNECTION_RESET` e `ERR_EMPTY_RESPONSE`). No entanto, a interface do Swagger foi verificada e está funcionando corretamente quando acessada localmente (`http://localhost:3001/api-docs`) dentro do ambiente sandbox. Isso sugere que o problema de acesso externo pode estar relacionado à camada de proxy do ambiente e não à configuração do servidor ou do Swagger em si.
+
+
+
+## Testes
+
+O projeto utiliza Jest para testes unitários e de integração.
+
+### Executando Todos os Testes
+
+Para executar todos os conjuntos de testes configurados no `package.json`:
+
+```sh
+npm test
+```
+
+### Executando Testes Específicos
+
+Você pode executar um arquivo de teste específico usando o seguinte comando:
+
+```sh
+# Exemplo para testes unitários do controlador de autenticação
+npm test -- src/__tests__/authController.test.ts
+
+# Exemplo para testes de integração de agendamento
+npm test -- src/__tests__/appointment.integration.test.ts
+```
+
+Alternativamente, você pode usar o `npx jest` diretamente:
+
+```sh
+npx jest src/__tests__/authController.test.ts
+```
+
+### Cobertura de Testes
+
+Após a execução dos testes, um relatório de cobertura é gerado na pasta `coverage/`. Você pode abrir o arquivo `coverage/lcov-report/index.html` em um navegador para visualizar o relatório detalhado.
+
