@@ -1,14 +1,11 @@
 import { prisma } from "../lib/prisma";
-import { Prisma, Appointment, AppointmentStatus } from "@prisma/client"; // Revertido: Importar de @prisma/client
+import { Prisma, Appointment, AppointmentStatus } from "@prisma/client";
 
 export const appointmentRepository = {
-  // Encontrar agendamentos por usuário (opcionalmente por status)
-  async findByUser(userId: string, status?: AppointmentStatus): Promise<Appointment[]> {
+  // Encontrar múltiplos agendamentos com base em filtros
+  async findMany(filters: Prisma.AppointmentWhereInput): Promise<Appointment[]> {
     return prisma.appointment.findMany({
-      where: {
-        userId,
-        ...(status && { status }), // Adiciona status ao where se fornecido
-      },
+      where: filters,
       include: { 
         service: true, 
         professional: true, 
@@ -20,17 +17,18 @@ export const appointmentRepository = {
     });
   },
 
+  // Encontrar agendamentos por usuário (opcionalmente por status)
+  async findByUser(userId: string, status?: AppointmentStatus): Promise<Appointment[]> {
+    return this.findMany({ // Reutilizar findMany
+      userId,
+      ...(status && { status }),
+    });
+  },
+
   // Encontrar agendamentos por profissional (poderia adicionar filtro de data)
   async findByProfessional(professionalId: string): Promise<Appointment[]> {
-    return prisma.appointment.findMany({
-      where: { professionalId },
-      include: { 
-        service: true, 
-        user: { select: { id: true, name: true, email: true, avatar: true } } // Incluir dados relevantes do usuário
-      },
-      orderBy: {
-        date: 'asc',
-      },
+     return this.findMany({ // Reutilizar findMany
+      professionalId,
     });
   },
 
@@ -78,3 +76,4 @@ export const appointmentRepository = {
     }
   },
 };
+

@@ -1,14 +1,18 @@
 import { Request, Response, NextFunction } from "express";
 import { userRepository } from "../repositories/userRepository";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
+import jwt, { Secret, SignOptions } from "jsonwebtoken"; // Import Secret and SignOptions types
 import { Prisma } from "@prisma/client";
 
-// Carregar a chave secreta de forma segura (idealmente de variáveis de ambiente)
+// Carregar segredos e configurações de forma segura das variáveis de ambiente
 const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  console.error("ERRO FATAL: Variável de ambiente JWT_SECRET não definida.");
-  process.exit(1); // Encerrar se a chave não estiver definida
+const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET;
+const ACCESS_TOKEN_EXPIRATION = process.env.ACCESS_TOKEN_EXPIRATION || "15m"; // Default 15m
+const REFRESH_TOKEN_EXPIRATION = process.env.REFRESH_TOKEN_EXPIRATION || "7d"; // Default 7d
+
+if (!JWT_SECRET || !REFRESH_TOKEN_SECRET) {
+  console.error("ERRO FATAL: Variáveis de ambiente JWT_SECRET ou REFRESH_TOKEN_SECRET não definidas.");
+  process.exit(1); // Encerrar se as chaves não estiverem definidas
 }
 
 // Helper function for email validation (pode ser movida para utils)
@@ -21,14 +25,10 @@ const isValidEmail = (email: string): boolean => {
 export const login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { email, password } = req.body;
 
-  // A validação básica de presença será feita pelo express-validator
-  // A validação de formato de email também será feita pelo express-validator
-
   try {
     const user = await userRepository.findByEmail(email);
 
     if (!user) {
-      // Lançar um erro específico ou usar um erro genérico com status
       const error: any = new Error("Credenciais inválidas");
       error.statusCode = 401;
       return next(error);
@@ -42,20 +42,28 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       return next(error);
     }
 
-    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, {
-      expiresIn: "24h", // Aumentado para 24h, considerar refresh tokens
-    });
+    // Definir opções de assinatura explicitamente (usando 'as any' para contornar o erro de tipo)
+    const accessTokenOptions: SignOptions = { expiresIn: ACCESS_TOKEN_EXPIRATION as any };
+    const refreshTokenOptions: SignOptions = { expiresIn: REFRESH_TOKEN_EXPIRATION as any };
+
+    // Gerar Access Token
+    const accessToken = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, accessTokenOptions);
+
+    // Gerar Refresh Token
+    const refreshToken = jwt.sign({ userId: user.id }, REFRESH_TOKEN_SECRET, refreshTokenOptions);
+
+    // TODO: Consider storing the refresh token securely (e.g., in DB or Redis) for better revocation control
 
     const { password: _, ...userWithoutPassword } = user;
 
     res.json({ 
       message: "Login bem-sucedido", 
-      token, 
+      accessToken,
+      refreshToken, // Retornar o refresh token
       user: userWithoutPassword 
     });
 
   } catch (error) {
-    // Passa qualquer erro inesperado para o middleware global
     next(error);
   }
 };
@@ -64,12 +72,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
 export const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { email, password, name, avatar } = req.body;
 
-  // A validação de presença e formato será feita pelo express-validator
-  // A validação de força da senha pode ser adicionada no validator
-
   try {
-    // A verificação de usuário existente pode ser tratada pelo erro P2002 do Prisma
-    // Mas verificar antes pode dar uma mensagem de erro mais amigável
     const existingUser = await userRepository.findByEmail(email);
     if (existingUser) {
       const error: any = new Error("Email já cadastrado");
@@ -84,26 +87,68 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       email,
       password: hashedPassword,
       name,
-      avatar, // Prisma aceita null ou undefined para campos opcionais
+      avatar,
     };
     const newUser = await userRepository.create(userData);
 
     const { password: _, ...userWithoutPassword } = newUser;
 
-    // Gerar token após registro bem-sucedido
-    const token = jwt.sign({ userId: newUser.id, email: newUser.email }, JWT_SECRET, {
-      expiresIn: "24h",
-    });
+    // Definir opções de assinatura explicitamente (usando 'as any' para contornar o erro de tipo)
+    const accessTokenOptions: SignOptions = { expiresIn: ACCESS_TOKEN_EXPIRATION as any };
+    const refreshTokenOptions: SignOptions = { expiresIn: REFRESH_TOKEN_EXPIRATION as any };
+
+    // Gerar Access Token
+    const accessToken = jwt.sign({ userId: newUser.id, email: newUser.email }, JWT_SECRET, accessTokenOptions);
+
+    // Gerar Refresh Token
+    const refreshToken = jwt.sign({ userId: newUser.id }, REFRESH_TOKEN_SECRET, refreshTokenOptions);
+
+    // TODO: Consider storing the refresh token securely
 
     res.status(201).json({ 
       message: "Usuário registrado com sucesso", 
-      token,
+      accessToken,
+      refreshToken, // Retornar o refresh token
       user: userWithoutPassword 
     });
 
   } catch (error) {
-    // Passa erros (incluindo P2002 do Prisma se a verificação acima falhar) para o middleware global
     next(error);
+  }
+};
+
+// Função para Refresh Token (Nova)
+export const refreshToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  const { token } = req.body; // Espera o refresh token no corpo da requisição
+
+  if (!token) {
+    const error: any = new Error("Refresh token não fornecido");
+    error.statusCode = 400; // Bad Request
+    return next(error);
+  }
+
+  try {
+    // Verificar o refresh token
+    const decoded = jwt.verify(token, REFRESH_TOKEN_SECRET) as { userId: string };
+
+    // TODO: Add check if refresh token is revoked (if stored)
+
+    // Definir opções de assinatura explicitamente (usando 'as any' para contornar o erro de tipo)
+    const accessTokenOptions: SignOptions = { expiresIn: ACCESS_TOKEN_EXPIRATION as any };
+
+    // Gerar um novo access token
+    const accessToken = jwt.sign({ userId: decoded.userId }, JWT_SECRET, accessTokenOptions);
+
+    res.json({ 
+      message: "Access token atualizado com sucesso",
+      accessToken 
+    });
+
+  } catch (error) {
+    // Se a verificação falhar (token inválido, expirado, etc.)
+    const err: any = new Error("Refresh token inválido ou expirado");
+    err.statusCode = 401; // Unauthorized
+    next(err);
   }
 };
 

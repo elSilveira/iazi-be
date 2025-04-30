@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express"; // Import NextFunction
 import { reviewRepository } from "../repositories/reviewRepository";
 import { Prisma } from "@prisma/client";
 
@@ -8,184 +8,173 @@ const isValidUUID = (uuid: string): boolean => {
   return uuidRegex.test(uuid);
 };
 
-// Função auxiliar para tratamento de erros
-const handleError = (res: Response, error: unknown, message: string) => {
-  console.error(message, error);
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    if (error.code === 'P2003') {
-      return res.status(400).json({ message: 'Um ou mais IDs fornecidos (usuário, serviço, profissional ou empresa) são inválidos.' });
-    }
-    if (error.code === 'P2025') {
-      console.error("Prisma Error P2025: Record not found.");
-      // O repositório deve retornar null, e o controlador deve tratar isso com 404
-    }
-  }
-  return res.status(500).json({ message: 'Erro interno do servidor' });
-};
-
 // Obter avaliações com filtros opcionais
-export const getReviews = async (req: Request, res: Response): Promise<Response> => {
+export const getReviews = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Added next, void return
   const { serviceId, professionalId, companyId } = req.query;
 
   // Validar IDs se fornecidos
   if (serviceId && !isValidUUID(serviceId as string)) {
-    return res.status(400).json({ message: 'Formato de ID do serviço inválido.' });
+    res.status(400).json({ message: 'Formato de ID do serviço inválido.' });
+    return;
   }
   if (professionalId && !isValidUUID(professionalId as string)) {
-    return res.status(400).json({ message: 'Formato de ID do profissional inválido.' });
+    res.status(400).json({ message: 'Formato de ID do profissional inválido.' });
+    return;
   }
   if (companyId && !isValidUUID(companyId as string)) {
-    return res.status(400).json({ message: 'Formato de ID da empresa inválido.' });
+    res.status(400).json({ message: 'Formato de ID da empresa inválido.' });
+    return;
   }
   
   try {
     let reviews;
-    
-    if (serviceId) {
-      reviews = await reviewRepository.findByService(serviceId as string);
-    } 
-    else if (professionalId) {
-      reviews = await reviewRepository.findByProfessional(professionalId as string);
-    } 
-    else if (companyId) {
-      reviews = await reviewRepository.findByCompany(companyId as string);
-    } 
-    else {
-      return res.status(400).json({ 
+    const filters: Prisma.ReviewWhereInput = {};
+    if (serviceId) filters.serviceId = serviceId as string;
+    if (professionalId) filters.professionalId = professionalId as string;
+    if (companyId) filters.companyId = companyId as string;
+
+    // Exigir pelo menos um filtro
+    if (!serviceId && !professionalId && !companyId) {
+      res.status(400).json({ 
         message: "É necessário fornecer serviceId, professionalId ou companyId para filtrar as avaliações" 
       });
+      return;
     }
+
+    reviews = await reviewRepository.findMany(filters); // Assuming findMany exists
     
-    return res.json(reviews);
+    res.json(reviews);
   } catch (error) {
-    return handleError(res, error, 'Erro ao buscar avaliações:');
+    console.error('Erro ao buscar avaliações:', error);
+    next(error); // Pass error to error handler
   }
 };
 
 // Obter uma avaliação específica pelo ID
-export const getReviewById = async (req: Request, res: Response): Promise<Response> => {
+export const getReviewById = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Added next, void return
   const { id } = req.params;
-  // Validar formato do ID
   if (!isValidUUID(id)) {
-    return res.status(400).json({ message: "Formato de ID inválido." });
+    res.status(400).json({ message: "Formato de ID inválido." });
+    return;
   }
   
   try {
     const review = await reviewRepository.findById(id);
     if (!review) {
-      return res.status(404).json({ message: "Avaliação não encontrada" });
+      res.status(404).json({ message: "Avaliação não encontrada" });
+      return;
     }
-    return res.json(review);
+    res.json(review);
   } catch (error) {
-    return handleError(res, error, `Erro ao buscar avaliação ${id}:`);
+    console.error(`Erro ao buscar avaliação ${id}:`, error);
+    next(error); // Pass error to error handler
   }
 };
 
 // Criar uma nova avaliação
-export const createReview = async (req: Request, res: Response): Promise<Response> => {
-  // Extrair dados do corpo da requisição
+export const createReview = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Added next, void return
   const { rating, comment, userId, serviceId, professionalId, companyId } = req.body;
 
-  // Validação básica
+  // Validação (Idealmente com express-validator)
   if (!rating || !userId || (!serviceId && !professionalId && !companyId)) {
-    return res.status(400).json({ 
+    res.status(400).json({ 
       message: "Avaliação (rating), ID do usuário e pelo menos um ID de serviço, profissional ou empresa são obrigatórios" 
     });
+    return;
   }
-  // Validar formato dos IDs
-  if (!isValidUUID(userId)) {
-    return res.status(400).json({ message: 'Formato de ID do usuário inválido.' });
+  if (!isValidUUID(userId) || (serviceId && !isValidUUID(serviceId)) || (professionalId && !isValidUUID(professionalId)) || (companyId && !isValidUUID(companyId))) {
+    res.status(400).json({ message: 'Formato de ID inválido para usuário, serviço, profissional ou empresa.' });
+    return;
   }
-  if (serviceId && !isValidUUID(serviceId)) {
-    return res.status(400).json({ message: 'Formato de ID do serviço inválido.' });
-  }
-  if (professionalId && !isValidUUID(professionalId)) {
-    return res.status(400).json({ message: 'Formato de ID do profissional inválido.' });
-  }
-  if (companyId && !isValidUUID(companyId)) {
-    return res.status(400).json({ message: 'Formato de ID da empresa inválido.' });
-  }
-
-  // Validar a avaliação (rating)
   const numericRating = Number(rating);
   if (isNaN(numericRating) || numericRating < 1 || numericRating > 5) {
-    return res.status(400).json({ message: "A avaliação deve ser um valor numérico entre 1 e 5" });
+    res.status(400).json({ message: "A avaliação deve ser um valor numérico entre 1 e 5" });
+    return;
   }
 
   try {
-    // Montar o objeto de dados para o Prisma usando 'connect'
     const dataToCreate: Prisma.ReviewCreateInput = {
       rating: numericRating,
-      comment: comment, // comment é opcional
+      comment: comment,
       user: { connect: { id: userId } },
-      // Conectar apenas à entidade relevante (service, professional ou company)
       ...(serviceId && { service: { connect: { id: serviceId } } }),
       ...(professionalId && { professional: { connect: { id: professionalId } } }),
       ...(companyId && { company: { connect: { id: companyId } } }),
     };
 
-    // O repositório agora trata a atualização da média
     const newReview = await reviewRepository.create(dataToCreate);
         
-    return res.status(201).json(newReview);
+    res.status(201).json(newReview);
   } catch (error) {
-    return handleError(res, error, 'Erro ao criar avaliação:');
+    console.error('Erro ao criar avaliação:', error);
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      res.status(400).json({ message: 'Um ou mais IDs fornecidos (usuário, serviço, profissional ou empresa) são inválidos.' });
+      return;
+    }
+    next(error); // Pass other errors to error handler
   }
 };
 
 // Atualizar uma avaliação existente
-export const updateReview = async (req: Request, res: Response): Promise<Response> => {
+export const updateReview = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Added next, void return
   const { id } = req.params;
-  // Validar formato do ID
   if (!isValidUUID(id)) {
-    return res.status(400).json({ message: "Formato de ID inválido." });
+    res.status(400).json({ message: "Formato de ID inválido." });
+    return;
   }
-  // Não permitir alterar userId, serviceId, professionalId, companyId via update
   const { userId, serviceId, professionalId, companyId, ...dataToUpdate } = req.body;
   
-  // Validar a avaliação (rating) se fornecida
   if (dataToUpdate.rating !== undefined) {
     const numericRating = Number(dataToUpdate.rating);
     if (isNaN(numericRating) || numericRating < 1 || numericRating > 5) {
-      return res.status(400).json({ message: "A avaliação deve ser um valor numérico entre 1 e 5" });
+      res.status(400).json({ message: "A avaliação deve ser um valor numérico entre 1 e 5" });
+      return;
     }
-    dataToUpdate.rating = numericRating; // Garantir que seja número
+    dataToUpdate.rating = numericRating;
   }
 
   try {
-    // O repositório agora trata a atualização da média
     const updatedReview = await reviewRepository.update(id, dataToUpdate as Prisma.ReviewUpdateInput);
     if (!updatedReview) {
-      return res.status(404).json({ message: "Avaliação não encontrada para atualização" });
+      res.status(404).json({ message: "Avaliação não encontrada para atualização" });
+      return;
     }
         
-    return res.json(updatedReview);
+    res.json(updatedReview);
   } catch (error) {
-    return handleError(res, error, `Erro ao atualizar avaliação ${id}:`);
+    console.error(`Erro ao atualizar avaliação ${id}:`, error);
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      res.status(404).json({ message: "Avaliação não encontrada para atualização." });
+      return;
+    }
+    next(error); // Pass other errors to error handler
   }
 };
 
 // Deletar uma avaliação
-export const deleteReview = async (req: Request, res: Response): Promise<Response> => {
+export const deleteReview = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Added next, void return
   const { id } = req.params;
-  // Validar formato do ID
   if (!isValidUUID(id)) {
-    return res.status(400).json({ message: "Formato de ID inválido." });
+    res.status(400).json({ message: "Formato de ID inválido." });
+    return;
   }
 
   try {
-    // O repositório agora trata a atualização da média
     const deletedReview = await reviewRepository.delete(id);
     if (!deletedReview) {
-      return res.status(404).json({ message: "Avaliação não encontrada para exclusão" });
+      res.status(404).json({ message: "Avaliação não encontrada para exclusão" });
+      return;
     }
         
-    return res.status(200).json({ 
-      message: "Avaliação excluída com sucesso", 
-      review: deletedReview 
-    });
+    // Use 204 No Content for successful deletion
+    res.status(204).send(); 
   } catch (error) {
-    return handleError(res, error, `Erro ao deletar avaliação ${id}:`);
+    console.error(`Erro ao deletar avaliação ${id}:`, error);
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      res.status(404).json({ message: "Avaliação não encontrada para exclusão." });
+      return;
+    }
+    next(error); // Pass other errors to error handler
   }
 };
 

@@ -3,7 +3,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  // output   = "../src/generated/prisma" // Removido: Usar local padrão node_modules/.prisma/client
 }
 
 datasource db {
@@ -32,7 +31,7 @@ model Company {
   logo          String?
   coverImage    String?
   rating        Float     @default(0)
-  totalReviews  Int       @default(0)
+  totalReviews  Int       @default(0) // Campo para total de avaliações
   yearEstablished String?
   phone         String?
   email         String?
@@ -71,6 +70,9 @@ model Service {
   duration      String
   category      String
   image         String?
+  // Adicionar rating e totalReviews aqui se necessário no futuro
+  // rating        Float     @default(0)
+  // totalReviews  Int       @default(0)
   company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   companyId     String
   professionals ProfessionalService[]
@@ -87,7 +89,8 @@ model Professional {
   role          String
   image         String?
   rating        Float     @default(0)
-  appointments  Int       @default(0)
+  totalReviews  Int       @default(0) // Adicionado: Campo para total de avaliações
+  // appointments  Int       @default(0) // Removido/Comentado: Este campo parecia incorreto
   company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   companyId     String
   services      ProfessionalService[]

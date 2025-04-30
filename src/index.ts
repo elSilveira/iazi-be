@@ -1,15 +1,24 @@
+import * as dotenv from 'dotenv';
+dotenv.config(); // Carrega as variáveis de ambiente do arquivo .env
+
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
-import createAuthRouter from './routes/authRoutes'; // Updated import
-import createServiceRouter from './routes/serviceRoutes'; // Updated import
-import createCompanyRouter from './routes/companyRoutes'; // Updated import
+import helmet from 'helmet'; // Importa o Helmet
+import authRouter from './routes/authRoutes';
+import serviceRouter from './routes/serviceRoutes';
+import companyRouter from './routes/companyRoutes';
+import professionalRouter from './routes/professionalRoutes'; // Descomentado
+import appointmentRouter from './routes/appointmentRoutes'; // Descomentado
+import reviewRouter from './routes/reviewRoutes'; // Descomentado
 import { setupSwagger } from './swagger';
 
 const app: Express = express();
-const port = process.env.PORT || 3001; // Porta para o backend
+const port = process.env.PORT || 3001;
 
-app.use(cors()); // Habilita CORS para permitir requisições do frontend
-app.use(express.json()); // Middleware para parsear JSON
+// Middlewares de Segurança e Configuração
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
 
 // Configuração do Swagger
 setupSwagger(app);
@@ -19,12 +28,25 @@ app.get('/', (req: Request, res: Response) => {
   res.send('Servidor Backend ServiConnect está rodando!');
 });
 
-// Rotas da API usando as factory functions
-app.use('/api/auth', createAuthRouter());
-app.use('/api/services', createServiceRouter());
-app.use('/api/companies', createCompanyRouter());
+// Rotas da API
+app.use('/api/auth', authRouter);
+app.use('/api/services', serviceRouter);
+app.use('/api/companies', companyRouter);
+app.use('/api/professionals', professionalRouter); // Descomentado
+app.use('/api/appointments', appointmentRouter); // Descomentado
+app.use('/api/reviews', reviewRouter); // Descomentado
 
-app.listen(Number(port), '0.0.0.0', () => {
-  console.log(`[server]: Servidor rodando em http://localhost:${port}`);
-  console.log(`[swagger]: Documentação da API disponível em http://localhost:${port}/api-docs`);
-});
+// TODO: Implementar um middleware de tratamento de erros global
+// app.use(globalErrorHandler);
+
+// Exportar o app para uso em testes de integração
+export { app };
+
+// Iniciar o servidor apenas se não estiver em ambiente de teste
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(Number(port), '0.0.0.0', () => {
+    console.log(`[server]: Servidor rodando em http://localhost:${port}`);
+    console.log(`[swagger]: Documentação da API disponível em http://localhost:${port}/api-docs`);
+  });
+}
+

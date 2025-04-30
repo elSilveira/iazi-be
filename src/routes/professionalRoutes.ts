@@ -14,6 +14,7 @@ import {
   professionalIdValidator,
   professionalServiceAssociationValidator
 } from "../validators/professionalValidators";
+import { serviceIdValidator } from "../validators/serviceValidators"; // Importar serviceIdValidator
 import { validateRequest } from "../middlewares/validationMiddleware";
 // TODO: Adicionar middleware de autenticação/autorização para rotas protegidas
 
@@ -39,7 +40,7 @@ router.post("/:professionalId/services", professionalServiceAssociationValidator
 
 // Desassociar serviço de um profissional
 router.delete("/:professionalId/services/:serviceId", 
-  // Reutilizar parte do validator de associação para os IDs
+  // Usar os validadores importados corretamente
   [professionalIdValidator[0], serviceIdValidator[0]], 
   validateRequest, 
   removeServiceFromProfessional

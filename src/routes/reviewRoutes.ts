@@ -1,10 +1,10 @@
 import { Router } from "express";
 import {
-  getAllReviews, // Assumindo que existe no controller
-  getReviewById, // Assumindo que existe no controller
-  createReview, // Assumindo que existe no controller
-  updateReview, // Assumindo que existe no controller
-  deleteReview // Assumindo que existe no controller
+  getReviews, // Corrigido: Usar o nome exportado pelo controller
+  getReviewById,
+  createReview,
+  updateReview,
+  deleteReview
 } from "../controllers/reviewController";
 import { 
   createReviewValidator, 
@@ -18,7 +18,7 @@ const router = Router();
 
 // Obter todas as avaliações (filtradas por serviço, profissional ou empresa)
 // TODO: Adicionar validação para query params (serviceId, professionalId, companyId)
-router.get("/", getAllReviews);
+router.get("/", getReviews); // Corrigido: Usar o nome correto da função
 
 // Obter avaliação por ID
 router.get("/:id", reviewIdValidator, validateRequest, getReviewById);

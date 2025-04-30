@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express"; // Import NextFunction
 import { professionalRepository } from "../repositories/professionalRepository";
 import { Prisma } from "@prisma/client";
 
@@ -9,156 +9,167 @@ const isValidUUID = (uuid: string): boolean => {
 };
 
 // Obter todos os profissionais (opcionalmente filtrados por companyId)
-export const getAllProfessionals = async (req: Request, res: Response): Promise<Response> => {
+export const getAllProfessionals = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Added next and void return type
   const { companyId } = req.query;
   // Validar companyId se fornecido
   if (companyId && !isValidUUID(companyId as string)) {
-     return res.status(400).json({ message: "Formato de ID da empresa inválido." });
+     res.status(400).json({ message: "Formato de ID da empresa inválido." });
+     return; // Return void
   }
   try {
     const professionals = await professionalRepository.getAll(companyId as string | undefined);
-    return res.json(professionals);
+    res.json(professionals);
   } catch (error) {
     console.error("Erro ao buscar profissionais:", error);
-    return res.status(500).json({ message: "Erro interno do servidor" });
+    // Pass error to a potential global error handler
+    next(error); // Use next for errors
   }
 };
 
 // Obter um profissional específico pelo ID
-export const getProfessionalById = async (req: Request, res: Response): Promise<Response> => {
+export const getProfessionalById = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Added next and void return type
   const { id } = req.params;
   // Validar formato do ID
   if (!isValidUUID(id)) {
-    return res.status(400).json({ message: "Formato de ID inválido." });
+    res.status(400).json({ message: "Formato de ID inválido." });
+    return; // Return void
   }
   try {
     const professional = await professionalRepository.findById(id);
     if (!professional) {
-      return res.status(404).json({ message: "Profissional não encontrado" });
+      res.status(404).json({ message: "Profissional não encontrado" });
+      return; // Return void
     }
-    return res.json(professional);
+    res.json(professional);
   } catch (error) {
     console.error(`Erro ao buscar profissional ${id}:`, error);
-    return res.status(500).json({ message: "Erro interno do servidor" });
+    next(error); // Use next for errors
   }
 };
 
 // Criar um novo profissional
-export const createProfessional = async (req: Request, res: Response): Promise<Response> => {
+export const createProfessional = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Added next and void return type
   // Extrair dados do corpo da requisição, incluindo serviceIds
   const { name, role, image, companyId, serviceIds } = req.body;
 
-  // Validação básica
+  // Validação básica (melhor feita com express-validator, mas mantendo aqui por enquanto)
   if (!name || !role || !companyId) {
-    return res.status(400).json({ message: "Nome, cargo e ID da empresa são obrigatórios" });
+    res.status(400).json({ message: "Nome, cargo e ID da empresa são obrigatórios" });
+    return;
   }
-  // Validar formato do companyId
   if (!isValidUUID(companyId)) {
-    return res.status(400).json({ message: "Formato de ID da empresa inválido." });
+    res.status(400).json({ message: "Formato de ID da empresa inválido." });
+    return;
   }
-  // Validar serviceIds (se fornecido, deve ser um array de UUIDs)
   if (serviceIds !== undefined) {
     if (!Array.isArray(serviceIds)) {
-      return res.status(400).json({ message: "serviceIds deve ser um array." });
+      res.status(400).json({ message: "serviceIds deve ser um array." });
+      return;
     }
     if (!serviceIds.every(isValidUUID)) {
-      return res.status(400).json({ message: "Um ou mais serviceIds possuem formato inválido." });
+      res.status(400).json({ message: "Um ou mais serviceIds possuem formato inválido." });
+      return;
     }
   }
 
   try {
-    // Montar o objeto de dados para o Prisma usando 'connect'
     const dataToCreate: Prisma.ProfessionalCreateInput = {
       name,
       role,
-      image: image, // image é opcional
+      image: image,
       company: { connect: { id: companyId } },
-      // rating e appointments são definidos por padrão no schema
     };
 
-    // Passar serviceIds para o repositório
     const newProfessional = await professionalRepository.create(dataToCreate, serviceIds as string[] | undefined);
-    return res.status(201).json(newProfessional);
+    res.status(201).json(newProfessional);
   } catch (error) {
     console.error("Erro ao criar profissional:", error);
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2003") {
-        // Verificar se a FK violada foi companyId
-        if (error.meta?.field_name === "Professional_companyId_fkey (index)") {
-           return res.status(400).json({ message: "ID da empresa inválido." });
-        }
-        // Pode ser erro de serviceId inválido também, tratado pela transação no repo
-        return res.status(400).json({ message: "Erro de chave estrangeira ao criar profissional (empresa ou serviço inválido)." });
+      if (error.code === "P2003" && error.meta?.field_name === "Professional_companyId_fkey (index)") {
+         res.status(400).json({ message: "ID da empresa inválido." });
+         return;
       }
       if (error.code === "P2025") {
-        // Pode ocorrer se um serviceId não for encontrado durante a transação
-        return res.status(400).json({ message: "Um ou mais IDs de serviço fornecidos são inválidos." });
+        res.status(400).json({ message: "Um ou mais IDs de serviço fornecidos são inválidos." });
+        return;
       }
     }
-    return res.status(500).json({ message: "Erro interno do servidor" });
+    next(error); // Use next for other errors
   }
 };
 
 // Atualizar um profissional existente
-export const updateProfessional = async (req: Request, res: Response): Promise<Response> => {
+export const updateProfessional = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Added next and void return type
   const { id } = req.params;
-  // Validar formato do ID
   if (!isValidUUID(id)) {
-    return res.status(400).json({ message: "Formato de ID inválido." });
+    res.status(400).json({ message: "Formato de ID inválido." });
+    return;
   }
-  // Extrair dados, incluindo serviceIds. Não permitir atualização do companyId.
   const { companyId, serviceIds, ...dataToUpdate } = req.body;
 
-  // Validar serviceIds (se fornecido, deve ser um array de UUIDs)
   if (serviceIds !== undefined) {
      if (!Array.isArray(serviceIds)) {
-      return res.status(400).json({ message: "serviceIds deve ser um array." });
+      res.status(400).json({ message: "serviceIds deve ser um array." });
+      return;
     }
     if (!serviceIds.every(isValidUUID)) {
-      return res.status(400).json({ message: "Um ou mais serviceIds possuem formato inválido." });
+      res.status(400).json({ message: "Um ou mais serviceIds possuem formato inválido." });
+      return;
     }
   }
 
   try {
-    // Passar serviceIds para o repositório
     const updatedProfessional = await professionalRepository.update(id, dataToUpdate as Prisma.ProfessionalUpdateInput, serviceIds as string[] | undefined);
     if (!updatedProfessional) {
-      return res.status(404).json({ message: "Profissional não encontrado para atualização" });
+      res.status(404).json({ message: "Profissional não encontrado para atualização" });
+      return;
     }
-    return res.json(updatedProfessional);
+    res.json(updatedProfessional);
   } catch (error) {
     console.error(`Erro ao atualizar profissional ${id}:`, error);
-     if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2025") {
-        // Pode ocorrer se o profissional ou um serviceId não for encontrado
-        return res.status(404).json({ message: "Profissional ou um dos serviços associados não encontrado." });
-      }
+     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+        res.status(404).json({ message: "Profissional ou um dos serviços associados não encontrado." });
+        return;
     }
-    return res.status(500).json({ message: "Erro interno do servidor" });
+    next(error); // Use next for other errors
   }
 };
 
 // Deletar um profissional
-export const deleteProfessional = async (req: Request, res: Response): Promise<Response> => {
+export const deleteProfessional = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Added next and void return type
   const { id } = req.params;
-  // Validar formato do ID
   if (!isValidUUID(id)) {
-    return res.status(400).json({ message: "Formato de ID inválido." });
+    res.status(400).json({ message: "Formato de ID inválido." });
+    return;
   }
 
   try {
     const deletedProfessional = await professionalRepository.delete(id);
     if (!deletedProfessional) {
-      return res.status(404).json({ message: "Profissional não encontrado para exclusão" });
+      res.status(404).json({ message: "Profissional não encontrado para exclusão" });
+      return;
     }
-    return res.status(200).json({ message: "Profissional excluído com sucesso", professional: deletedProfessional });
+    // Changed to 204 No Content for successful deletion without returning body
+    res.status(204).send(); 
   } catch (error) {
     console.error(`Erro ao deletar profissional ${id}:`, error);
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
-        // O repositório tenta desassociar, mas se houver FK constraint não tratada (ex: em Appointment/Review sem onDelete: SET NULL)
-        return res.status(409).json({ message: "Não é possível excluir o profissional pois existem registros associados que impedem a exclusão." });
+        res.status(409).json({ message: "Não é possível excluir o profissional pois existem registros associados que impedem a exclusão." });
+        return;
     }
-    return res.status(500).json({ message: "Erro interno do servidor" });
+    next(error); // Use next for other errors
   }
+};
+
+// Add Service to Professional (Placeholder - needs implementation in repository)
+export const addServiceToProfessional = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    // TODO: Implement logic to associate service with professional
+    res.status(501).json({ message: "Not Implemented" });
+};
+
+// Remove Service from Professional (Placeholder - needs implementation in repository)
+export const removeServiceFromProfessional = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    // TODO: Implement logic to disassociate service from professional
+    res.status(501).json({ message: "Not Implemented" });
 };
 

@@ -1,10 +1,11 @@
 import { Router } from "express";
 import {
-  getAllAppointments, // Assumindo que existe no controller
-  getAppointmentById, // Assumindo que existe no controller
-  createAppointment, // Assumindo que existe no controller
-  updateAppointment, // Assumindo que existe no controller
-  // deleteAppointment // Geralmente não se deleta, mas cancela (update status)
+  getAllAppointments,
+  getAppointmentById,
+  createAppointment,
+  updateAppointmentStatus,
+  cancelAppointment,
+  deleteAppointment
 } from "../controllers/appointmentController";
 import { 
   createAppointmentValidator, 
@@ -12,27 +13,32 @@ import {
   appointmentIdValidator 
 } from "../validators/appointmentValidators";
 import { validateRequest } from "../middlewares/validationMiddleware";
-// TODO: Adicionar middleware de autenticação (obrigatório para todas as rotas de agendamento)
+import { authMiddleware } from "../middlewares/authMiddleware"; // Importar o middleware de autenticação
 
 const router = Router();
 
-// Obter todos os agendamentos (provavelmente filtrados por usuário ou empresa/profissional)
-// TODO: Adicionar filtros e validação para query params (userId, companyId, professionalId, dateRange, etc.)
+// Aplicar middleware de autenticação a todas as rotas de agendamento
+router.use(authMiddleware);
+
+// Obter todos os agendamentos (filtrados por usuário ou profissional via query)
+// O middleware já garante que req.user.id está disponível
 router.get("/", getAllAppointments);
 
 // Obter agendamento por ID
 router.get("/:id", appointmentIdValidator, validateRequest, getAppointmentById);
 
 // Criar novo agendamento
-// O userId deve ser obtido do token JWT (middleware de autenticação)
+// O userId será pego de req.user.id no controller, não mais do body
 router.post("/", createAppointmentValidator, validateRequest, createAppointment);
 
-// Atualizar agendamento (ex: status, data, notas)
-router.put("/:id", updateAppointmentValidator, validateRequest, updateAppointment);
+// Atualizar status do agendamento (CONFIRMED, COMPLETED, etc.)
+router.patch("/:id/status", updateAppointmentValidator, validateRequest, updateAppointmentStatus);
 
-// Rota para cancelar agendamento (atualiza o status para CANCELLED)
-// Poderia ser um PATCH ou PUT específico
-// router.patch("/:id/cancel", appointmentIdValidator, validateRequest, cancelAppointment);
+// Rota específica para cancelar agendamento (atualiza o status para CANCELLED)
+router.patch("/:id/cancel", appointmentIdValidator, validateRequest, cancelAppointment);
+
+// Deletar agendamento (se permitido)
+// router.delete("/:id", appointmentIdValidator, validateRequest, deleteAppointment);
 
 export default router;
 
