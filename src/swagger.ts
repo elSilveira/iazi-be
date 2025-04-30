@@ -138,12 +138,21 @@ const options: swaggerJsdoc.Options = {
             companyId: { type: 'string', format: 'uuid', nullable: true, description: 'ID da empresa avaliada (opcional)' },
             createdAt: { type: 'string', format: 'date-time', description: 'Data de criação' },
             updatedAt: { type: 'string', format: 'date-time', description: 'Data da última atualização' },
+                  required: [\'id\', \'rating\', \'userId\', \'createdAt\', \'updatedAt\'],
+        },
+        Category: { // Added Category schema
+          type: \'object\',
+          properties: {
+            id: { type: \'integer\', description: \'ID único da categoria\' },
+            name: { type: \'string\', description: \'Nome da categoria\' },
+            icon: { type: \'string\', nullable: true, description: \'Nome do ícone associado (ex: \'brush\', \'wrench\')\' },
+            createdAt: { type: \'string\', format: \'date-time\', description: \'Data de criação\' },
+            updatedAt: { type: \'string\', format: \'date-time\', description: \'Data da última atualização\' },
           },
-          required: ['id', 'rating', 'userId', 'createdAt', 'updatedAt'],
+          required: [\'id\', \'name\', \'createdAt\', \'updatedAt\'],
         },
 
-        // --- Enumerações ---
-        AppointmentStatus: {
+        // --- Enumerações ---    AppointmentStatus: {
           type: 'string',
           enum: ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'],
           description: 'Status do agendamento',
