@@ -1,96 +1,15 @@
-import express, { Router, Request, Response } from "express";
+import { Router } from "express";
 import { login, register } from "../controllers/authController";
+import { registerValidator, loginValidator } from "../validators/authValidators";
+import { validateRequest } from "../middlewares/validationMiddleware";
 
-// Função factory para criar o router de autenticação
-const createAuthRouter = (): Router => {
-  const router: Router = express.Router();
+const router = Router();
 
-  /**
-   * @swagger
-   * tags:
-   *   name: Auth
-   *   description: Autenticação de usuários
-   */
+// Rota de Registro: aplica o validador e o middleware de validação
+router.post("/register", registerValidator, validateRequest, register);
 
-  /**
-   * @swagger
-   * /api/auth/login:
-   *   post:
-   *     summary: Autentica um usuário
-   *     tags: [Auth]
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required:
-   *               - email
-   *               - password
-   *             properties:
-   *               email:
-   *                 type: string
-   *                 format: email
-   *               password:
-   *                 type: string
-   *                 format: password
-   *     responses:
-   *       200:
-   *         description: Login bem-sucedido, retorna token JWT e dados do usuário
-   *       400:
-   *         description: Email ou senha não fornecidos
-   *       401:
-   *         description: Credenciais inválidas
-   *       500:
-   *         description: Erro interno do servidor
-   */
-  // @ts-ignore
-  router.post("/login", async (req: Request, res: Response) => { return await login(req, res); });
+// Rota de Login: aplica o validador e o middleware de validação
+router.post("/login", loginValidator, validateRequest, login);
 
-  /**
-   * @swagger
-   * /api/auth/register:
-   *   post:
-   *     summary: Registra um novo usuário
-   *     tags: [Auth]
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required:
-   *               - email
-   *               - password
-   *               - name
-   *             properties:
-   *               email:
-   *                 type: string
-   *                 format: email
-   *               password:
-   *                 type: string
-   *                 format: password
-   *               name:
-   *                 type: string
-   *               avatar:
-   *                 type: string
-   *                 format: url
-   *                 nullable: true
-   *     responses:
-   *       201:
-   *         description: Usuário registrado com sucesso, retorna token JWT e dados do usuário
-   *       400:
-   *         description: Dados obrigatórios não fornecidos
-   *       409:
-   *         description: Email já cadastrado
-   *       500:
-   *         description: Erro interno do servidor
-   */
-  // @ts-ignore
-  router.post("/register", async (req: Request, res: Response) => { return await register(req, res); });
-
-  return router;
-};
-
-export default createAuthRouter;
+export default router;
 

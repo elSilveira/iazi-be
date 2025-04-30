@@ -1,96 +1,80 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import { userRepository } from "../repositories/userRepository";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { Prisma } from "@prisma/client";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-default-secret"; // Use uma variável de ambiente!
+// Carregar a chave secreta de forma segura (idealmente de variáveis de ambiente)
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error("ERRO FATAL: Variável de ambiente JWT_SECRET não definida.");
+  process.exit(1); // Encerrar se a chave não estiver definida
+}
 
-// Helper function for email validation
+// Helper function for email validation (pode ser movida para utils)
 const isValidEmail = (email: string): boolean => {
   const emailRegex = /^[^"]+@[^"]+\.[a-zA-Z]{2,}$/;
   return emailRegex.test(email);
 };
 
-// Função auxiliar para tratamento de erros
-const handleError = (res: Response, error: unknown, message: string) => {
-  console.error(message, error);
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    // Erros específicos do Prisma
-    if (error.code === 'P2002') {
-      // Unique constraint violation
-      if (message.includes("registro")) {
-        return res.status(409).json({ message: "Email já cadastrado." });
-      }
-      return res.status(409).json({ message: "Erro de conflito (possível duplicidade)." });
-    }
-    // Adicionar outros códigos de erro do Prisma conforme necessário
-  }
-  // Erro genérico
-  return res.status(500).json({ message: "Erro interno do servidor" });
-};
-
 // Função de Login
-export const login = async (req: Request, res: Response): Promise<Response> => {
+export const login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ message: "Email e senha são obrigatórios" });
-  }
-  // Adicionar validação de formato de email no login também?
-  // if (!isValidEmail(email)) {
-  //   return res.status(400).json({ message: "Formato de email inválido." });
-  // }
+  // A validação básica de presença será feita pelo express-validator
+  // A validação de formato de email também será feita pelo express-validator
 
   try {
     const user = await userRepository.findByEmail(email);
 
     if (!user) {
-      return res.status(401).json({ message: "Credenciais inválidas" });
+      // Lançar um erro específico ou usar um erro genérico com status
+      const error: any = new Error("Credenciais inválidas");
+      error.statusCode = 401;
+      return next(error);
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      return res.status(401).json({ message: "Credenciais inválidas" });
+      const error: any = new Error("Credenciais inválidas");
+      error.statusCode = 401;
+      return next(error);
     }
 
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, {
-      expiresIn: "1h",
+      expiresIn: "24h", // Aumentado para 24h, considerar refresh tokens
     });
 
     const { password: _, ...userWithoutPassword } = user;
 
-    return res.json({ 
+    res.json({ 
       message: "Login bem-sucedido", 
       token, 
       user: userWithoutPassword 
     });
 
   } catch (error) {
-    return handleError(res, error, "Erro no login:");
+    // Passa qualquer erro inesperado para o middleware global
+    next(error);
   }
 };
 
 // Função de Registro
-export const register = async (req: Request, res: Response): Promise<Response> => {
+export const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { email, password, name, avatar } = req.body;
 
-  if (!email || !password || !name) {
-    return res.status(400).json({ message: "Email, senha e nome são obrigatórios" });
-  }
-
-  // Validar formato do email
-  if (!isValidEmail(email)) {
-    return res.status(400).json({ message: "Formato de email inválido." });
-  }
-  
-  // TODO: Adicionar validação de força da senha (ex: mínimo de caracteres)
+  // A validação de presença e formato será feita pelo express-validator
+  // A validação de força da senha pode ser adicionada no validator
 
   try {
+    // A verificação de usuário existente pode ser tratada pelo erro P2002 do Prisma
+    // Mas verificar antes pode dar uma mensagem de erro mais amigável
     const existingUser = await userRepository.findByEmail(email);
     if (existingUser) {
-      return res.status(409).json({ message: "Email já cadastrado" });
+      const error: any = new Error("Email já cadastrado");
+      error.statusCode = 409; // Conflict
+      return next(error);
     }
 
     const saltRounds = 10;
@@ -100,23 +84,26 @@ export const register = async (req: Request, res: Response): Promise<Response> =
       email,
       password: hashedPassword,
       name,
-      avatar,
+      avatar, // Prisma aceita null ou undefined para campos opcionais
     };
     const newUser = await userRepository.create(userData);
 
     const { password: _, ...userWithoutPassword } = newUser;
 
+    // Gerar token após registro bem-sucedido
     const token = jwt.sign({ userId: newUser.id, email: newUser.email }, JWT_SECRET, {
-      expiresIn: "1h",
+      expiresIn: "24h",
     });
 
-    return res.status(201).json({ 
+    res.status(201).json({ 
       message: "Usuário registrado com sucesso", 
       token,
       user: userWithoutPassword 
     });
 
   } catch (error) {
-    return handleError(res, error, "Erro no registro:");
+    // Passa erros (incluindo P2002 do Prisma se a verificação acima falhar) para o middleware global
+    next(error);
   }
 };
+
