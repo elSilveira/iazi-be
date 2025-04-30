@@ -137,7 +137,7 @@ router.post("/", createAppointmentValidator, validateRequest, createAppointment)
  * @swagger
  * /api/appointments/{id}/status:
  *   patch:
- *     summary: Atualiza o status de um agendamento (ex: CONFIRMED, COMPLETED)
+ *     summary: "Atualiza o status de um agendamento (ex: CONFIRMED, COMPLETED)"
  *     tags: [Appointments]
  *     security:
  *       - bearerAuth: [] # Geralmente apenas profissional/admin pode mudar status

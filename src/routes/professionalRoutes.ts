@@ -113,7 +113,7 @@ router.get("/:id", professionalIdValidator, validateRequest, getProfessionalById
  *             schema:
  *               $ref: '#/components/schemas/Professional'
  *       400:
- *         description: Erro de validação nos dados fornecidos (ex: companyId inválido).
+ *         description: "Erro de validação nos dados fornecidos (ex: companyId inválido)."
  *       401:
  *         description: Não autorizado.
  *       500:
