@@ -16,7 +16,11 @@ model User {
   email         String    @unique
   name          String
   password      String
-  avatar        String?
+  avatarUrl     String?   // Renamed from avatar, added based on controller/frontend usage
+  bio           String?   // Added bio field based on controller/frontend usage
+  phone         String?   // Added phone field based on controller/frontend usage
+  address       String?   // Added address field based on controller/frontend usage
+  role          UserRole  @default(USER) // Added role field based on controller/test usage
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   appointments  Appointment[]
@@ -31,13 +35,13 @@ model Company {
   logo          String?
   coverImage    String?
   rating        Float     @default(0)
-  totalReviews  Int       @default(0) // Campo para total de avaliações
+  totalReviews  Int       @default(0)
   yearEstablished String?
   phone         String?
   email         String?
   address       Address?
   workingHours  Json?
-  categories    String[]
+  categories    String[] // TODO: Consider changing to relation with Category model
   services      Service[]
   professionals Professional[]
   reviews       Review[]
@@ -68,11 +72,8 @@ model Service {
   description   String
   price         String
   duration      String
-  category      String
+  category      String // TODO: Consider changing to relation with Category model
   image         String?
-  // Adicionar rating e totalReviews aqui se necessário no futuro
-  // rating        Float     @default(0)
-  // totalReviews  Int       @default(0)
   company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   companyId     String
   professionals ProfessionalService[]
@@ -89,8 +90,7 @@ model Professional {
   role          String
   image         String?
   rating        Float     @default(0)
-  totalReviews  Int       @default(0) // Adicionado: Campo para total de avaliações
-  // appointments  Int       @default(0) // Removido/Comentado: Este campo parecia incorreto
+  totalReviews  Int       @default(0)
   company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   companyId     String
   services      ProfessionalService[]
@@ -106,15 +106,15 @@ model ProfessionalService {
   professionalId String
   service       Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   serviceId     String
-  price         String?      // Preço específico deste profissional para este serviço (pode ser diferente do preço padrão)
-  
+  price         String?
+
   @@id([professionalId, serviceId])
 }
 
 // Modelo de Agendamento
 model Appointment {
   id            String    @id @default(uuid())
-  date          DateTime
+  date          DateTime // Frontend used dateTime, check consistency if issues arise
   status        AppointmentStatus @default(PENDING)
   user          User      @relation(fields: [userId], references: [id])
   userId        String
@@ -144,11 +144,29 @@ model Review {
   updatedAt     DateTime  @updatedAt
 }
 
+// Modelo de Categoria (NOVO)
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  icon      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // TODO: Consider adding relation to Service/Company models
+  // services  Service[] // Example if Service relates to one Category
+}
+
 // Enumeração para status de agendamento
 enum AppointmentStatus {
   PENDING
   CONFIRMED
   COMPLETED
   CANCELLED
+}
+
+// Enumeração para papel do usuário (NOVO)
+enum UserRole {
+  USER
+  ADMIN
+  // Add other roles like PROFESSIONAL, COMPANY_ADMIN if needed
 }
 
