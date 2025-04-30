@@ -59,10 +59,13 @@ jest.mock('@prisma/client', () => {
 // --- Mock Auth Middleware --- //
 type MockAuthMiddleware = (req: Request, res: Response, next: NextFunction) => void;
 
+// Use a valid UUID for the test user ID in the mock middleware
+const testUserIdUUID = '123e4567-e89b-12d3-a456-426614174000'; 
+
 jest.mock('../middlewares/authMiddleware', (): { authMiddleware: MockAuthMiddleware } => ({
   authMiddleware: (req: any, res: Response, next: NextFunction) => {
     if (req.headers.authorization?.startsWith('Bearer ')) {
-        req.user = { id: 'user-test-id' }; 
+        req.user = { id: testUserIdUUID }; // Use valid UUID
     } 
     next();
   }
@@ -76,12 +79,14 @@ if (!process.env.JWT_SECRET) {
 
 describe('Appointment API Integration Tests', () => {
   let authToken: string;
-  const testUserId = 'user-test-id';
-  const testServiceId = 'service-test-id';
-  const testProfessionalId = 'prof-test-id';
+  // Use valid UUIDs for test IDs
+  const testServiceIdUUID = '123e4567-e89b-12d3-a456-426614174001';
+  const testProfessionalIdUUID = '123e4567-e89b-12d3-a456-426614174002';
+  const testAppointmentIdUUID = '123e4567-e89b-12d3-a456-426614174003';
 
   beforeAll(() => {
-    authToken = jwt.sign({ userId: testUserId, email: 'test@example.com' }, testJwtSecret, { expiresIn: '1h' });
+    // Sign token with the valid UUID
+    authToken = jwt.sign({ userId: testUserIdUUID, email: 'test@example.com' }, testJwtSecret, { expiresIn: '1h' });
   });
 
   beforeEach(() => {
@@ -100,25 +105,26 @@ describe('Appointment API Integration Tests', () => {
       appointmentDate.setDate(appointmentDate.getDate() + 1);
       const appointmentData = {
         date: appointmentDate.toISOString(),
-        serviceId: testServiceId,
-        professionalId: testProfessionalId,
+        serviceId: testServiceIdUUID, // Use valid UUID
+        professionalId: testProfessionalIdUUID, // Use valid UUID
         notes: 'Test appointment notes',
       };
 
       const mockCreatedAppointment = {
-        id: 'appt-test-id',
+        id: testAppointmentIdUUID, // Use valid UUID
         date: appointmentDate,
-        userId: testUserId,
-        serviceId: testServiceId,
-        professionalId: testProfessionalId,
+        userId: testUserIdUUID, // Use valid UUID
+        serviceId: testServiceIdUUID, // Use valid UUID
+        professionalId: testProfessionalIdUUID, // Use valid UUID
         notes: 'Test appointment notes',
         status: 'PENDING',
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      (mockPrismaObject.service.findUnique as jest.Mock).mockResolvedValue({ id: testServiceId }); 
-      (mockPrismaObject.professional.findUnique as jest.Mock).mockResolvedValue({ id: testProfessionalId }); 
+      // Mock Prisma calls expected by the controller
+      (mockPrismaObject.service.findUnique as jest.Mock).mockResolvedValue({ id: testServiceIdUUID }); 
+      (mockPrismaObject.professional.findUnique as jest.Mock).mockResolvedValue({ id: testProfessionalIdUUID }); 
       (mockPrismaObject.appointment.create as jest.Mock).mockResolvedValue(mockCreatedAppointment);
 
       const response = await request(app)
@@ -126,17 +132,18 @@ describe('Appointment API Integration Tests', () => {
         .set('Authorization', `Bearer ${authToken}`) 
         .send(appointmentData);
 
+      // Assertions
       expect(response.statusCode).toBe(201);
-      expect(response.body).toHaveProperty('id', 'appt-test-id');
-      expect(response.body).toHaveProperty('userId', testUserId);
+      expect(response.body).toHaveProperty('id', testAppointmentIdUUID);
+      expect(response.body).toHaveProperty('userId', testUserIdUUID);
       expect(mockPrismaObject.appointment.create).toHaveBeenCalledTimes(1);
       expect(mockPrismaObject.appointment.create).toHaveBeenCalledWith({
         data: {
           date: expect.any(Date), 
           notes: 'Test appointment notes',
-          user: { connect: { id: testUserId } }, 
-          service: { connect: { id: testServiceId } },
-          professional: { connect: { id: testProfessionalId } },
+          user: { connect: { id: testUserIdUUID } }, // Controller gets this from req.user (mocked)
+          service: { connect: { id: testServiceIdUUID } },
+          professional: { connect: { id: testProfessionalIdUUID } },
         },
       });
     });
@@ -146,8 +153,8 @@ describe('Appointment API Integration Tests', () => {
         appointmentDate.setDate(appointmentDate.getDate() + 1);
         const appointmentData = {
             date: appointmentDate.toISOString(),
-            serviceId: testServiceId,
-            professionalId: testProfessionalId,
+            serviceId: testServiceIdUUID, // Use valid UUID
+            professionalId: testProfessionalIdUUID, // Use valid UUID
         };
 
         const response = await request(app)
@@ -179,8 +186,8 @@ describe('Appointment API Integration Tests', () => {
         appointmentDate.setDate(appointmentDate.getDate() + 1);
         const appointmentData = {
             date: appointmentDate.toISOString(),
-            serviceId: 'non-existent-service',
-            professionalId: testProfessionalId,
+            serviceId: '123e4567-e89b-12d3-a456-426614174999', // Use a valid UUID format, but non-existent
+            professionalId: testProfessionalIdUUID, // Use valid UUID
         };
         
         // Use the actual Prisma error class from the mock setup
@@ -209,8 +216,8 @@ describe('Appointment API Integration Tests', () => {
   describe('GET /api/appointments', () => {
     it('should return a list of appointments for the authenticated user', async () => {
         const mockAppointments = [
-            { id: 'appt-1', userId: testUserId, serviceId: 'svc-1', professionalId: 'prof-1', date: new Date(), status: 'CONFIRMED' },
-            { id: 'appt-2', userId: testUserId, serviceId: 'svc-2', professionalId: 'prof-2', date: new Date(), status: 'PENDING' },
+            { id: '123e4567-e89b-12d3-a456-426614174010', userId: testUserIdUUID, serviceId: 'svc-1', professionalId: 'prof-1', date: new Date(), status: 'CONFIRMED' },
+            { id: '123e4567-e89b-12d3-a456-426614174011', userId: testUserIdUUID, serviceId: 'svc-2', professionalId: 'prof-2', date: new Date(), status: 'PENDING' },
         ];
         (mockPrismaObject.appointment.findMany as jest.Mock).mockResolvedValue(mockAppointments);
 
@@ -221,10 +228,10 @@ describe('Appointment API Integration Tests', () => {
         expect(response.statusCode).toBe(200);
         expect(response.body).toBeInstanceOf(Array);
         expect(response.body.length).toBe(2);
-        expect(response.body[0].id).toBe('appt-1');
+        expect(response.body[0].id).toBe('123e4567-e89b-12d3-a456-426614174010');
         expect(mockPrismaObject.appointment.findMany).toHaveBeenCalledTimes(1);
         expect(mockPrismaObject.appointment.findMany).toHaveBeenCalledWith(expect.objectContaining({ 
-            where: expect.objectContaining({ userId: testUserId }) 
+            where: expect.objectContaining({ userId: testUserIdUUID }) 
         }));
     });
 
@@ -238,23 +245,23 @@ describe('Appointment API Integration Tests', () => {
     });
 
     it('should return a list of appointments filtered by professionalId', async () => {
-        const professionalFilterId = 'prof-filter-id';
+        const professionalFilterIdUUID = '123e4567-e89b-12d3-a456-426614174020'; // Use valid UUID
         const mockAppointments = [
-            { id: 'appt-3', userId: 'user-other', serviceId: 'svc-3', professionalId: professionalFilterId, date: new Date(), status: 'CONFIRMED' },
+            { id: '123e4567-e89b-12d3-a456-426614174021', userId: 'user-other', serviceId: 'svc-3', professionalId: professionalFilterIdUUID, date: new Date(), status: 'CONFIRMED' },
         ];
         (mockPrismaObject.appointment.findMany as jest.Mock).mockResolvedValue(mockAppointments);
 
         const response = await request(app)
-            .get(`/api/appointments?professionalId=${professionalFilterId}`)
+            .get(`/api/appointments?professionalId=${professionalFilterIdUUID}`)
             .set('Authorization', `Bearer ${authToken}`); 
 
         expect(response.statusCode).toBe(200);
         expect(response.body).toBeInstanceOf(Array);
         expect(response.body.length).toBe(1);
-        expect(response.body[0].professionalId).toBe(professionalFilterId);
+        expect(response.body[0].professionalId).toBe(professionalFilterIdUUID);
         expect(mockPrismaObject.appointment.findMany).toHaveBeenCalledTimes(1);
         expect(mockPrismaObject.appointment.findMany).toHaveBeenCalledWith(expect.objectContaining({ 
-            where: expect.objectContaining({ professionalId: professionalFilterId }) 
+            where: expect.objectContaining({ professionalId: professionalFilterIdUUID }) 
         }));
     });
 
