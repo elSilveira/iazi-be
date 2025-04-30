@@ -10,6 +10,8 @@ import companyRouter from './routes/companyRoutes';
 import professionalRouter from './routes/professionalRoutes'; // Descomentado
 import appointmentRouter from './routes/appointmentRoutes'; // Descomentado
 import reviewRouter from './routes/reviewRoutes'; // Descomentado
+import userRouter from './routes/userRoutes'; // Added for user profile
+import categoryRouter from './routes/categoryRoutes'; // Added for categories
 import { setupSwagger } from './swagger';
 
 const app: Express = express();
@@ -34,9 +36,9 @@ app.use('/api/services', serviceRouter);
 app.use('/api/companies', companyRouter);
 app.use('/api/professionals', professionalRouter); // Descomentado
 app.use('/api/appointments', appointmentRouter); // Descomentado
-app.use('/api/reviews', reviewRouter); // Descomentado
-
-// TODO: Implementar um middleware de tratamento de erros global
+app.use(\'/api/reviews\', reviewRouter); // Descomentado
+app.use(\'/api/users\', userRouter); // Added for user profile
+app.use(\'/api/categories\', categoryRouter); // Added for categories// TODO: Implementar um middleware de tratamento de erros global
 // app.use(globalErrorHandler);
 
 // Exportar o app para uso em testes de integração
