@@ -8,106 +8,96 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteCompany = exports.updateCompany = exports.createCompany = exports.getCompanyById = exports.getAllCompanies = void 0;
 const companyRepository_1 = require("../repositories/companyRepository");
-const client_1 = require("@prisma/client"); // Revertido: Importar de @prisma/client
 // Obter todas as empresas
-const getAllCompanies = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getAllCompanies = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const companies = yield companyRepository_1.companyRepository.getAll();
-        return res.json(companies);
+        res.json(companies);
     }
     catch (error) {
-        console.error("Erro ao buscar empresas:", error);
-        return res.status(500).json({ message: "Erro interno do servidor" });
+        next(error); // Passa o erro para o middleware global
     }
 });
 exports.getAllCompanies = getAllCompanies;
 // Obter uma empresa específica pelo ID
-const getCompanyById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getCompanyById = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
+    // A validação do formato do ID será feita pelo express-validator
     try {
         const company = yield companyRepository_1.companyRepository.findById(id);
         if (!company) {
-            return res.status(404).json({ message: "Empresa não encontrada" });
+            // Lança um erro que será capturado pelo middleware global
+            const error = new Error("Empresa não encontrada");
+            error.statusCode = 404;
+            return next(error);
         }
-        return res.json(company);
+        res.json(company);
     }
     catch (error) {
-        console.error(`Erro ao buscar empresa ${id}:`, error);
-        return res.status(500).json({ message: "Erro interno do servidor" });
+        next(error);
     }
 });
 exports.getCompanyById = getCompanyById;
 // Criar uma nova empresa
-const createCompany = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    const data = req.body;
-    // Validação básica
-    if (!data.name || !data.email) {
-        return res.status(400).json({ message: "Nome e email são obrigatórios" });
-    }
-    // TODO: Adicionar validação mais robusta (ex: formato de email, telefone)
-    // TODO: Tratar a criação do endereço associado (data.address)
+const createCompany = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    // A validação dos dados (empresa e endereço) será feita pelo express-validator
+    const _a = req.body, { address } = _a, companyData = __rest(_a, ["address"]);
     try {
-        const newCompany = yield companyRepository_1.companyRepository.create(data);
-        return res.status(201).json(newCompany);
+        // Passar dados da empresa e do endereço separadamente para o repositório
+        const newCompany = yield companyRepository_1.companyRepository.create(companyData, address);
+        res.status(201).json(newCompany);
     }
     catch (error) {
-        console.error("Erro ao criar empresa:", error);
-        if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-            // Verificar qual campo causou a violação (ex: email)
-            if (((_a = error.meta) === null || _a === void 0 ? void 0 : _a.target) === 'Company_email_key') {
-                return res.status(409).json({ message: "Email já cadastrado para outra empresa." });
-            }
-            return res.status(409).json({ message: "Erro de conflito ao criar empresa (possível duplicidade)." });
-        }
-        return res.status(500).json({ message: "Erro interno do servidor" });
+        // Erros, incluindo P2002 (duplicidade), serão tratados pelo middleware global
+        next(error);
     }
 });
 exports.createCompany = createCompany;
 // Atualizar uma empresa existente
-const updateCompany = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const updateCompany = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
-    const data = req.body;
-    // TODO: Tratar a atualização do endereço associado (data.address)
+    // A validação do formato do ID e dos dados do body será feita pelo express-validator
+    const _a = req.body, { address } = _a, companyData = __rest(_a, ["address"]);
     try {
-        const updatedCompany = yield companyRepository_1.companyRepository.update(id, data);
-        if (!updatedCompany) {
-            return res.status(404).json({ message: "Empresa não encontrada para atualização" });
-        }
-        return res.json(updatedCompany);
+        // Passar dados da empresa e do endereço separadamente para o repositório
+        const updatedCompany = yield companyRepository_1.companyRepository.update(id, companyData, address);
+        // O repositório deve lançar um erro se a empresa não for encontrada (Prisma P2025)
+        // que será tratado pelo middleware global
+        res.json(updatedCompany);
     }
     catch (error) {
-        console.error(`Erro ao atualizar empresa ${id}:`, error);
-        if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-            return res.status(409).json({ message: "Erro de conflito ao atualizar empresa (possível duplicidade de email)." });
-        }
-        // O erro P2025 (Not Found) já é tratado pelo retorno null do repositório
-        return res.status(500).json({ message: "Erro interno do servidor" });
+        // Erros, incluindo P2025 (não encontrado) ou P2002 (duplicidade), serão tratados pelo middleware global
+        next(error);
     }
 });
 exports.updateCompany = updateCompany;
 // Deletar uma empresa
-const deleteCompany = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const deleteCompany = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
+    // A validação do formato do ID será feita pelo express-validator
     try {
-        // O repositório já deve lidar com a exclusão em cascata ou manual do endereço, se configurado
         const deletedCompany = yield companyRepository_1.companyRepository.delete(id);
-        if (!deletedCompany) {
-            return res.status(404).json({ message: "Empresa não encontrada para exclusão" });
-        }
-        return res.status(200).json({ message: "Empresa excluída com sucesso", company: deletedCompany });
+        // O repositório deve lançar um erro se a empresa não for encontrada (Prisma P2025)
+        // que será tratado pelo middleware global
+        res.status(200).json({ message: "Empresa excluída com sucesso", company: deletedCompany });
     }
     catch (error) {
-        console.error(`Erro ao deletar empresa ${id}:`, error);
-        // O erro P2025 (Not Found) já é tratado pelo retorno null do repositório
-        // Tratar outros erros potenciais (ex: P2003 - Foreign key constraint, se houver dependências não tratadas)
-        if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
-            return res.status(409).json({ message: "Não é possível excluir a empresa pois existem registros associados (ex: profissionais, serviços)." });
-        }
-        return res.status(500).json({ message: "Erro interno do servidor" });
+        // Erros, incluindo P2025 (não encontrado) ou P2003 (restrição FK), serão tratados pelo middleware global
+        next(error);
     }
 });
 exports.deleteCompany = deleteCompany;

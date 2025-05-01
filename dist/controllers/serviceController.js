@@ -22,135 +22,95 @@ var __rest = (this && this.__rest) || function (s, e) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteService = exports.updateService = exports.createService = exports.getServiceById = exports.getAllServices = void 0;
 const serviceRepository_1 = require("../repositories/serviceRepository");
-const client_1 = require("@prisma/client");
-// Função auxiliar para tratamento de erros
-const handleError = (res, error, message) => {
-    console.error(message, error);
-    if (error instanceof client_1.Prisma.PrismaClientKnownRequestError) {
-        if (error.code === "P2003") {
-            // FK constraint failed
-            return res.status(400).json({ message: "ID da empresa inválido." });
-        }
-        if (error.code === "P2025") {
-            // Record not found for update/delete
-            return res.status(404).json({ message: "Registro não encontrado para a operação." });
-        }
-    }
-    return res.status(500).json({ message: "Erro interno do servidor" });
-};
 // Obter todos os serviços (opcionalmente filtrados por companyId)
-const getAllServices = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getAllServices = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { companyId } = req.query;
+    // A validação do formato do companyId (se fornecido) será feita pelo express-validator
     try {
         const services = yield serviceRepository_1.serviceRepository.getAll(companyId);
-        return res.json(services);
+        res.json(services);
     }
     catch (error) {
-        return handleError(res, error, "Erro ao buscar serviços:");
+        next(error); // Passa o erro para o middleware global
     }
 });
 exports.getAllServices = getAllServices;
 // Obter um serviço específico pelo ID
-const getServiceById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getServiceById = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
+    // A validação do formato do ID será feita pelo express-validator
     try {
         const service = yield serviceRepository_1.serviceRepository.findById(id);
         if (!service) {
-            return res.status(404).json({ message: "Serviço não encontrado" });
+            // Lança um erro que será capturado pelo middleware global (P2025)
+            const error = new Error("Serviço não encontrado");
+            error.statusCode = 404;
+            return next(error);
         }
-        return res.json(service);
+        res.json(service);
     }
     catch (error) {
-        return handleError(res, error, `Erro ao buscar serviço ${id}:`);
+        next(error);
     }
 });
 exports.getServiceById = getServiceById;
 // Criar um novo serviço
-const createService = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    // Extrair dados do corpo da requisição
+const createService = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    // A validação dos dados (nome, preço, companyId, etc.) será feita pelo express-validator
     const { name, description, price, duration, image, category, companyId } = req.body;
-    // Validação básica
-    if (!name || price === undefined || !companyId) {
-        return res.status(400).json({ message: "Nome, preço e ID da empresa são obrigatórios" });
-    }
-    const numericPrice = Number(price);
-    if (isNaN(numericPrice) || numericPrice < 0) {
-        return res.status(400).json({ message: "O preço deve ser um valor numérico não negativo." });
-    }
-    const numericDuration = duration !== undefined ? Number(duration) : undefined;
-    if (numericDuration !== undefined && (isNaN(numericDuration) || numericDuration <= 0)) {
-        return res.status(400).json({ message: "A duração deve ser um valor numérico positivo, se fornecida." });
-    }
     try {
         // Montar o objeto de dados para o Prisma usando 'connect'
+        // Os validadores devem garantir que price e duration são strings válidas
         const dataToCreate = {
             name,
-            description: description, // opcional
-            price: String(numericPrice),
-            duration: numericDuration !== undefined ? String(numericDuration) : "", // opcional, default to empty string
-            image: image, // opcional
-            category: category, // opcional
+            description,
+            price, // Assumindo que o validator garante que é uma string válida
+            duration, // Assumindo que o validator garante que é uma string válida
+            image,
+            category,
             company: { connect: { id: companyId } },
-            // rating, appointments, professionals, reviews são definidos por padrão no schema
         };
         const newService = yield serviceRepository_1.serviceRepository.create(dataToCreate);
-        return res.status(201).json(newService);
+        res.status(201).json(newService);
     }
     catch (error) {
-        return handleError(res, error, "Erro ao criar serviço:");
+        // Erros, incluindo P2003 (FK inválida), serão tratados pelo middleware global
+        next(error);
     }
 });
 exports.createService = createService;
 // Atualizar um serviço existente
-const updateService = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const updateService = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
+    // A validação do formato do ID e dos dados do body será feita pelo express-validator
     // Não permitir atualização do companyId via este endpoint
     const _a = req.body, { companyId } = _a, dataToUpdate = __rest(_a, ["companyId"]);
-    // Validar preço se fornecido
-    if (dataToUpdate.price !== undefined) {
-        const numericPrice = Number(dataToUpdate.price);
-        if (isNaN(numericPrice) || numericPrice < 0) {
-            return res.status(400).json({ message: "O preço deve ser um valor numérico não negativo." });
-        }
-        dataToUpdate.price = numericPrice;
-    }
-    // Validar duração se fornecida
-    if (dataToUpdate.duration !== undefined) {
-        const numericDuration = Number(dataToUpdate.duration);
-        if (isNaN(numericDuration) || numericDuration <= 0) {
-            return res.status(400).json({ message: "A duração deve ser um valor numérico positivo." });
-        }
-        dataToUpdate.duration = numericDuration;
-    }
     try {
+        // Os validadores devem garantir que price e duration (se fornecidos) são strings válidas
         const updatedService = yield serviceRepository_1.serviceRepository.update(id, dataToUpdate);
-        if (!updatedService) {
-            return res.status(404).json({ message: "Serviço não encontrado para atualização" });
-        }
-        return res.json(updatedService);
+        // O repositório deve lançar um erro se o serviço não for encontrado (Prisma P2025)
+        // que será tratado pelo middleware global
+        res.json(updatedService);
     }
     catch (error) {
-        return handleError(res, error, `Erro ao atualizar serviço ${id}:`);
+        // Erros, incluindo P2025 (não encontrado), serão tratados pelo middleware global
+        next(error);
     }
 });
 exports.updateService = updateService;
 // Deletar um serviço
-const deleteService = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const deleteService = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
+    // A validação do formato do ID será feita pelo express-validator
     try {
         const deletedService = yield serviceRepository_1.serviceRepository.delete(id);
-        if (!deletedService) {
-            // O repositório já trata P2025 retornando null
-            return res.status(404).json({ message: "Serviço não encontrado para exclusão" });
-        }
-        return res.status(200).json({ message: "Serviço excluído com sucesso", service: deletedService });
+        // O repositório deve lançar um erro se o serviço não for encontrado (Prisma P2025)
+        // que será tratado pelo middleware global
+        res.status(200).json({ message: "Serviço excluído com sucesso", service: deletedService });
     }
     catch (error) {
-        // Tratar erro P2003 (FK constraint) se houver dependências não tratadas no repositório
-        if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
-            return res.status(409).json({ message: "Não é possível excluir o serviço pois existem registros associados (ex: agendamentos, avaliações)." });
-        }
-        return handleError(res, error, `Erro ao deletar serviço ${id}:`);
+        // Erros, incluindo P2025 (não encontrado) ou P2003 (restrição FK), serão tratados pelo middleware global
+        next(error);
     }
 });
 exports.deleteService = deleteService;

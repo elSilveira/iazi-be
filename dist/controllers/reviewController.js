@@ -23,131 +23,164 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteReview = exports.updateReview = exports.createReview = exports.getReviewById = exports.getReviews = void 0;
 const reviewRepository_1 = require("../repositories/reviewRepository");
 const client_1 = require("@prisma/client");
-// Função auxiliar para tratamento de erros
-const handleError = (res, error, message) => {
-    console.error(message, error);
-    if (error instanceof client_1.Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2003') {
-            return res.status(400).json({ message: 'Um ou mais IDs fornecidos (usuário, serviço, profissional ou empresa) são inválidos.' });
-        }
-        if (error.code === 'P2025') {
-            // O repositório já trata P2025 retornando null, mas podemos logar
-            console.error("Prisma Error P2025: Record not found.");
-            // Não retornamos aqui, pois o controlador já trata o null
-        }
-    }
-    return res.status(500).json({ message: 'Erro interno do servidor' });
+// Helper function for UUID validation
+const isValidUUID = (uuid) => {
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    return uuidRegex.test(uuid);
 };
 // Obter avaliações com filtros opcionais
-const getReviews = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getReviews = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { serviceId, professionalId, companyId } = req.query;
+    // Validar IDs se fornecidos
+    if (serviceId && !isValidUUID(serviceId)) {
+        res.status(400).json({ message: 'Formato de ID do serviço inválido.' });
+        return;
+    }
+    if (professionalId && !isValidUUID(professionalId)) {
+        res.status(400).json({ message: 'Formato de ID do profissional inválido.' });
+        return;
+    }
+    if (companyId && !isValidUUID(companyId)) {
+        res.status(400).json({ message: 'Formato de ID da empresa inválido.' });
+        return;
+    }
     try {
         let reviews;
-        if (serviceId) {
-            reviews = yield reviewRepository_1.reviewRepository.findByService(serviceId);
-        }
-        else if (professionalId) {
-            reviews = yield reviewRepository_1.reviewRepository.findByProfessional(professionalId);
-        }
-        else if (companyId) {
-            reviews = yield reviewRepository_1.reviewRepository.findByCompany(companyId);
-        }
-        else {
-            return res.status(400).json({
+        const filters = {};
+        if (serviceId)
+            filters.serviceId = serviceId;
+        if (professionalId)
+            filters.professionalId = professionalId;
+        if (companyId)
+            filters.companyId = companyId;
+        // Exigir pelo menos um filtro
+        if (!serviceId && !professionalId && !companyId) {
+            res.status(400).json({
                 message: "É necessário fornecer serviceId, professionalId ou companyId para filtrar as avaliações"
             });
+            return;
         }
-        return res.json(reviews);
+        reviews = yield reviewRepository_1.reviewRepository.findMany(filters); // Assuming findMany exists
+        res.json(reviews);
     }
     catch (error) {
-        return handleError(res, error, 'Erro ao buscar avaliações:');
+        console.error('Erro ao buscar avaliações:', error);
+        next(error); // Pass error to error handler
     }
 });
 exports.getReviews = getReviews;
 // Obter uma avaliação específica pelo ID
-const getReviewById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getReviewById = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+        res.status(400).json({ message: "Formato de ID inválido." });
+        return;
+    }
     try {
         const review = yield reviewRepository_1.reviewRepository.findById(id);
         if (!review) {
-            return res.status(404).json({ message: "Avaliação não encontrada" });
+            res.status(404).json({ message: "Avaliação não encontrada" });
+            return;
         }
-        return res.json(review);
+        res.json(review);
     }
     catch (error) {
-        return handleError(res, error, `Erro ao buscar avaliação ${id}:`);
+        console.error(`Erro ao buscar avaliação ${id}:`, error);
+        next(error); // Pass error to error handler
     }
 });
 exports.getReviewById = getReviewById;
 // Criar uma nova avaliação
-const createReview = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    // Extrair dados do corpo da requisição
+const createReview = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { rating, comment, userId, serviceId, professionalId, companyId } = req.body;
-    // Validação básica
+    // Validação (Idealmente com express-validator)
     if (!rating || !userId || (!serviceId && !professionalId && !companyId)) {
-        return res.status(400).json({
+        res.status(400).json({
             message: "Avaliação (rating), ID do usuário e pelo menos um ID de serviço, profissional ou empresa são obrigatórios"
         });
+        return;
     }
-    // Validar a avaliação (rating)
+    if (!isValidUUID(userId) || (serviceId && !isValidUUID(serviceId)) || (professionalId && !isValidUUID(professionalId)) || (companyId && !isValidUUID(companyId))) {
+        res.status(400).json({ message: 'Formato de ID inválido para usuário, serviço, profissional ou empresa.' });
+        return;
+    }
     const numericRating = Number(rating);
     if (isNaN(numericRating) || numericRating < 1 || numericRating > 5) {
-        return res.status(400).json({ message: "A avaliação deve ser um valor numérico entre 1 e 5" });
+        res.status(400).json({ message: "A avaliação deve ser um valor numérico entre 1 e 5" });
+        return;
     }
     try {
-        // Montar o objeto de dados para o Prisma usando 'connect'
         const dataToCreate = Object.assign(Object.assign(Object.assign({ rating: numericRating, comment: comment, user: { connect: { id: userId } } }, (serviceId && { service: { connect: { id: serviceId } } })), (professionalId && { professional: { connect: { id: professionalId } } })), (companyId && { company: { connect: { id: companyId } } }));
         const newReview = yield reviewRepository_1.reviewRepository.create(dataToCreate);
-        // TODO: Implementar lógica para atualizar a média de avaliação na entidade relacionada
-        return res.status(201).json(newReview);
+        res.status(201).json(newReview);
     }
     catch (error) {
-        return handleError(res, error, 'Erro ao criar avaliação:');
+        console.error('Erro ao criar avaliação:', error);
+        if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+            res.status(400).json({ message: 'Um ou mais IDs fornecidos (usuário, serviço, profissional ou empresa) são inválidos.' });
+            return;
+        }
+        next(error); // Pass other errors to error handler
     }
 });
 exports.createReview = createReview;
 // Atualizar uma avaliação existente
-const updateReview = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const updateReview = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
-    // Não permitir alterar userId, serviceId, professionalId, companyId via update
+    if (!isValidUUID(id)) {
+        res.status(400).json({ message: "Formato de ID inválido." });
+        return;
+    }
     const _a = req.body, { userId, serviceId, professionalId, companyId } = _a, dataToUpdate = __rest(_a, ["userId", "serviceId", "professionalId", "companyId"]);
-    // Validar a avaliação (rating) se fornecida
     if (dataToUpdate.rating !== undefined) {
         const numericRating = Number(dataToUpdate.rating);
         if (isNaN(numericRating) || numericRating < 1 || numericRating > 5) {
-            return res.status(400).json({ message: "A avaliação deve ser um valor numérico entre 1 e 5" });
+            res.status(400).json({ message: "A avaliação deve ser um valor numérico entre 1 e 5" });
+            return;
         }
-        dataToUpdate.rating = numericRating; // Garantir que seja número
+        dataToUpdate.rating = numericRating;
     }
     try {
         const updatedReview = yield reviewRepository_1.reviewRepository.update(id, dataToUpdate);
         if (!updatedReview) {
-            return res.status(404).json({ message: "Avaliação não encontrada para atualização" });
+            res.status(404).json({ message: "Avaliação não encontrada para atualização" });
+            return;
         }
-        // TODO: Implementar lógica para recalcular a média de avaliação na entidade relacionada
-        return res.json(updatedReview);
+        res.json(updatedReview);
     }
     catch (error) {
-        return handleError(res, error, `Erro ao atualizar avaliação ${id}:`);
+        console.error(`Erro ao atualizar avaliação ${id}:`, error);
+        if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+            res.status(404).json({ message: "Avaliação não encontrada para atualização." });
+            return;
+        }
+        next(error); // Pass other errors to error handler
     }
 });
 exports.updateReview = updateReview;
 // Deletar uma avaliação
-const deleteReview = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const deleteReview = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+        res.status(400).json({ message: "Formato de ID inválido." });
+        return;
+    }
     try {
         const deletedReview = yield reviewRepository_1.reviewRepository.delete(id);
         if (!deletedReview) {
-            return res.status(404).json({ message: "Avaliação não encontrada para exclusão" });
+            res.status(404).json({ message: "Avaliação não encontrada para exclusão" });
+            return;
         }
-        // TODO: Implementar lógica para recalcular a média de avaliação na entidade relacionada
-        return res.status(200).json({
-            message: "Avaliação excluída com sucesso",
-            review: deletedReview
-        });
+        // Use 204 No Content for successful deletion
+        res.status(204).send();
     }
     catch (error) {
-        return handleError(res, error, `Erro ao deletar avaliação ${id}:`);
+        console.error(`Erro ao deletar avaliação ${id}:`, error);
+        if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+            res.status(404).json({ message: "Avaliação não encontrada para exclusão." });
+            return;
+        }
+        next(error); // Pass other errors to error handler
     }
 });
 exports.deleteReview = deleteReview;
