@@ -2,24 +2,101 @@ import { Request, Response, NextFunction } from "express";
 import { companyRepository } from "../repositories/companyRepository";
 import { Prisma } from "@prisma/client";
 
-// Obter todas as empresas
+// Obter todas as empresas (com filtros e paginação)
 export const getAllCompanies = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  // Extrair filtros e paginação da query string
+  const { 
+    q, // Search term
+    category, // Filter by category (from categories array)
+    city, 
+    state, 
+    minRating, 
+    sort, // e.g., "rating_desc", "name_asc"
+    page = "1", // Default page 1
+    limit = "10" // Default 10 items per page
+  } = req.query;
+
+  // Validar e converter parâmetros de paginação
+  const pageNum = parseInt(page as string, 10);
+  const limitNum = parseInt(limit as string, 10);
+
+  if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1) {
+    res.status(400).json({ message: "Parâmetros de paginação inválidos (page e limit devem ser números positivos)." });
+    return;
+  }
+
+  const skip = (pageNum - 1) * limitNum;
+
   try {
-    const companies = await companyRepository.getAll();
-    res.json(companies);
+    // Construir objeto de filtros para Prisma
+    const filters: Prisma.CompanyWhereInput = {};
+    if (category) filters.categories = { has: category as string }; 
+    if (q) {
+      const searchTerm = q as string;
+      filters.OR = [
+        { name: { contains: searchTerm, mode: "insensitive" } },
+        { description: { contains: searchTerm, mode: "insensitive" } },
+        { categories: { has: searchTerm } }, 
+        // Add search in address fields
+        { address: { city: { contains: searchTerm, mode: "insensitive" } } },
+        { address: { state: { contains: searchTerm, mode: "insensitive" } } },
+      ];
+    }
+    
+    // Corrected: Add location filters properly
+    const addressFilter: Prisma.AddressWhereInput = {};
+    if (city) addressFilter.city = { contains: city as string, mode: "insensitive" };
+    if (state) addressFilter.state = { contains: state as string, mode: "insensitive" };
+    // Only add the address filter if city or state was provided
+    if (Object.keys(addressFilter).length > 0) {
+        filters.address = addressFilter;
+    }
+    
+    // Add rating filter (schema has rating as Float)
+    if (minRating) {
+      const ratingNum = parseFloat(minRating as string);
+      if (!isNaN(ratingNum)) {
+        filters.rating = { gte: ratingNum };
+      }
+    }
+
+    // Construir objeto de ordenação para Prisma
+    let orderBy: Prisma.CompanyOrderByWithRelationInput = {};
+    switch (sort as string) {
+      case "rating_desc":
+        orderBy = { rating: "desc" }; 
+        break;
+      case "name_asc":
+        orderBy = { name: "asc" };
+        break;
+      default:
+        orderBy = { name: "asc" }; // Default sort
+    }
+
+    // Assume repository methods findMany and count exist
+    const companies = await companyRepository.findMany(filters, orderBy, skip, limitNum);
+    const totalCompanies = await companyRepository.count(filters);
+
+    res.json({
+      data: companies,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: Math.ceil(totalCompanies / limitNum),
+        totalItems: totalCompanies,
+        itemsPerPage: limitNum,
+      },
+    });
   } catch (error) {
-    next(error); // Passa o erro para o middleware global
+    next(error); 
   }
 };
 
 // Obter uma empresa específica pelo ID
 export const getCompanyById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { id } = req.params;
-  // A validação do formato do ID será feita pelo express-validator
   try {
     const company = await companyRepository.findById(id);
     if (!company) {
-      // Lança um erro que será capturado pelo middleware global
       const error: any = new Error("Empresa não encontrada");
       error.statusCode = 404;
       return next(error);
@@ -32,15 +109,14 @@ export const getCompanyById = async (req: Request, res: Response, next: NextFunc
 
 // Criar uma nova empresa
 export const createCompany = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  // A validação dos dados (empresa e endereço) será feita pelo express-validator
   const { address, ...companyData } = req.body;
-
   try {
-    // Passar dados da empresa e do endereço separadamente para o repositório
+    if (companyData.categories && !Array.isArray(companyData.categories)) {
+        companyData.categories = [companyData.categories];
+    }
     const newCompany = await companyRepository.create(companyData, address);
     res.status(201).json(newCompany);
   } catch (error) {
-    // Erros, incluindo P2002 (duplicidade), serão tratados pelo middleware global
     next(error);
   }
 };
@@ -48,17 +124,17 @@ export const createCompany = async (req: Request, res: Response, next: NextFunct
 // Atualizar uma empresa existente
 export const updateCompany = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { id } = req.params;
-  // A validação do formato do ID e dos dados do body será feita pelo express-validator
   const { address, ...companyData } = req.body;
-
   try {
-    // Passar dados da empresa e do endereço separadamente para o repositório
+    if (companyData.categories && !Array.isArray(companyData.categories)) {
+        companyData.categories = [companyData.categories];
+    }
+    if (companyData.rating !== undefined) companyData.rating = parseFloat(companyData.rating);
+    if (companyData.totalReviews !== undefined) companyData.totalReviews = parseInt(companyData.totalReviews, 10);
+
     const updatedCompany = await companyRepository.update(id, companyData, address);
-    // O repositório deve lançar um erro se a empresa não for encontrada (Prisma P2025)
-    // que será tratado pelo middleware global
     res.json(updatedCompany);
   } catch (error) {
-    // Erros, incluindo P2025 (não encontrado) ou P2002 (duplicidade), serão tratados pelo middleware global
     next(error);
   }
 };
@@ -66,15 +142,10 @@ export const updateCompany = async (req: Request, res: Response, next: NextFunct
 // Deletar uma empresa
 export const deleteCompany = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { id } = req.params;
-  // A validação do formato do ID será feita pelo express-validator
-
   try {
     const deletedCompany = await companyRepository.delete(id);
-    // O repositório deve lançar um erro se a empresa não for encontrada (Prisma P2025)
-    // que será tratado pelo middleware global
     res.status(200).json({ message: "Empresa excluída com sucesso", company: deletedCompany });
   } catch (error) {
-    // Erros, incluindo P2025 (não encontrado) ou P2003 (restrição FK), serão tratados pelo middleware global
     next(error);
   }
 };
