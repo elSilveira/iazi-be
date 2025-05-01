@@ -1,5 +1,4 @@
-import { PrismaClient } from "../src/generated/prisma";
-import { Prisma } from "../src/generated/prisma";
+import { PrismaClient, Prisma } from "../src/generated/prisma";
 import bcrypt from "bcrypt";
 
 // Criar uma nova instância do PrismaClient
@@ -8,7 +7,28 @@ const prisma = new PrismaClient();
 async function main() {
   console.log(`Start seeding ...`);
 
-  // Criar Usuários
+  // --- Criar Categorias ---
+  const category1 = await prisma.category.upsert({
+    where: { name: "Barbearia" },
+    update: {},
+    create: {
+      name: "Barbearia",
+      icon: "scissors" // Exemplo de ícone
+    },
+  });
+  console.log(`Created category: ${category1.name} (ID: ${category1.id})`);
+
+  const category2 = await prisma.category.upsert({
+    where: { name: "Estética Masculina" },
+    update: {},
+    create: {
+      name: "Estética Masculina",
+      icon: "face" // Exemplo de ícone
+    },
+  });
+  console.log(`Created category: ${category2.name} (ID: ${category2.id})`);
+
+  // --- Criar Usuários ---
   const saltRounds = 10;
   const hashedPasswordUser1 = await bcrypt.hash("senha123", saltRounds);
   const user1 = await prisma.user.upsert({
@@ -19,6 +39,10 @@ async function main() {
       name: "Usuário Um",
       password: hashedPasswordUser1,
       avatar: "https://randomuser.me/api/portraits/men/1.jpg",
+      bio: "Entusiasta de tecnologia e café.", // Added bio
+      phone: "(11) 99999-1111", // Added phone
+      address: "Rua Exemplo, 100", // Added address
+      role: "USER" // Explicitly set role (optional due to default)
     },
   });
   console.log(`Created user: ${user1.name} (ID: ${user1.id})`);
@@ -32,11 +56,12 @@ async function main() {
       name: "Usuário Dois",
       password: hashedPasswordUser2,
       avatar: "https://randomuser.me/api/portraits/women/2.jpg",
+      role: "ADMIN" // Example of different role
     },
   });
   console.log(`Created user: ${user2.name} (ID: ${user2.id})`);
 
-  // Criar Empresa 1: Barbearia
+  // --- Criar Empresa 1: Barbearia ---
   const company1 = await prisma.company.upsert({
     where: { id: "barbearia-vintage-seed" }, // Usar um ID fixo para upsert
     update: {},
@@ -46,15 +71,14 @@ async function main() {
       description: "Barbearia especializada em cortes modernos e tradicionais (Seed)",
       logo: "https://images.unsplash.com/photo-1512690459411-b9245aed614b?w=300",
       coverImage: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=1200",
-      categories: ["Barbearia", "Estética Masculina"],
+      // categories: ["Barbearia", "Estética Masculina"], // Removed old string array
       yearEstablished: "2021",
       phone: "(11) 11111-1111",
       email: "contato@vintage-seed.com",
       workingHours: {
         monday: { open: "09:00", close: "20:00", isOpen: true },
         sunday: { open: "10:00", close: "16:00", isOpen: false }
-      },
-      // Criar endereço junto com a empresa
+      } as Prisma.JsonObject, // Cast to Prisma.JsonObject
       address: {
         create: {
           street: "Rua Fictícia",
@@ -70,7 +94,7 @@ async function main() {
   });
   console.log(`Created company: ${company1.name} (ID: ${company1.id}) with address ID: ${company1.address?.id}`);
 
-  // Criar Profissionais para Empresa 1
+  // --- Criar Profissionais para Empresa 1 ---
   const prof1 = await prisma.professional.upsert({
     where: { id: "prof1-seed" },
     update: {},
@@ -80,6 +104,7 @@ async function main() {
       role: "Barbeiro Senior",
       image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200",
       companyId: company1.id,
+      // totalReviews: 0 // Default value is set in schema
     },
   });
   console.log(`Created professional: ${prof1.name} (ID: ${prof1.id}) for company ${company1.name}`);
@@ -97,7 +122,7 @@ async function main() {
   });
   console.log(`Created professional: ${prof2.name} (ID: ${prof2.id}) for company ${company1.name}`);
 
-  // Criar Serviços para Empresa 1
+  // --- Criar Serviços para Empresa 1 ---
   const service1 = await prisma.service.upsert({
     where: { id: "serv1-seed" },
     update: {},
@@ -107,7 +132,8 @@ async function main() {
       description: "Corte moderno ou tradicional (Seed)",
       price: "R$ 65,00",
       duration: "45 min",
-      category: "Cabelo",
+      // category: "Cabelo", // Removed old string field
+      categoryId: category1.id, // Use the ID from the created category
       companyId: company1.id,
     },
   });
@@ -122,13 +148,14 @@ async function main() {
       description: "Alinhamento e acabamento de barba (Seed)",
       price: "R$ 50,00",
       duration: "30 min",
-      category: "Barba",
+      // category: "Barba", // Removed old string field
+      categoryId: category1.id, // Use the ID from the created category (assuming Barba is under Barbearia)
       companyId: company1.id,
     },
   });
   console.log(`Created service: ${service2.name} (ID: ${service2.id}) for company ${company1.name}`);
 
-  // Conectar Profissionais aos Serviços (ProfessionalService)
+  // --- Conectar Profissionais aos Serviços (ProfessionalService) ---
   await prisma.professionalService.upsert({
     where: { professionalId_serviceId: { professionalId: prof1.id, serviceId: service1.id } },
     update: {},
@@ -146,20 +173,20 @@ async function main() {
   });
   console.log(`Connected professionals to services for company ${company1.name}`);
 
-  // Criar Agendamento
+  // --- Criar Agendamento ---
   const appointment1 = await prisma.appointment.create({
     data: {
       date: new Date(Date.now() + 24 * 60 * 60 * 1000), // Amanhã
       userId: user1.id,
       serviceId: service1.id,
-      professionalId: prof1.id,
+      professionalId: prof1.id, // Still required here, consistent with seed logic
       status: "PENDING",
       notes: "Primeiro agendamento via seed.",
     },
   });
   console.log(`Created appointment (ID: ${appointment1.id}) for user ${user1.name}`);
 
-  // Criar Avaliação
+  // --- Criar Avaliação ---
   const review1 = await prisma.review.create({
     data: {
       rating: 5,
@@ -183,3 +210,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
