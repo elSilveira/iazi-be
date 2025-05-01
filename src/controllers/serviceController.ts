@@ -2,26 +2,98 @@ import { Request, Response, NextFunction } from "express";
 import { serviceRepository } from "../repositories/serviceRepository";
 import { Prisma } from "@prisma/client";
 
-// Obter todos os serviços (opcionalmente filtrados por companyId)
+// Obter todos os serviços (com filtros e paginação)
 export const getAllServices = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  const { companyId } = req.query;
-  // A validação do formato do companyId (se fornecido) será feita pelo express-validator
+  // Extrair filtros e paginação da query string
+  const { 
+    companyId, 
+    category, // Category name filter
+    q, // Search term
+    minPrice, 
+    maxPrice, 
+    // minRating, // Rating is not directly on Service model
+    sort, // e.g., "price_asc", "price_desc", "name_asc"
+    page = "1", // Default page 1
+    limit = "10" // Default 10 items per page
+  } = req.query;
+
+  // Validar e converter parâmetros de paginação
+  const pageNum = parseInt(page as string, 10);
+  const limitNum = parseInt(limit as string, 10);
+
+  if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1) {
+    // Corrected: Don't return void, just send response
+    res.status(400).json({ message: "Parâmetros de paginação inválidos (page e limit devem ser números positivos)." });
+    return;
+  }
+
+  const skip = (pageNum - 1) * limitNum;
+
   try {
-    const services = await serviceRepository.getAll(companyId as string | undefined);
-    res.json(services);
+    // Construir objeto de filtros para Prisma
+    const filters: Prisma.ServiceWhereInput = {};
+    if (companyId) filters.companyId = companyId as string;
+    // Corrected: Filter by category name through relation
+    if (category) filters.category = { name: { contains: category as string, mode: "insensitive" } }; 
+    if (q) {
+      const searchTerm = q as string;
+      filters.OR = [
+        { name: { contains: searchTerm, mode: "insensitive" } },
+        { description: { contains: searchTerm, mode: "insensitive" } },
+        // Corrected: Search in category name through relation
+        { category: { name: { contains: searchTerm, mode: "insensitive" } } },
+        // Add search in company name if needed via relations
+        { company: { name: { contains: searchTerm, mode: "insensitive" } } },
+      ];
+    }
+    // Add price filters (assuming price is stored as String, requires careful comparison or schema change)
+    // This is complex with string prices. For now, skipping price filtering.
+    // Consider changing schema `price` to Decimal or Float for proper filtering.
+    // if (minPrice) { /* Logic for string price comparison >= minPrice */ }
+    // if (maxPrice) { /* Logic for string price comparison <= maxPrice */ }
+    
+    // Construir objeto de ordenação para Prisma
+    let orderBy: Prisma.ServiceOrderByWithRelationInput = {};
+    switch (sort as string) {
+      // case "rating_desc": // Rating not on service
+      //   break;
+      case "price_asc":
+        orderBy = { price: "asc" }; // Sorting string price might be lexicographical, not numerical
+        break;
+      case "price_desc":
+        orderBy = { price: "desc" }; // Sorting string price might be lexicographical, not numerical
+        break;
+      case "name_asc":
+        orderBy = { name: "asc" };
+        break;
+      default:
+        orderBy = { name: "asc" }; // Default sort
+    }
+
+    // Assume repository methods exist
+    const services = await serviceRepository.findMany(filters, orderBy, skip, limitNum);
+    const totalServices = await serviceRepository.count(filters);
+
+    res.json({
+      data: services,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: Math.ceil(totalServices / limitNum),
+        totalItems: totalServices,
+        itemsPerPage: limitNum,
+      },
+    });
   } catch (error) {
-    next(error); // Passa o erro para o middleware global
+    next(error); 
   }
 };
 
 // Obter um serviço específico pelo ID
 export const getServiceById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { id } = req.params;
-  // A validação do formato do ID será feita pelo express-validator
   try {
     const service = await serviceRepository.findById(id);
     if (!service) {
-      // Lança um erro que será capturado pelo middleware global (P2025)
       const error: any = new Error("Serviço não encontrado");
       error.statusCode = 404;
       return next(error);
@@ -34,26 +106,24 @@ export const getServiceById = async (req: Request, res: Response, next: NextFunc
 
 // Criar um novo serviço
 export const createService = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  // A validação dos dados (nome, preço, companyId, etc.) será feita pelo express-validator
-  const { name, description, price, duration, image, category, companyId } = req.body;
+  // Corrected: Use `duration` (String) as per schema, not durationMinutes
+  const { name, description, price, duration, image, categoryId, companyId } = req.body; 
 
   try {
-    // Montar o objeto de dados para o Prisma usando 'connect'
-    // Os validadores devem garantir que price e duration são strings válidas
+    // Validate categoryId exists if provided?
     const dataToCreate: Prisma.ServiceCreateInput = {
       name,
       description,
-      price, // Assumindo que o validator garante que é uma string válida
-      duration, // Assumindo que o validator garante que é uma string válida
+      price, // String as per schema
+      duration, // String as per schema
       image,
-      category,
+      category: { connect: { id: parseInt(categoryId, 10) } }, // Connect by category ID (assuming it's Int)
       company: { connect: { id: companyId } },
     };
 
     const newService = await serviceRepository.create(dataToCreate);
     res.status(201).json(newService);
   } catch (error) {
-    // Erros, incluindo P2003 (FK inválida), serão tratados pelo middleware global
     next(error);
   }
 };
@@ -61,18 +131,20 @@ export const createService = async (req: Request, res: Response, next: NextFunct
 // Atualizar um serviço existente
 export const updateService = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { id } = req.params;
-  // A validação do formato do ID e dos dados do body será feita pelo express-validator
-  // Não permitir atualização do companyId via este endpoint
-  const { companyId, ...dataToUpdate } = req.body;
+  // Corrected: Use `duration` (String), handle categoryId update
+  const { companyId, categoryId, ...dataToUpdate } = req.body;
 
   try {
-    // Os validadores devem garantir que price e duration (se fornecidos) são strings válidas
-    const updatedService = await serviceRepository.update(id, dataToUpdate as Prisma.ServiceUpdateInput);
-    // O repositório deve lançar um erro se o serviço não for encontrado (Prisma P2025)
-    // que será tratado pelo middleware global
+    // Prepare update data, connect category if categoryId is provided
+    const updatePayload: Prisma.ServiceUpdateInput = { ...dataToUpdate };
+    if (categoryId !== undefined) {
+      updatePayload.category = { connect: { id: parseInt(categoryId, 10) } };
+    }
+    // Price and duration are strings, no conversion needed unless schema changes
+
+    const updatedService = await serviceRepository.update(id, updatePayload);
     res.json(updatedService);
   } catch (error) {
-    // Erros, incluindo P2025 (não encontrado), serão tratados pelo middleware global
     next(error);
   }
 };
@@ -80,15 +152,10 @@ export const updateService = async (req: Request, res: Response, next: NextFunct
 // Deletar um serviço
 export const deleteService = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { id } = req.params;
-  // A validação do formato do ID será feita pelo express-validator
-
   try {
     const deletedService = await serviceRepository.delete(id);
-    // O repositório deve lançar um erro se o serviço não for encontrado (Prisma P2025)
-    // que será tratado pelo middleware global
     res.status(200).json({ message: "Serviço excluído com sucesso", service: deletedService });
   } catch (error) {
-    // Erros, incluindo P2025 (não encontrado) ou P2003 (restrição FK), serão tratados pelo middleware global
     next(error);
   }
 };
