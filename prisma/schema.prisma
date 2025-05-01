@@ -21,10 +21,12 @@ model User {
   phone         String?   // Added phone field based on controller/frontend usage
   address       String?   // Added address field based on controller/frontend usage
   role          UserRole  @default(USER) // Added role field based on controller/test usage
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
   appointments  Appointment[]
   reviews       Review[]
+
+  @@map("users") // Map to lowercase table name
 }
 
 // Modelo de Empresa
@@ -33,20 +35,22 @@ model Company {
   name          String
   description   String
   logo          String?
-  coverImage    String?
+  coverImage    String?   @map("cover_image")
   rating        Float     @default(0)
-  totalReviews  Int       @default(0)
-  yearEstablished String?
+  totalReviews  Int       @default(0) @map("total_reviews")
+  yearEstablished String?   @map("year_established")
   phone         String?
   email         String?
   address       Address?
-  workingHours  Json?
+  workingHours  Json?     @map("working_hours")
   categories    String[] // TODO: Consider changing to relation with Category model
   services      Service[]
   professionals Professional[]
   reviews       Review[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("companies") // Map to lowercase table name
 }
 
 // Modelo de Endereço (relacionado com Company)
@@ -58,11 +62,13 @@ model Address {
   neighborhood  String
   city          String
   state         String
-  zipCode       String
+  zipCode       String    @map("zip_code")
   company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  companyId     String    @unique
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  companyId     String    @unique @map("company_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("addresses") // Map to lowercase table name
 }
 
 // Modelo de Serviço
@@ -72,15 +78,18 @@ model Service {
   description   String
   price         String
   duration      String
-  category      String // TODO: Consider changing to relation with Category model
+  category      Category @relation(fields: [categoryId], references: [id]) // Changed to relation
+  categoryId    Int      @map("category_id") // Added categoryId field
   image         String?
   company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  companyId     String
+  companyId     String    @map("company_id")
   professionals ProfessionalService[]
   appointments  Appointment[]
   reviews       Review[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("services") // Map to lowercase table name
 }
 
 // Modelo de Profissional
@@ -90,41 +99,46 @@ model Professional {
   role          String
   image         String?
   rating        Float     @default(0)
-  totalReviews  Int       @default(0)
+  totalReviews  Int       @default(0) @map("total_reviews")
   company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  companyId     String
+  companyId     String    @map("company_id")
   services      ProfessionalService[]
-  scheduledAppointments Appointment[]
+  scheduledAppointments Appointment[] @relation("ProfessionalAppointments")
   reviews       Review[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("professionals") // Map to lowercase table name
 }
 
 // Tabela de relacionamento entre Profissional e Serviço
 model ProfessionalService {
   professional  Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  professionalId String
+  professionalId String       @map("professional_id")
   service       Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  serviceId     String
+  serviceId     String       @map("service_id")
   price         String?
 
   @@id([professionalId, serviceId])
+  @@map("professional_services") // Map to lowercase table name
 }
 
 // Modelo de Agendamento
 model Appointment {
   id            String    @id @default(uuid())
-  date          DateTime // Frontend used dateTime, check consistency if issues arise
+  date          DateTime
   status        AppointmentStatus @default(PENDING)
   user          User      @relation(fields: [userId], references: [id])
-  userId        String
+  userId        String    @map("user_id")
   service       Service   @relation(fields: [serviceId], references: [id])
-  serviceId     String
-  professional  Professional? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
-  professionalId String?
+  serviceId     String    @map("service_id")
+  professional  Professional? @relation("ProfessionalAppointments", fields: [professionalId], references: [id], onDelete: SetNull)
+  professionalId String?   @map("professional_id")
   notes         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("appointments") // Map to lowercase table name
 }
 
 // Modelo de Avaliação
@@ -133,15 +147,17 @@ model Review {
   rating        Float
   comment       String?
   user          User      @relation(fields: [userId], references: [id])
-  userId        String
+  userId        String    @map("user_id")
   service       Service?  @relation(fields: [serviceId], references: [id])
-  serviceId     String?
+  serviceId     String?   @map("service_id")
   professional  Professional? @relation(fields: [professionalId], references: [id])
-  professionalId String?
+  professionalId String?   @map("professional_id")
   company       Company?  @relation(fields: [companyId], references: [id])
-  companyId     String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  companyId     String?   @map("company_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("reviews") // Map to lowercase table name
 }
 
 // Modelo de Categoria (NOVO)
@@ -149,10 +165,11 @@ model Category {
   id        Int      @id @default(autoincrement())
   name      String   @unique
   icon      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  // TODO: Consider adding relation to Service/Company models
-  // services  Service[] // Example if Service relates to one Category
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  services  Service[] // Added opposite relation field
+
+  @@map("categories") // Map to lowercase table name
 }
 
 // Enumeração para status de agendamento
@@ -161,6 +178,8 @@ enum AppointmentStatus {
   CONFIRMED
   COMPLETED
   CANCELLED
+
+  @@map("appointment_status") // Map enum to lowercase name
 }
 
 // Enumeração para papel do usuário (NOVO)
@@ -168,5 +187,7 @@ enum UserRole {
   USER
   ADMIN
   // Add other roles like PROFESSIONAL, COMPANY_ADMIN if needed
+
+  @@map("user_role") // Map enum to lowercase name
 }
 
