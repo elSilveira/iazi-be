@@ -53,7 +53,7 @@ const categoryRoutes_1 = __importDefault(require("./routes/categoryRoutes")); //
 const swagger_1 = require("./swagger");
 const app = (0, express_1.default)();
 exports.app = app;
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3002;
 // Middlewares de Segurança e Configuração
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)());
