@@ -55,7 +55,7 @@ describe("User Routes", () => {
         password: "hashedpassword",
         name: "Test User",
         phone: "123456789",
-        address: "123 Test St",
+        // address: "123 Test St", // Removed: User model doesn't have direct address string
         role: "USER",
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -123,7 +123,7 @@ describe("User Routes", () => {
         password: "hashedpassword",
         name: "Updated Test User",
         phone: "987654321",
-        address: "123 Test St",
+        // address: "123 Test St", // Removed
         role: "USER",
         createdAt: new Date(),
         updatedAt: new Date(),

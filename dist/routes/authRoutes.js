@@ -1,103 +1,115 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const authController_1 = require("../controllers/authController");
-// Função factory para criar o router de autenticação
-const createAuthRouter = () => {
-    const router = express_1.default.Router();
-    /**
-     * @swagger
-     * tags:
-     *   name: Auth
-     *   description: Autenticação de usuários
-     */
-    /**
-     * @swagger
-     * /api/auth/login:
-     *   post:
-     *     summary: Autentica um usuário
-     *     tags: [Auth]
-     *     requestBody:
-     *       required: true
-     *       content:
-     *         application/json:
-     *           schema:
-     *             type: object
-     *             required:
-     *               - email
-     *               - password
-     *             properties:
-     *               email:
-     *                 type: string
-     *                 format: email
-     *               password:
-     *                 type: string
-     *                 format: password
-     *     responses:
-     *       200:
-     *         description: Login bem-sucedido, retorna token JWT e dados do usuário
-     *       400:
-     *         description: Email ou senha não fornecidos
-     *       401:
-     *         description: Credenciais inválidas
-     *       500:
-     *         description: Erro interno do servidor
-     */
-    // @ts-ignore
-    router.post("/login", (req, res) => __awaiter(void 0, void 0, void 0, function* () { return yield (0, authController_1.login)(req, res); }));
-    /**
-     * @swagger
-     * /api/auth/register:
-     *   post:
-     *     summary: Registra um novo usuário
-     *     tags: [Auth]
-     *     requestBody:
-     *       required: true
-     *       content:
-     *         application/json:
-     *           schema:
-     *             type: object
-     *             required:
-     *               - email
-     *               - password
-     *               - name
-     *             properties:
-     *               email:
-     *                 type: string
-     *                 format: email
-     *               password:
-     *                 type: string
-     *                 format: password
-     *               name:
-     *                 type: string
-     *               avatar:
-     *                 type: string
-     *                 format: url
-     *                 nullable: true
-     *     responses:
-     *       201:
-     *         description: Usuário registrado com sucesso, retorna token JWT e dados do usuário
-     *       400:
-     *         description: Dados obrigatórios não fornecidos
-     *       409:
-     *         description: Email já cadastrado
-     *       500:
-     *         description: Erro interno do servidor
-     */
-    // @ts-ignore
-    router.post("/register", (req, res) => __awaiter(void 0, void 0, void 0, function* () { return yield (0, authController_1.register)(req, res); }));
-    return router;
-};
-exports.default = createAuthRouter;
+const express_1 = require("express");
+const authController_1 = require("../controllers/authController"); // Importa refreshToken
+const authValidators_1 = require("../validators/authValidators");
+const validationMiddleware_1 = require("../middlewares/validationMiddleware");
+const router = (0, express_1.Router)();
+/**
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     summary: Registra um novo usuário
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *               - name
+ *             properties:
+ *               email: { type: string, format: email, description: 'Email do usuário' }
+ *               password: { type: string, format: password, description: 'Senha do usuário (mínimo 8 caracteres)' }
+ *               name: { type: string, description: 'Nome do usuário' }
+ *     responses:
+ *       201:
+ *         description: Usuário registrado com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user: { $ref: '#/components/schemas/User' }
+ *                 accessToken: { type: string, description: 'Token de acesso JWT' }
+ *                 refreshToken: { type: string, description: 'Token de atualização JWT' }
+ *       400:
+ *         description: Erro de validação (email já existe, senha inválida, etc.).
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.post("/register", authValidators_1.registerValidator, validationMiddleware_1.validateRequest, authController_1.register);
+/**
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     summary: Autentica um usuário e retorna tokens
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email: { type: string, format: email, description: 'Email do usuário' }
+ *               password: { type: string, format: password, description: 'Senha do usuário' }
+ *     responses:
+ *       200:
+ *         description: Login bem-sucedido.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 accessToken: { type: string, description: 'Token de acesso JWT' }
+ *                 refreshToken: { type: string, description: 'Token de atualização JWT' }
+ *       400:
+ *         description: Erro de validação.
+ *       401:
+ *         description: Credenciais inválidas.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.post("/login", authValidators_1.loginValidator, validationMiddleware_1.validateRequest, authController_1.login);
+/**
+ * @swagger
+ * /api/auth/refresh:
+ *   post:
+ *     summary: Atualiza o token de acesso usando um refresh token
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *             properties:
+ *               refreshToken: { type: string, description: 'Token de atualização JWT válido' }
+ *     responses:
+ *       200:
+ *         description: Tokens atualizados com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 accessToken: { type: string, description: 'Novo token de acesso JWT' }
+ *                 refreshToken: { type: string, description: 'Novo token de atualização JWT (opcional, pode ser o mesmo)' }
+ *       400:
+ *         description: Refresh token não fornecido.
+ *       401:
+ *         description: Refresh token inválido ou expirado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.post("/refresh", authController_1.refreshToken); // Não precisa de validação específica aqui, o controller verifica o token
+exports.default = router;

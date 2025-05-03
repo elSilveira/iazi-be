@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { companyRepository } from "../repositories/companyRepository";
+import companyRepository from "../repositories/companyRepository"; // Corrected: default import
 import { Prisma } from "@prisma/client";
 
 // Obter todas as empresas (com filtros e paginação)
@@ -44,7 +44,7 @@ export const getAllCompanies = async (req: Request, res: Response, next: NextFun
     }
     
     // Corrected: Add location filters properly
-    const addressFilter: Prisma.AddressWhereInput = {};
+    const addressFilter: Prisma.CompanyAddressWhereInput = {}; // Corrected type
     if (city) addressFilter.city = { contains: city as string, mode: "insensitive" };
     if (state) addressFilter.state = { contains: state as string, mode: "insensitive" };
     // Only add the address filter if city or state was provided

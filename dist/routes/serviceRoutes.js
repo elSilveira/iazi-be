@@ -1,110 +1,194 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-// Mock data based on frontend's mock-services.ts
-const mockServicesDb = [
-    {
-        id: 1,
-        name: "Limpeza de Pele Profunda",
-        category: "Tratamento Facial",
-        company: "Clínica DermaBem",
-        professional: "Dra. Ana Silva",
-        image: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881",
-        rating: 4.8,
-        reviews: 87,
-        price: "R$180",
-        duration: "60 min",
-        availability: "Hoje",
-        company_id: "clinica-dermabem-123",
-        professional_id: "dra-ana-silva-456",
-        description: "Limpeza de pele completa com extração de cravos e espinhas, esfoliação e hidratação profunda para todos os tipos de pele.",
-    },
-    {
-        id: 2,
-        name: "Quiropraxia",
-        category: "Fisioterapia",
-        company: "FisioSaúde",
-        professional: "Dr. Carlos Mendes",
-        image: "https://images.unsplash.com/photo-1552693673-1bf958298935",
-        rating: 4.9,
-        reviews: 112,
-        price: "R$150",
-        duration: "45 min",
-        availability: "Amanhã",
-        company_id: "fisiosaude-789",
-        professional_id: "dr-carlos-mendes-101",
-        description: "Tratamento quiroprático para alinhamento da coluna, alívio de tensões musculares e melhora da postura corporal.",
-    },
-    // Add more mock services if needed based on mock-services.ts
-];
-// Alternativa para resolver o problema de tipagem
-const createRouter = () => {
-    const router = express_1.default.Router();
-    /**
-     * @swagger
-     * tags:
-     *   name: Serviços
-     *   description: Endpoints para gerenciamento de serviços
-     */
-    /**
-     * @swagger
-     * /api/services:
-     *   get:
-     *     summary: Retorna uma lista de todos os serviços
-     *     tags: [Serviços]
-     *     responses:
-     *       200:
-     *         description: Lista de serviços retornada com sucesso
-     *         content:
-     *           application/json:
-     *             schema:
-     *               type: array
-     *               items:
-     *                 $ref: '#/components/schemas/Service'
-     */
-    // Removido o tipo explícito RequestHandler
-    const getAllServicesHandler = (req, res) => {
-        res.json(mockServicesDb); // Removido return
-    };
-    router.get('/', getAllServicesHandler);
-    /**
-     * @swagger
-     * /api/services/{id}:
-     *   get:
-     *     summary: Retorna um serviço específico pelo ID
-     *     tags: [Serviços]
-     *     parameters:
-     *       - in: path
-     *         name: id
-     *         schema:
-     *           type: integer
-     *         required: true
-     *         description: ID numérico do serviço
-     *     responses:
-     *       200:
-     *         description: Serviço retornado com sucesso
-     *         content:
-     *           application/json:
-     *             schema:
-     *               $ref: '#/components/schemas/Service'
-     *       404:
-     *         description: Serviço não encontrado
-     */
-    // Removido o tipo explícito RequestHandler
-    const getServiceByIdHandler = (req, res) => {
-        const id = parseInt(req.params.id, 10);
-        const service = mockServicesDb.find((s) => s.id === id);
-        if (service) {
-            res.json(service); // Removido return
-        }
-        else {
-            res.status(404).json({ message: 'Serviço não encontrado' }); // Removido return
-        }
-    };
-    router.get('/:id', getServiceByIdHandler);
-    return router;
-};
-exports.default = createRouter;
+const express_1 = require("express");
+const serviceController_1 = require("../controllers/serviceController");
+const serviceValidators_1 = require("../validators/serviceValidators");
+const validationMiddleware_1 = require("../middlewares/validationMiddleware");
+// TODO: Adicionar middleware de autenticação/autorização para rotas protegidas (create, update, delete)
+const router = (0, express_1.Router)();
+/**
+ * @swagger
+ * /api/services:
+ *   get:
+ *     summary: Obtém uma lista de todos os serviços
+ *     tags: [Services]
+ *     # security:
+ *     #   - bearerAuth: [] # Descomente se a autenticação for necessária
+ *     parameters:
+ *       - in: query
+ *         name: companyId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filtra serviços por ID da empresa
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: Filtra serviços por categoria
+ *       # Adicionar outros parâmetros de filtro/paginação se necessário
+ *     responses:
+ *       200:
+ *         description: Lista de serviços retornada com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Service'
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.get("/", serviceController_1.getAllServices); // Validação de query param pode ser adicionada se necessário
+/**
+ * @swagger
+ * /api/services/{id}:
+ *   get:
+ *     summary: Obtém detalhes de um serviço específico pelo ID
+ *     tags: [Services]
+ *     # security:
+ *     #   - bearerAuth: [] # Descomente se a autenticação for necessária
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do serviço a ser obtido
+ *     responses:
+ *       200:
+ *         description: Detalhes do serviço retornados com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Service'
+ *       400:
+ *         description: ID inválido fornecido.
+ *       404:
+ *         description: Serviço não encontrado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.get("/:id", serviceValidators_1.serviceIdValidator, validationMiddleware_1.validateRequest, serviceController_1.getServiceById);
+/**
+ * @swagger
+ * /api/services:
+ *   post:
+ *     summary: Cria um novo serviço
+ *     tags: [Services]
+ *     # security:
+ *     #   - bearerAuth: [] # Requer autenticação para criar serviço
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - description
+ *               - price
+ *               - duration
+ *               - category
+ *               - companyId
+ *             properties:
+ *               name: { type: string, description: 'Nome do serviço' }
+ *               description: { type: string, description: 'Descrição do serviço' }
+ *               price: { type: string, description: 'Preço do serviço' }
+ *               duration: { type: string, description: 'Duração do serviço (ex: "45min")' }
+ *               category: { type: string, description: 'Categoria do serviço' }
+ *               image: { type: string, format: url, nullable: true, description: 'URL da imagem do serviço' }
+ *               companyId: { type: string, format: uuid, description: 'ID da empresa que oferece o serviço' }
+ *     responses:
+ *       201:
+ *         description: Serviço criado com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Service'
+ *       400:
+ *         description: "Erro de validação nos dados fornecidos (ex: companyId inválido)."
+ *       401:
+ *         description: Não autorizado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.post("/", serviceValidators_1.createServiceValidator, validationMiddleware_1.validateRequest, serviceController_1.createService);
+/**
+ * @swagger
+ * /api/services/{id}:
+ *   put:
+ *     summary: Atualiza um serviço existente pelo ID
+ *     tags: [Services]
+ *     # security:
+ *     #   - bearerAuth: [] # Requer autenticação para atualizar serviço
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do serviço a ser atualizado
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name: { type: string }
+ *               description: { type: string }
+ *               price: { type: string }
+ *               duration: { type: string }
+ *               category: { type: string }
+ *               image: { type: string, format: url, nullable: true }
+ *               # companyId geralmente não é atualizado aqui
+ *     responses:
+ *       200:
+ *         description: Serviço atualizado com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Service'
+ *       400:
+ *         description: Erro de validação ou ID inválido.
+ *       401:
+ *         description: Não autorizado.
+ *       404:
+ *         description: Serviço não encontrado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.put("/:id", serviceValidators_1.updateServiceValidator, validationMiddleware_1.validateRequest, serviceController_1.updateService);
+/**
+ * @swagger
+ * /api/services/{id}:
+ *   delete:
+ *     summary: Deleta um serviço existente pelo ID
+ *     tags: [Services]
+ *     # security:
+ *     #   - bearerAuth: [] # Requer autenticação/autorização para deletar serviço
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do serviço a ser deletado
+ *     responses:
+ *       204:
+ *         description: Serviço deletado com sucesso (sem conteúdo).
+ *       400:
+ *         description: ID inválido fornecido.
+ *       401:
+ *         description: Não autorizado.
+ *       404:
+ *         description: Serviço não encontrado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.delete("/:id", serviceValidators_1.serviceIdValidator, validationMiddleware_1.validateRequest, serviceController_1.deleteService);
+exports.default = router;

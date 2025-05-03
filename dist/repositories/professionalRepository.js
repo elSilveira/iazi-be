@@ -11,13 +11,39 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.professionalRepository = void 0;
 const prisma_1 = require("../lib/prisma");
-const client_1 = require("@prisma/client"); // Revertido: Importar de @prisma/client
 exports.professionalRepository = {
+    // Método antigo, pode ser removido ou mantido
     getAll(companyId) {
         return __awaiter(this, void 0, void 0, function* () {
             return prisma_1.prisma.professional.findMany({
                 where: companyId ? { companyId } : {},
-                include: { services: { include: { service: true } } }, // Incluir serviços associados
+                include: {
+                    services: { include: { service: true } },
+                    company: { include: { address: true } } // Incluir empresa e endereço
+                },
+            });
+        });
+    },
+    // Novo método findMany com filtros, ordenação e paginação
+    findMany(filters, orderBy, skip, take) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return prisma_1.prisma.professional.findMany({
+                where: filters,
+                orderBy: orderBy,
+                skip: skip,
+                take: take,
+                include: {
+                    services: { include: { service: true } }, // Incluir serviços associados
+                    company: { include: { address: true } } // Incluir empresa e endereço
+                }
+            });
+        });
+    },
+    // Novo método count com filtros
+    count(filters) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return prisma_1.prisma.professional.count({
+                where: filters,
             });
         });
     },
@@ -25,53 +51,81 @@ exports.professionalRepository = {
         return __awaiter(this, void 0, void 0, function* () {
             return prisma_1.prisma.professional.findUnique({
                 where: { id },
-                include: { services: { include: { service: true } } }, // Incluir serviços associados
+                include: {
+                    services: { include: { service: true } }, // Incluir serviços associados
+                    company: { include: { address: true } } // Incluir empresa e endereço
+                },
             });
         });
     },
-    create(data) {
+    create(data, serviceIds) {
         return __awaiter(this, void 0, void 0, function* () {
-            // A conexão com serviços (ProfessionalService) deve ser tratada separadamente
-            return prisma_1.prisma.professional.create({
-                data,
-            });
+            return prisma_1.prisma.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
+                const newProfessional = yield tx.professional.create({
+                    data,
+                });
+                if (serviceIds && serviceIds.length > 0) {
+                    const serviceConnections = serviceIds.map((serviceId) => ({
+                        professionalId: newProfessional.id,
+                        serviceId: serviceId,
+                    }));
+                    yield tx.professionalService.createMany({
+                        data: serviceConnections,
+                        skipDuplicates: true,
+                    });
+                }
+                return tx.professional.findUniqueOrThrow({
+                    where: { id: newProfessional.id },
+                    include: { services: { include: { service: true } } },
+                });
+            }));
         });
     },
-    update(id, data) {
+    update(id, data, serviceIds) {
         return __awaiter(this, void 0, void 0, function* () {
-            // A atualização da conexão com serviços deve ser tratada separadamente
-            try {
-                return yield prisma_1.prisma.professional.update({
+            // Prisma update throws P2025 if record not found
+            return prisma_1.prisma.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
+                const updatedProfessional = yield tx.professional.update({
                     where: { id },
                     data,
                 });
-            }
-            catch (error) {
-                if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-                    return null;
+                if (serviceIds !== undefined) {
+                    yield tx.professionalService.deleteMany({
+                        where: { professionalId: id },
+                    });
+                    if (serviceIds.length > 0) {
+                        const serviceConnections = serviceIds.map((serviceId) => ({
+                            professionalId: id,
+                            serviceId: serviceId,
+                        }));
+                        yield tx.professionalService.createMany({
+                            data: serviceConnections,
+                            skipDuplicates: true,
+                        });
+                    }
                 }
-                throw error;
-            }
+                return tx.professional.findUniqueOrThrow({
+                    where: { id: updatedProfessional.id },
+                    include: { services: { include: { service: true } } },
+                });
+            }));
         });
     },
     delete(id) {
         return __awaiter(this, void 0, void 0, function* () {
-            try {
-                // Desconectar de ProfessionalService antes de deletar
-                yield prisma_1.prisma.professionalService.deleteMany({ where: { professionalId: id } });
-                // Considerar o que fazer com agendamentos e avaliações associados
-                // await prisma.appointment.updateMany({ where: { professionalId: id }, data: { professionalId: null } }); // Exemplo: Desassociar
-                // await prisma.review.updateMany({ where: { professionalId: id }, data: { professionalId: null } }); // Exemplo: Desassociar
-                return yield prisma_1.prisma.professional.delete({
+            // Prisma delete throws P2025 if record not found
+            return prisma_1.prisma.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
+                yield tx.professionalService.deleteMany({ where: { professionalId: id } });
+                // onDelete: SetNull for appointments should be handled by schema
+                yield tx.review.updateMany({
+                    where: { professionalId: id },
+                    data: { professionalId: null }
+                });
+                const deletedProfessional = yield tx.professional.delete({
                     where: { id },
                 });
-            }
-            catch (error) {
-                if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-                    return null;
-                }
-                throw error;
-            }
+                return deletedProfessional;
+            }));
         });
     },
 };

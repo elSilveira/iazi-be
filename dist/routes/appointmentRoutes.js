@@ -1,0 +1,289 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const appointmentController_1 = require("../controllers/appointmentController");
+const appointmentValidators_1 = require("../validators/appointmentValidators");
+const validationMiddleware_1 = require("../middlewares/validationMiddleware");
+const authMiddleware_1 = require("../middlewares/authMiddleware"); // Importar o middleware de autenticação
+const router = (0, express_1.Router)();
+// --- Rota Pública (ou com autenticação opcional?) para Disponibilidade ---
+/**
+ * @swagger
+ * /api/appointments/availability:
+ *   get:
+ *     summary: Obtém os horários disponíveis para agendamento
+ *     tags: [Appointments]
+ *     parameters:
+ *       - in: query
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Data para verificar disponibilidade (YYYY-MM-DD)
+ *       - in: query
+ *         name: serviceId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do serviço (necessário para determinar duração)
+ *       - in: query
+ *         name: professionalId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do profissional (se aplicável)
+ *       - in: query
+ *         name: companyId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID da empresa (se aplicável)
+ *     responses:
+ *       200:
+ *         description: Lista de horários disponíveis retornada com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 availableSlots:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                     example: "09:00"
+ *                   description: Lista de horários disponíveis no formato HH:mm
+ *       400:
+ *         description: Erro de validação (data inválida, IDs faltando, etc.).
+ *       404:
+ *         description: Serviço, Profissional ou Empresa não encontrado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.get("/availability", appointmentValidators_1.getAvailabilityValidator, validationMiddleware_1.validateRequest, appointmentController_1.getAppointmentAvailability);
+// --- Rotas Protegidas --- 
+router.use(authMiddleware_1.authMiddleware);
+/**
+ * @swagger
+ * /api/appointments:
+ *   get:
+ *     summary: Obtém os agendamentos do usuário autenticado
+ *     tags: [Appointments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: professionalId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filtra agendamentos por ID do profissional (opcional)
+ *       - in: query
+ *         name: companyId # Adicionado filtro por companyId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filtra agendamentos por ID da empresa (opcional)
+ *       - in: query
+ *         name: date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filtra agendamentos por data (YYYY-MM-DD) (opcional)
+ *       # Adicionar outros filtros como status, etc.
+ *     responses:
+ *       200:
+ *         description: Lista de agendamentos retornada com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Appointment'
+ *       401:
+ *         description: Não autorizado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.get("/", appointmentController_1.getAllAppointments);
+/**
+ * @swagger
+ * /api/appointments/{id}:
+ *   get:
+ *     summary: Obtém detalhes de um agendamento específico pelo ID
+ *     tags: [Appointments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do agendamento a ser obtido
+ *     responses:
+ *       200:
+ *         description: Detalhes do agendamento retornados com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Appointment'
+ *       400:
+ *         description: ID inválido fornecido.
+ *       401:
+ *         description: Não autorizado (usuário não é dono do agendamento?).
+ *       404:
+ *         description: Agendamento não encontrado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.get("/:id", appointmentValidators_1.appointmentIdValidator, validationMiddleware_1.validateRequest, appointmentController_1.getAppointmentById);
+/**
+ * @swagger
+ * /api/appointments:
+ *   post:
+ *     summary: Cria um novo agendamento
+ *     tags: [Appointments]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - startTime
+ *               - serviceId
+ *               - userId # Adicionado userId (geralmente obtido do token)
+ *             properties:
+ *               startTime: { type: string, format: date-time, description: 'Data e hora de início do agendamento (ISO 8601)' }
+ *               serviceId: { type: string, format: uuid, description: 'ID do serviço agendado' }
+ *               professionalId: { type: string, format: uuid, nullable: true, description: 'ID do profissional responsável (opcional)' }
+ *               companyId: { type: string, format: uuid, nullable: true, description: 'ID da empresa (opcional, pode ser inferido do serviço/profissional)' }
+ *               userId: { type: string, format: uuid, description: 'ID do usuário que está agendando' }
+ *               notes: { type: string, nullable: true, description: 'Observações adicionais' }
+ *     responses:
+ *       201:
+ *         description: Agendamento criado com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Appointment'
+ *       400:
+ *         description: Erro de validação (data inválida, IDs inválidos, horário indisponível, etc.).
+ *       401:
+ *         description: Não autorizado.
+ *       404:
+ *         description: Serviço, Profissional ou Usuário não encontrado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.post("/", appointmentValidators_1.createAppointmentValidator, validationMiddleware_1.validateRequest, appointmentController_1.createAppointment);
+/**
+ * @swagger
+ * /api/appointments/{id}/status:
+ *   patch:
+ *     summary: "Atualiza o status de um agendamento (ex: CONFIRMED, COMPLETED)"
+ *     tags: [Appointments]
+ *     security:
+ *       - bearerAuth: [] # Geralmente apenas profissional/admin pode mudar status
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do agendamento a ser atualizado
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status: { $ref: '#/components/schemas/AppointmentStatus' }
+ *     responses:
+ *       200:
+ *         description: Status do agendamento atualizado com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Appointment'
+ *       400:
+ *         description: Erro de validação (ID inválido, status inválido).
+ *       401:
+ *         description: Não autorizado.
+ *       404:
+ *         description: Agendamento não encontrado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.patch("/:id/status", appointmentValidators_1.updateAppointmentValidator, validationMiddleware_1.validateRequest, appointmentController_1.updateAppointmentStatus);
+/**
+ * @swagger
+ * /api/appointments/{id}/cancel:
+ *   patch:
+ *     summary: Cancela um agendamento (define o status como CANCELLED)
+ *     tags: [Appointments]
+ *     security:
+ *       - bearerAuth: [] # Usuário dono ou profissional/admin podem cancelar
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do agendamento a ser cancelado
+ *     responses:
+ *       200:
+ *         description: Agendamento cancelado com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Appointment'
+ *       400:
+ *         description: ID inválido fornecido.
+ *       401:
+ *         description: Não autorizado.
+ *       404:
+ *         description: Agendamento não encontrado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.patch("/:id/cancel", appointmentValidators_1.appointmentIdValidator, validationMiddleware_1.validateRequest, appointmentController_1.cancelAppointment);
+// /**
+//  * @swagger
+//  * /api/appointments/{id}:
+//  *   delete:
+//  *     summary: Deleta um agendamento existente pelo ID (se permitido)
+//  *     tags: [Appointments]
+//  *     security:
+//  *       - bearerAuth: [] # Requer autenticação/autorização
+//  *     parameters:
+//  *       - in: path
+//  *         name: id
+//  *         required: true
+//  *         schema:
+//  *           type: string
+//  *           format: uuid
+//  *         description: ID do agendamento a ser deletado
+//  *     responses:
+//  *       204:
+//  *         description: Agendamento deletado com sucesso (sem conteúdo).
+//  *       400:
+//  *         description: ID inválido fornecido.
+//  *       401:
+//  *         description: Não autorizado.
+//  *       404:
+//  *         description: Agendamento não encontrado.
+//  *       500:
+//  *         description: Erro interno do servidor.
+//  */
+// router.delete("/:id", appointmentIdValidator, validateRequest, deleteAppointment);
+exports.default = router;

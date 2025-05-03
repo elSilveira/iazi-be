@@ -11,12 +11,42 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.serviceRepository = void 0;
 const prisma_1 = require("../lib/prisma");
-const client_1 = require("@prisma/client"); // Revertido: Importar de @prisma/client
 exports.serviceRepository = {
+    // Método antigo, pode ser removido ou mantido para compatibilidade se necessário
     getAll(companyId) {
         return __awaiter(this, void 0, void 0, function* () {
             return prisma_1.prisma.service.findMany({
                 where: companyId ? { companyId } : {},
+                include: { category: true } // Incluir categoria por padrão?
+            });
+        });
+    },
+    // Novo método findMany com filtros, ordenação e paginação
+    findMany(filters, orderBy, skip, take) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return prisma_1.prisma.service.findMany({
+                where: filters,
+                orderBy: orderBy,
+                skip: skip,
+                take: take,
+                include: {
+                    category: true, // Incluir dados da categoria
+                    company: {
+                        select: {
+                            id: true,
+                            name: true,
+                            address: true // Incluir endereço da empresa
+                        }
+                    }
+                }
+            });
+        });
+    },
+    // Novo método count com filtros
+    count(filters) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return prisma_1.prisma.service.count({
+                where: filters,
             });
         });
     },
@@ -24,6 +54,11 @@ exports.serviceRepository = {
         return __awaiter(this, void 0, void 0, function* () {
             return prisma_1.prisma.service.findUnique({
                 where: { id },
+                include: {
+                    category: true,
+                    company: true,
+                    professionals: { include: { professional: true } } // Incluir profissionais associados
+                }
             });
         });
     },
@@ -36,35 +71,23 @@ exports.serviceRepository = {
     },
     update(id, data) {
         return __awaiter(this, void 0, void 0, function* () {
-            try {
-                return yield prisma_1.prisma.service.update({
-                    where: { id },
-                    data,
-                });
-            }
-            catch (error) {
-                if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-                    return null;
-                }
-                throw error;
-            }
+            // O update do Prisma já lança P2025 se não encontrar, não precisa de try/catch aqui
+            return prisma_1.prisma.service.update({
+                where: { id },
+                data,
+            });
         });
     },
     delete(id) {
         return __awaiter(this, void 0, void 0, function* () {
-            try {
-                // Considerar desconectar de ProfessionalService antes de deletar
-                yield prisma_1.prisma.professionalService.deleteMany({ where: { serviceId: id } });
-                return yield prisma_1.prisma.service.delete({
-                    where: { id },
-                });
-            }
-            catch (error) {
-                if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-                    return null;
-                }
-                throw error;
-            }
+            // O delete do Prisma já lança P2025 se não encontrar
+            // A exclusão em cascata ou restrições FK devem ser tratadas no schema ou no controller
+            // Desconectar relações many-to-many antes de deletar
+            yield prisma_1.prisma.professionalService.deleteMany({ where: { serviceId: id } });
+            // TODO: Deletar Appointments e Reviews associados ou definir onDelete no schema?
+            return prisma_1.prisma.service.delete({
+                where: { id },
+            });
         });
     },
 };

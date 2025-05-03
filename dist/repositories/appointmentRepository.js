@@ -11,13 +11,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.appointmentRepository = void 0;
 const prisma_1 = require("../lib/prisma");
-const client_1 = require("@prisma/client"); // Revertido: Importar de @prisma/client
+const client_1 = require("@prisma/client");
 exports.appointmentRepository = {
-    // Encontrar agendamentos por usuário (opcionalmente por status)
-    findByUser(userId, status) {
+    // Encontrar múltiplos agendamentos com base em filtros
+    findMany(filters) {
         return __awaiter(this, void 0, void 0, function* () {
             return prisma_1.prisma.appointment.findMany({
-                where: Object.assign({ userId }, (status && { status })),
+                where: filters,
                 include: {
                     service: true,
                     professional: true,
@@ -29,18 +29,18 @@ exports.appointmentRepository = {
             });
         });
     },
+    // Encontrar agendamentos por usuário (opcionalmente por status)
+    findByUser(userId, status) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.findMany(Object.assign({ // Reutilizar findMany
+                userId }, (status && { status })));
+        });
+    },
     // Encontrar agendamentos por profissional (poderia adicionar filtro de data)
     findByProfessional(professionalId) {
         return __awaiter(this, void 0, void 0, function* () {
-            return prisma_1.prisma.appointment.findMany({
-                where: { professionalId },
-                include: {
-                    service: true,
-                    user: { select: { id: true, name: true, email: true, avatar: true } } // Incluir dados relevantes do usuário
-                },
-                orderBy: {
-                    date: 'asc',
-                },
+            return this.findMany({
+                professionalId,
             });
         });
     },
