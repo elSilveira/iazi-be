@@ -22,7 +22,12 @@ const port = process.env.PORT || 3002;
 // Middlewares de Segurança e Configuração
 app.use(helmet());
 app.use(cors());
-app.use(express.json());
+
+// *** Aumentar limite do payload para JSON e URL-encoded ***
+// O padrão é 100kb, o que é pouco para uploads de imagens ou dados maiores.
+// Ajuste '10mb' conforme necessário.
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Configuração do Swagger
 setupSwagger(app);
@@ -40,7 +45,9 @@ app.use('/api/professionals', professionalRouter); // Descomentado
 app.use('/api/appointments', appointmentRouter); // Descomentado
 app.use('/api/reviews', reviewRouter); // Descomentado
 app.use('/api/users', userRouter); // Added for user profile
-app.use('/api/categories', categoryRouter); // Added for categories// TODO: Implementar um middleware de tratamento de erros global
+app.use('/api/categories', categoryRouter); // Added for categories
+
+// TODO: Implementar um middleware de tratamento de erros global
 // app.use(globalErrorHandler);
 
 // Exportar o app para uso em testes de integração
