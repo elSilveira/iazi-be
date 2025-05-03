@@ -1,4 +1,9 @@
 import swaggerJsdoc from "swagger-jsdoc";
+// Correctly import types from @prisma/client
+import { Prisma } from "@prisma/client"; 
+
+// Define types based on Prisma models if needed for DTOs, or rely on Swagger definitions
+// Example: Define a type for the CreateUserAddressDto if not using inline schema
 
 const options: swaggerJsdoc.Options = {
   definition: {
@@ -10,28 +15,97 @@ const options: swaggerJsdoc.Options = {
     },
     servers: [
       {
-        url: "http://localhost:3000", // TODO: Ajustar para URL de produção quando aplicável
+        url: `http://localhost:${process.env.PORT || 3002}`, // Use PORT from .env or default
         description: "Servidor de Desenvolvimento",
       },
     ],
-    // TODO: Adicionar componentes como schemas de segurança (JWT) se necessário
-    // components: {
-    //   securitySchemes: {
-    //     bearerAuth: {
-    //       type: "http",
-    //       scheme: "bearer",
-    //       bearerFormat: "JWT",
-    //     },
-    //   },
-    // },
-    // security: [
-    //   {
-    //     bearerAuth: [],
-    //   },
-    // ],
+    components: {
+      securitySchemes: {
+        bearerAuth: { // Define bearerAuth security scheme
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+          description: "Enter JWT token in the format: Bearer <token>"
+        },
+      },
+      schemas: {
+        // --- User Address Schemas ---
+        UserAddress: { // Define schema based on Prisma model
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid", description: "Address ID" },
+            street: { type: "string" },
+            number: { type: "string" },
+            complement: { type: "string", nullable: true },
+            neighborhood: { type: "string" },
+            city: { type: "string" },
+            state: { type: "string" },
+            zipCode: { type: "string", description: "Brazilian ZIP code" },
+            isPrimary: { type: "boolean", description: "Indicates if it's the primary address" },
+            userId: { type: "string", format: "uuid", description: "User ID associated with the address" },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+          },
+        },
+        CreateUserAddressDto: {
+          type: "object",
+          required: ["street", "number", "neighborhood", "city", "state", "zipCode"],
+          properties: {
+            street: { type: "string" },
+            number: { type: "string" },
+            complement: { type: "string", nullable: true },
+            neighborhood: { type: "string" },
+            city: { type: "string" },
+            state: { type: "string" },
+            zipCode: { type: "string", description: "Valid Brazilian ZIP code" },
+            isPrimary: { type: "boolean", default: false },
+          },
+        },
+        UpdateUserAddressDto: {
+          type: "object",
+          properties: {
+            street: { type: "string" },
+            number: { type: "string" },
+            complement: { type: "string", nullable: true },
+            neighborhood: { type: "string" },
+            city: { type: "string" },
+            state: { type: "string" },
+            zipCode: { type: "string", description: "Valid Brazilian ZIP code" },
+            isPrimary: { type: "boolean" },
+          },
+        },
+        // --- Error Schemas ---
+        ErrorResponse: {
+            type: "object",
+            properties: {
+                message: { type: "string", description: "Error message" },
+                errors: { 
+                    type: "array", 
+                    items: { 
+                        type: "object",
+                        properties: {
+                            type: { type: "string" },
+                            value: { type: "string" },
+                            msg: { type: "string" },
+                            path: { type: "string" },
+                            location: { type: "string" }
+                        }
+                    },
+                    description: "Validation errors (optional)"
+                }
+            }
+        }
+        // TODO: Add schemas for other models (ProfessionalExperience, ProfessionalEducation, etc.) as they are implemented
+      },
+    },
+    security: [
+      {
+        bearerAuth: [], // Apply bearerAuth globally by default (can be overridden per operation)
+      },
+    ],
   },
-  // Caminho para os arquivos que contêm as anotações da API (rotas)
-  apis: ["./src/routes/*.ts", "./src/controllers/*.ts"], // Incluir controllers se as definições de schema estiverem lá
+  // Path to the API docs
+  apis: ["./src/routes/*.ts"], // Point to route files where annotations are written
 };
 
 const swaggerSpec = swaggerJsdoc(options);

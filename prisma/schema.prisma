@@ -16,45 +16,64 @@ model User {
   email         String    @unique
   name          String
   password      String
-  avatar     String?   // Renamed from avatar, added based on controller/frontend usage
+  avatar        String?   // Renamed from avatar, added based on controller/frontend usage
   bio           String?   // Added bio field based on controller/frontend usage
   phone         String?   // Added phone field based on controller/frontend usage
-  address       String?   // Added address field based on controller/frontend usage
   role          UserRole  @default(USER) // Added role field based on controller/test usage
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
+  addresses     UserAddress[] // Relation to UserAddress
   appointments  Appointment[]
   reviews       Review[]
 
   @@map("users") // Map to lowercase table name
 }
 
+// Modelo de Endereço do Usuário (NOVO)
+model UserAddress {
+  id           String   @id @default(uuid())
+  street       String
+  number       String
+  complement   String?
+  neighborhood String
+  city         String
+  state        String
+  zipCode      String   @map("zip_code")
+  isPrimary    Boolean  @default(false) // Indica se é o endereço principal
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String   @map("user_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("user_addresses") // Map to lowercase table name
+}
+
 // Modelo de Empresa
 model Company {
-  id            String    @id @default(uuid())
-  name          String
-  description   String
-  logo          String?
-  coverImage    String?   @map("cover_image")
-  rating        Float     @default(0)
-  totalReviews  Int       @default(0) @map("total_reviews")
-  yearEstablished String?   @map("year_established")
-  phone         String?
-  email         String?
-  address       Address?
-  workingHours  Json?     @map("working_hours")
-  categories    String[] // TODO: Consider changing to relation with Category model
-  services      Service[]
-  professionals Professional[]
-  reviews       Review[]
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id              String         @id @default(uuid())
+  name            String
+  description     String
+  logo            String?
+  coverImage      String?        @map("cover_image")
+  rating          Float          @default(0)
+  totalReviews    Int            @default(0) @map("total_reviews")
+  yearEstablished String?        @map("year_established")
+  phone           String?
+  email           String?
+  address         CompanyAddress? // Relation to CompanyAddress
+  workingHours    Json?          @map("working_hours")
+  categories      String[]       // TODO: Consider changing to relation with Category model
+  services        Service[]
+  professionals   Professional[]
+  reviews         Review[]
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
 
   @@map("companies") // Map to lowercase table name
 }
 
-// Modelo de Endereço (relacionado com Company)
-model Address {
+// Modelo de Endereço da Empresa (Renomeado de Address)
+model CompanyAddress {
   id            String    @id @default(uuid())
   street        String
   number        String
@@ -68,7 +87,7 @@ model Address {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  @@map("addresses") // Map to lowercase table name
+  @@map("company_addresses") // Map to lowercase table name
 }
 
 // Modelo de Serviço
@@ -103,12 +122,48 @@ model Professional {
   company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   companyId     String    @map("company_id")
   services      ProfessionalService[]
+  experiences   ProfessionalExperience[] // Added relation
+  education     ProfessionalEducation[]  // Added relation
   scheduledAppointments Appointment[] @relation("ProfessionalAppointments")
   reviews       Review[]
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
   @@map("professionals") // Map to lowercase table name
+}
+
+// Modelo de Experiência Profissional (NOVO)
+model ProfessionalExperience {
+  id            String    @id @default(uuid())
+  title         String    // Cargo
+  companyName   String    @map("company_name") // Nome da empresa onde trabalhou
+  description   String?   // Descrição das responsabilidades
+  startDate     DateTime  @map("start_date") // Data de início
+  endDate       DateTime? @map("end_date")   // Data de término (opcional se atual)
+  isCurrent     Boolean   @default(false) @map("is_current") // Se é o emprego atual
+  professional  Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  professionalId String    @map("professional_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("professional_experiences")
+}
+
+// Modelo de Formação Acadêmica (NOVO)
+model ProfessionalEducation {
+  id            String    @id @default(uuid())
+  institution   String    // Nome da instituição
+  degree        String    // Grau obtido (ex: Bacharelado, Técnico)
+  fieldOfStudy  String    @map("field_of_study") // Área de estudo
+  startDate     DateTime  @map("start_date") // Data de início
+  endDate       DateTime? @map("end_date")   // Data de término (opcional)
+  description   String?   // Descrição adicional
+  professional  Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  professionalId String    @map("professional_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("professional_education")
 }
 
 // Tabela de relacionamento entre Profissional e Serviço

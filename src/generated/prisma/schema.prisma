@@ -3,7 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  // output   = "../src/generated/prisma" // Removido para usar o padrão node_modules/@prisma/client
 }
 
 datasource db {
@@ -13,15 +13,35 @@ datasource db {
 
 // Modelo de Usuário
 model User {
-  id           String        @id @default(uuid())
-  email        String        @unique
-  name         String
-  password     String
-  avatar       String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  appointments Appointment[]
-  reviews      Review[]
+  id                 String                 @id @default(uuid())
+  email              String                 @unique
+  name               String
+  password           String
+  avatar             String?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  addresses          UserAddress[]          // Adicionado relacionamento com UserAddress
+  ownedCompanies     Company[]              // Adicionado relacionamento com Company (proprietário)
+  professionalProfile Professional?        // Adicionado relacionamento com Professional
+  appointments       Appointment[]
+  reviews            Review[]
+}
+
+// Modelo de Endereço do Usuário (NOVO)
+model UserAddress {
+  id           String   @id @default(uuid())
+  street       String
+  number       String
+  complement   String?
+  neighborhood String
+  city         String
+  state        String
+  zipCode      String
+  isPrimary    Boolean  @default(false) // Indica se é o endereço principal
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 // Modelo de Empresa
@@ -36,18 +56,20 @@ model Company {
   yearEstablished String?
   phone           String?
   email           String?
-  address         Address?
-  workingHours    Json?
+  address         CompanyAddress? // Renomeado para CompanyAddress
+  workingHours    Json?          // Horários de funcionamento
   categories      String[]
+  owner           User           @relation(fields: [ownerId], references: [id]) // Adicionado proprietário
+  ownerId         String         // Adicionado ID do proprietário
   services        Service[]
-  professionals   Professional[]
+  professionals   Professional[] // Funcionários da empresa
   reviews         Review[]
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 }
 
-// Modelo de Endereço (relacionado com Company)
-model Address {
+// Modelo de Endereço da Empresa (Renomeado de Address para CompanyAddress)
+model CompanyAddress {
   id           String   @id @default(uuid())
   street       String
   number       String
@@ -67,34 +89,66 @@ model Service {
   id            String                @id @default(uuid())
   name          String
   description   String
-  price         String
+  price         String // Preço base
   duration      String
   category      String
   image         String?
-  company       Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  companyId     String
-  professionals ProfessionalService[]
+  company       Company?              @relation(fields: [companyId], references: [id], onDelete: SetNull) // Empresa que oferece (opcional)
+  companyId     String?               // Tornou-se opcional
+  professionals ProfessionalService[] // Profissionais que realizam este serviço
   appointments  Appointment[]
   reviews       Review[]
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
 }
 
-// Modelo de Profissional
+// Modelo de Profissional (Vinculado ao User, Company opcional)
 model Professional {
-  id                    String                @id @default(uuid())
-  name                  String
-  role                  String
-  image                 String?
-  rating                Float                 @default(0)
-  appointments          Int                   @default(0)
-  company               Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  companyId             String
-  services              ProfessionalService[]
+  id                    String                 @id @default(uuid())
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                String                 @unique // Vinculado a um User
+  role                  String                 // Cargo (ex: Cabeleireiro, Eletricista)
+  bio                   String?                // Pequena biografia/descrição
+  rating                Float                  @default(0)
+  totalAppointments     Int                    @default(0) // Renomeado de 'appointments'
+  company               Company?               @relation(fields: [companyId], references: [id], onDelete: SetNull) // Empresa associada (opcional)
+  companyId             String?                // Tornou-se opcional
+  experiences           ProfessionalExperience[] // Adicionado relacionamento com Experiência
+  educations            ProfessionalEducation[]  // Adicionado relacionamento com Formação
+  services              ProfessionalService[]    // Serviços que este profissional realiza
   scheduledAppointments Appointment[]
   reviews               Review[]
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+}
+
+// Modelo de Experiência Profissional (NOVO)
+model ProfessionalExperience {
+  id             String       @id @default(uuid())
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  professionalId String
+  companyName    String
+  role           String
+  startDate      DateTime
+  endDate        DateTime?
+  description    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+// Modelo de Formação Acadêmica (NOVO)
+model ProfessionalEducation {
+  id             String       @id @default(uuid())
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  professionalId String
+  institution    String
+  degree         String       // Ex: Bacharelado, Técnico
+  fieldOfStudy   String       // Ex: Ciência da Computação, Estética
+  startDate      DateTime
+  endDate        DateTime?
+  description    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 // Tabela de relacionamento entre Profissional e Serviço
@@ -103,7 +157,7 @@ model ProfessionalService {
   professionalId String
   service        Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   serviceId      String
-  price          String? // Preço específico deste profissional para este serviço (pode ser diferente do preço padrão)
+  price          String? // Preço específico deste profissional para este serviço (pode ser diferente do preço base do serviço)
 
   @@id([professionalId, serviceId])
 }
@@ -113,11 +167,11 @@ model Appointment {
   id             String            @id @default(uuid())
   date           DateTime
   status         AppointmentStatus @default(PENDING)
-  user           User              @relation(fields: [userId], references: [id])
+  user           User              @relation(fields: [userId], references: [id]) // Cliente
   userId         String
   service        Service           @relation(fields: [serviceId], references: [id])
   serviceId      String
-  professional   Professional      @relation(fields: [professionalId], references: [id])
+  professional   Professional      @relation(fields: [professionalId], references: [id]) // Profissional que realizará
   professionalId String
   notes          String?
   createdAt      DateTime          @default(now())
@@ -129,16 +183,19 @@ model Review {
   id             String        @id @default(uuid())
   rating         Float
   comment        String?
-  user           User          @relation(fields: [userId], references: [id])
+  user           User          @relation(fields: [userId], references: [id]) // Quem avaliou
   userId         String
-  service        Service?      @relation(fields: [serviceId], references: [id])
+  service        Service?      @relation(fields: [serviceId], references: [id]) // Serviço avaliado (opcional)
   serviceId      String?
-  professional   Professional? @relation(fields: [professionalId], references: [id])
+  professional   Professional? @relation(fields: [professionalId], references: [id]) // Profissional avaliado (opcional)
   professionalId String?
-  company        Company?      @relation(fields: [companyId], references: [id])
+  company        Company?      @relation(fields: [companyId], references: [id]) // Empresa avaliada (opcional)
   companyId      String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+
+  // Garantir que a avaliação seja de pelo menos um item (serviço, profissional ou empresa)
+  @@index([serviceId, professionalId, companyId])
 }
 
 // Enumeração para status de agendamento
@@ -148,3 +205,4 @@ enum AppointmentStatus {
   COMPLETED
   CANCELLED
 }
+

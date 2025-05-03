@@ -26,10 +26,31 @@ const options = {
             email: { type: 'string', format: 'email', description: 'Email único do usuário' },
             name: { type: 'string', description: 'Nome do usuário' },
             avatar: { type: 'string', format: 'url', nullable: true, description: 'URL do avatar do usuário' },
+            bio: { type: 'string', nullable: true, description: 'Biografia do usuário' },
+            phone: { type: 'string', nullable: true, description: 'Telefone do usuário' },
+            role: { $ref: '#/components/schemas/UserRole' },
             createdAt: { type: 'string', format: 'date-time', description: 'Data de criação' },
             updatedAt: { type: 'string', format: 'date-time', description: 'Data da última atualização' },
           },
-          required: ['id', 'email', 'name', 'createdAt', 'updatedAt'],
+          required: ['id', 'email', 'name', 'role', 'createdAt', 'updatedAt'],
+        },
+        UserAddress: { // Added UserAddress Schema
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid', description: 'ID único do endereço do usuário (UUID)' },
+            street: { type: 'string', description: 'Rua' },
+            number: { type: 'string', description: 'Número' },
+            complement: { type: 'string', nullable: true, description: 'Complemento' },
+            neighborhood: { type: 'string', description: 'Bairro' },
+            city: { type: 'string', description: 'Cidade' },
+            state: { type: 'string', description: 'Estado (UF)' },
+            zipCode: { type: 'string', description: 'CEP' },
+            isPrimary: { type: 'boolean', default: false, description: 'Indica se é o endereço principal do usuário' },
+            userId: { type: 'string', format: 'uuid', description: 'ID do usuário associado' },
+            createdAt: { type: 'string', format: 'date-time', description: 'Data de criação' },
+            updatedAt: { type: 'string', format: 'date-time', description: 'Data da última atualização' },
+          },
+          required: ['id', 'street', 'number', 'neighborhood', 'city', 'state', 'zipCode', 'isPrimary', 'userId', 'createdAt', 'updatedAt'],
         },
         Company: {
           type: 'object',
@@ -44,7 +65,7 @@ const options = {
             yearEstablished: { type: 'string', nullable: true, description: 'Ano de fundação' },
             phone: { type: 'string', nullable: true, description: 'Telefone da empresa' },
             email: { type: 'string', format: 'email', nullable: true, description: 'Email da empresa' },
-            address: { $ref: '#/components/schemas/Address', nullable: true },
+            address: { $ref: '#/components/schemas/CompanyAddress', nullable: true }, // Corrected ref
             workingHours: { type: 'object', nullable: true, description: 'Horário de funcionamento (JSON)' },
             categories: { type: 'array', items: { type: 'string' }, description: 'Categorias de serviço da empresa' },
             createdAt: { type: 'string', format: 'date-time', description: 'Data de criação' },
@@ -52,16 +73,16 @@ const options = {
           },
           required: ['id', 'name', 'description', 'rating', 'totalReviews', 'categories', 'createdAt', 'updatedAt'],
         },
-        Address: {
+        CompanyAddress: { // Renamed from Address
           type: 'object',
           properties: {
-            id: { type: 'string', format: 'uuid', description: 'ID único do endereço (UUID)' },
+            id: { type: 'string', format: 'uuid', description: 'ID único do endereço da empresa (UUID)' },
             street: { type: 'string', description: 'Rua' },
             number: { type: 'string', description: 'Número' },
             complement: { type: 'string', nullable: true, description: 'Complemento' },
             neighborhood: { type: 'string', description: 'Bairro' },
             city: { type: 'string', description: 'Cidade' },
-            state: { type: 'string', description: 'Estado' },
+            state: { type: 'string', description: 'Estado (UF)' },
             zipCode: { type: 'string', description: 'CEP' },
             companyId: { type: 'string', format: 'uuid', description: 'ID da empresa associada' },
             createdAt: { type: 'string', format: 'date-time', description: 'Data de criação' },
@@ -77,13 +98,13 @@ const options = {
             description: { type: 'string', description: 'Descrição do serviço' },
             price: { type: 'string', description: 'Preço do serviço' },
             duration: { type: 'string', description: 'Duração do serviço (ex: "45min")' },
-            category: { type: 'string', description: 'Categoria do serviço' },
+            categoryId: { type: 'integer', description: 'ID da categoria do serviço' },
             image: { type: 'string', format: 'url', nullable: true, description: 'URL da imagem do serviço' },
             companyId: { type: 'string', format: 'uuid', description: 'ID da empresa que oferece o serviço' },
             createdAt: { type: 'string', format: 'date-time', description: 'Data de criação' },
             updatedAt: { type: 'string', format: 'date-time', description: 'Data da última atualização' },
           },
-          required: ['id', 'name', 'description', 'price', 'duration', 'category', 'companyId', 'createdAt', 'updatedAt'],
+          required: ['id', 'name', 'description', 'price', 'duration', 'categoryId', 'companyId', 'createdAt', 'updatedAt'],
         },
         Professional: {
           type: 'object',
@@ -93,12 +114,12 @@ const options = {
             role: { type: 'string', description: 'Cargo ou função do profissional' },
             image: { type: 'string', format: 'url', nullable: true, description: 'URL da foto do profissional' },
             rating: { type: 'number', format: 'float', default: 0, description: 'Avaliação média do profissional' },
-            appointments: { type: 'integer', default: 0, description: 'Contador (pode ser removido/revisado, parece não ser usado)' }, // Revisar este campo
+            totalReviews: { type: 'integer', default: 0, description: 'Número total de avaliações' }, // Added totalReviews
             companyId: { type: 'string', format: 'uuid', description: 'ID da empresa associada' },
             createdAt: { type: 'string', format: 'date-time', description: 'Data de criação' },
             updatedAt: { type: 'string', format: 'date-time', description: 'Data da última atualização' },
           },
-          required: ['id', 'name', 'role', 'rating', 'companyId', 'createdAt', 'updatedAt'],
+          required: ['id', 'name', 'role', 'rating', 'totalReviews', 'companyId', 'createdAt', 'updatedAt'],
         },
         ProfessionalService: {
           type: 'object',
@@ -140,7 +161,7 @@ const options = {
           },
           required: ['id', 'rating', 'userId', 'createdAt', 'updatedAt'],
         },
-        Category: { // Moved Category schema to the top level
+        Category: {
           type: 'object',
           properties: {
             id: { type: 'integer', description: 'ID único da categoria' },
@@ -158,8 +179,54 @@ const options = {
           enum: ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'],
           description: 'Status do agendamento',
         },
+        UserRole: {
+          type: 'string',
+          enum: ['USER', 'ADMIN'], // Add other roles if needed
+          description: 'Papel do usuário no sistema',
+        },
 
         // --- Schemas para Requisições (Inputs) ---
+        CreateUserAddressInput: { // Added
+          type: 'object',
+          properties: {
+            street: { type: 'string' },
+            number: { type: 'string' },
+            complement: { type: 'string', nullable: true },
+            neighborhood: { type: 'string' },
+            city: { type: 'string' },
+            state: { type: 'string', minLength: 2, maxLength: 2 },
+            zipCode: { type: 'string' },
+            isPrimary: { type: 'boolean', default: false },
+          },
+          required: ['street', 'number', 'neighborhood', 'city', 'state', 'zipCode'],
+        },
+        UpdateUserAddressInput: { // Added
+          type: 'object',
+          properties: {
+            street: { type: 'string' },
+            number: { type: 'string' },
+            complement: { type: 'string', nullable: true },
+            neighborhood: { type: 'string' },
+            city: { type: 'string' },
+            state: { type: 'string', minLength: 2, maxLength: 2 },
+            zipCode: { type: 'string' },
+            isPrimary: { type: 'boolean' },
+          },
+          // All fields are optional for update
+        },
+        UpsertCompanyAddressInput: { // Added (used for PUT on company address)
+          type: 'object',
+          properties: {
+            street: { type: 'string' },
+            number: { type: 'string' },
+            complement: { type: 'string', nullable: true },
+            neighborhood: { type: 'string' },
+            city: { type: 'string' },
+            state: { type: 'string', minLength: 2, maxLength: 2 },
+            zipCode: { type: 'string' },
+          },
+          required: ['street', 'number', 'neighborhood', 'city', 'state', 'zipCode'],
+        },
         CreateCompanyInput: {
           type: 'object',
           properties: {
@@ -169,22 +236,9 @@ const options = {
             phone: { type: 'string', nullable: true },
             categories: { type: 'array', items: { type: 'string' } },
             yearEstablished: { type: 'string', nullable: true },
-            address: { $ref: '#/components/schemas/CreateAddressInput', nullable: true },
+            address: { $ref: '#/components/schemas/UpsertCompanyAddressInput', nullable: true }, // Use input schema
           },
           required: ['name', 'description', 'categories'],
-        },
-        CreateAddressInput: {
-          type: 'object',
-          properties: {
-            street: { type: 'string' },
-            number: { type: 'string' },
-            complement: { type: 'string', nullable: true },
-            neighborhood: { type: 'string' },
-            city: { type: 'string' },
-            state: { type: 'string' },
-            zipCode: { type: 'string' },
-          },
-          required: ['street', 'number', 'neighborhood', 'city', 'state', 'zipCode'],
         },
         // ... outros inputs ...
       },
@@ -199,18 +253,186 @@ const options = {
     },
     security: [
       {
-        bearerAuth: [], // Aplica a autenticação Bearer globalmente (opcional, pode ser definido por rota)
+        bearerAuth: [], // Aplica a autenticação Bearer globalmente (pode ser definido por rota)
       },
     ],
+    // Explicitly define paths for better control
+    paths: {
+      // --- User Address Paths ---
+      '/api/users/me/addresses': {
+        get: {
+          tags: ['User Addresses'],
+          summary: 'Lista os endereços do usuário autenticado',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Lista de endereços do usuário',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/UserAddress' }
+                  }
+                }
+              }
+            },
+            '401': { description: 'Não autorizado' }
+          }
+        },
+        post: {
+          tags: ['User Addresses'],
+          summary: 'Cria um novo endereço para o usuário autenticado',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CreateUserAddressInput' }
+              }
+            }
+          },
+          responses: {
+            '201': {
+              description: 'Endereço criado com sucesso',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/UserAddress' }
+                }
+              }
+            },
+            '400': { description: 'Dados inválidos' },
+            '401': { description: 'Não autorizado' }
+          }
+        }
+      },
+      '/api/users/me/addresses/{addressId}': {
+        get: {
+          tags: ['User Addresses'],
+          summary: 'Obtém um endereço específico do usuário autenticado',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'addressId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }
+          ],
+          responses: {
+            '200': {
+              description: 'Detalhes do endereço',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/UserAddress' }
+                }
+              }
+            },
+            '401': { description: 'Não autorizado' },
+            '404': { description: 'Endereço não encontrado' }
+          }
+        },
+        put: {
+          tags: ['User Addresses'],
+          summary: 'Atualiza um endereço específico do usuário autenticado',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'addressId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/UpdateUserAddressInput' }
+              }
+            }
+          },
+          responses: {
+            '200': {
+              description: 'Endereço atualizado com sucesso',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/UserAddress' }
+                }
+              }
+            },
+            '400': { description: 'Dados inválidos' },
+            '401': { description: 'Não autorizado' },
+            '404': { description: 'Endereço não encontrado' }
+          }
+        },
+        delete: {
+          tags: ['User Addresses'],
+          summary: 'Deleta um endereço específico do usuário autenticado',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'addressId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }
+          ],
+          responses: {
+            '204': { description: 'Endereço deletado com sucesso' },
+            '401': { description: 'Não autorizado' },
+            '404': { description: 'Endereço não encontrado' }
+          }
+        }
+      },
+      // --- Company Address Paths ---
+      '/api/companies/{companyId}/address': {
+        get: {
+          tags: ['Company Addresses'],
+          summary: 'Obtém o endereço de uma empresa específica',
+          // security: [], // Assuming public access for GET
+          parameters: [
+            { name: 'companyId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }
+          ],
+          responses: {
+            '200': {
+              description: 'Detalhes do endereço da empresa',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/CompanyAddress' }
+                }
+              }
+            },
+            '404': { description: 'Endereço da empresa não encontrado' }
+          }
+        },
+        put: {
+          tags: ['Company Addresses'],
+          summary: 'Cria ou atualiza o endereço de uma empresa específica',
+          security: [{ bearerAuth: [] }], // Requires authentication
+          parameters: [
+            { name: 'companyId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/UpsertCompanyAddressInput' }
+              }
+            }
+          },
+          responses: {
+            '200': {
+              description: 'Endereço da empresa criado/atualizado com sucesso',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/CompanyAddress' }
+                }
+              }
+            },
+            '400': { description: 'Dados inválidos' },
+            '401': { description: 'Não autorizado' },
+            '403': { description: 'Permissão negada' }, // Added for permission check
+            '404': { description: 'Empresa não encontrada' }
+          }
+        }
+        // DELETE for company address might not be needed if it's required
+      },
+      // --- Include other paths defined via JSDoc in routes/*.ts ---
+    }
   },
-  apis: ['./src/routes/*.ts'], // Only include routes, controllers are not needed here
+  apis: ['./src/routes/*.ts'], // Still use this to pick up JSDoc from other routes
 };
 
 const swaggerSpec = swaggerJsdoc(options);
 
 export const setupSwagger = (app: Express) => {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-  console.log(`[swagger]: Documentação da API disponível em /api-docs`);
-  console.log(`[swagger]: Documentação da API disponível em http://localhost:3001/api-docs`); // Log the full URL
+  // console.log(`[swagger]: Documentação da API disponível em /api-docs`); // Redundant log
+  // console.log(`[swagger]: Documentação da API disponível em http://localhost:3001/api-docs`); // Redundant log
 };
 

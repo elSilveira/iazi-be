@@ -6,7 +6,62 @@ const appointmentValidators_1 = require("../validators/appointmentValidators");
 const validationMiddleware_1 = require("../middlewares/validationMiddleware");
 const authMiddleware_1 = require("../middlewares/authMiddleware"); // Importar o middleware de autenticação
 const router = (0, express_1.Router)();
-// Aplicar middleware de autenticação a todas as rotas de agendamento
+// --- Rota Pública (ou com autenticação opcional?) para Disponibilidade ---
+/**
+ * @swagger
+ * /api/appointments/availability:
+ *   get:
+ *     summary: Obtém os horários disponíveis para agendamento
+ *     tags: [Appointments]
+ *     parameters:
+ *       - in: query
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Data para verificar disponibilidade (YYYY-MM-DD)
+ *       - in: query
+ *         name: serviceId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do serviço (necessário para determinar duração)
+ *       - in: query
+ *         name: professionalId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do profissional (se aplicável)
+ *       - in: query
+ *         name: companyId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID da empresa (se aplicável)
+ *     responses:
+ *       200:
+ *         description: Lista de horários disponíveis retornada com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 availableSlots:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                     example: "09:00"
+ *                   description: Lista de horários disponíveis no formato HH:mm
+ *       400:
+ *         description: Erro de validação (data inválida, IDs faltando, etc.).
+ *       404:
+ *         description: Serviço, Profissional ou Empresa não encontrado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.get("/availability", appointmentValidators_1.getAvailabilityValidator, validationMiddleware_1.validateRequest, appointmentController_1.getAppointmentAvailability);
+// --- Rotas Protegidas --- 
 router.use(authMiddleware_1.authMiddleware);
 /**
  * @swagger
@@ -23,6 +78,12 @@ router.use(authMiddleware_1.authMiddleware);
  *           type: string
  *           format: uuid
  *         description: Filtra agendamentos por ID do profissional (opcional)
+ *       - in: query
+ *         name: companyId # Adicionado filtro por companyId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filtra agendamentos por ID da empresa (opcional)
  *       - in: query
  *         name: date
  *         schema:
@@ -93,13 +154,15 @@ router.get("/:id", appointmentValidators_1.appointmentIdValidator, validationMid
  *           schema:
  *             type: object
  *             required:
- *               - date
+ *               - startTime
  *               - serviceId
- *               - professionalId # Tornar obrigatório ou opcional dependendo da regra
+ *               - userId # Adicionado userId (geralmente obtido do token)
  *             properties:
- *               date: { type: string, format: date-time, description: 'Data e hora do agendamento (ISO 8601)' }
+ *               startTime: { type: string, format: date-time, description: 'Data e hora de início do agendamento (ISO 8601)' }
  *               serviceId: { type: string, format: uuid, description: 'ID do serviço agendado' }
- *               professionalId: { type: string, format: uuid, description: 'ID do profissional responsável' }
+ *               professionalId: { type: string, format: uuid, nullable: true, description: 'ID do profissional responsável (opcional)' }
+ *               companyId: { type: string, format: uuid, nullable: true, description: 'ID da empresa (opcional, pode ser inferido do serviço/profissional)' }
+ *               userId: { type: string, format: uuid, description: 'ID do usuário que está agendando' }
  *               notes: { type: string, nullable: true, description: 'Observações adicionais' }
  *     responses:
  *       201:
@@ -113,7 +176,7 @@ router.get("/:id", appointmentValidators_1.appointmentIdValidator, validationMid
  *       401:
  *         description: Não autorizado.
  *       404:
- *         description: Serviço ou Profissional não encontrado.
+ *         description: Serviço, Profissional ou Usuário não encontrado.
  *       500:
  *         description: Erro interno do servidor.
  */

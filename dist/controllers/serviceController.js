@@ -22,27 +22,91 @@ var __rest = (this && this.__rest) || function (s, e) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteService = exports.updateService = exports.createService = exports.getServiceById = exports.getAllServices = void 0;
 const serviceRepository_1 = require("../repositories/serviceRepository");
-// Obter todos os serviços (opcionalmente filtrados por companyId)
+// Obter todos os serviços (com filtros e paginação)
 const getAllServices = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const { companyId } = req.query;
-    // A validação do formato do companyId (se fornecido) será feita pelo express-validator
+    // Extrair filtros e paginação da query string
+    const { companyId, category, // Category name filter
+    q, // Search term
+    minPrice, maxPrice, 
+    // minRating, // Rating is not directly on Service model
+    sort, // e.g., "price_asc", "price_desc", "name_asc"
+    page = "1", // Default page 1
+    limit = "10" // Default 10 items per page
+     } = req.query;
+    // Validar e converter parâmetros de paginação
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1) {
+        // Corrected: Don't return void, just send response
+        res.status(400).json({ message: "Parâmetros de paginação inválidos (page e limit devem ser números positivos)." });
+        return;
+    }
+    const skip = (pageNum - 1) * limitNum;
     try {
-        const services = yield serviceRepository_1.serviceRepository.getAll(companyId);
-        res.json(services);
+        // Construir objeto de filtros para Prisma
+        const filters = {};
+        if (companyId)
+            filters.companyId = companyId;
+        // Corrected: Filter by category name through relation
+        if (category)
+            filters.category = { name: { contains: category, mode: "insensitive" } };
+        if (q) {
+            const searchTerm = q;
+            filters.OR = [
+                { name: { contains: searchTerm, mode: "insensitive" } },
+                { description: { contains: searchTerm, mode: "insensitive" } },
+                // Corrected: Search in category name through relation
+                { category: { name: { contains: searchTerm, mode: "insensitive" } } },
+                // Add search in company name if needed via relations
+                { company: { name: { contains: searchTerm, mode: "insensitive" } } },
+            ];
+        }
+        // Add price filters (assuming price is stored as String, requires careful comparison or schema change)
+        // This is complex with string prices. For now, skipping price filtering.
+        // Consider changing schema `price` to Decimal or Float for proper filtering.
+        // if (minPrice) { /* Logic for string price comparison >= minPrice */ }
+        // if (maxPrice) { /* Logic for string price comparison <= maxPrice */ }
+        // Construir objeto de ordenação para Prisma
+        let orderBy = {};
+        switch (sort) {
+            // case "rating_desc": // Rating not on service
+            //   break;
+            case "price_asc":
+                orderBy = { price: "asc" }; // Sorting string price might be lexicographical, not numerical
+                break;
+            case "price_desc":
+                orderBy = { price: "desc" }; // Sorting string price might be lexicographical, not numerical
+                break;
+            case "name_asc":
+                orderBy = { name: "asc" };
+                break;
+            default:
+                orderBy = { name: "asc" }; // Default sort
+        }
+        // Assume repository methods exist
+        const services = yield serviceRepository_1.serviceRepository.findMany(filters, orderBy, skip, limitNum);
+        const totalServices = yield serviceRepository_1.serviceRepository.count(filters);
+        res.json({
+            data: services,
+            pagination: {
+                currentPage: pageNum,
+                totalPages: Math.ceil(totalServices / limitNum),
+                totalItems: totalServices,
+                itemsPerPage: limitNum,
+            },
+        });
     }
     catch (error) {
-        next(error); // Passa o erro para o middleware global
+        next(error);
     }
 });
 exports.getAllServices = getAllServices;
 // Obter um serviço específico pelo ID
 const getServiceById = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
-    // A validação do formato do ID será feita pelo express-validator
     try {
         const service = yield serviceRepository_1.serviceRepository.findById(id);
         if (!service) {
-            // Lança um erro que será capturado pelo middleware global (P2025)
             const error = new Error("Serviço não encontrado");
             error.statusCode = 404;
             return next(error);
@@ -56,25 +120,23 @@ const getServiceById = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
 exports.getServiceById = getServiceById;
 // Criar um novo serviço
 const createService = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    // A validação dos dados (nome, preço, companyId, etc.) será feita pelo express-validator
-    const { name, description, price, duration, image, category, companyId } = req.body;
+    // Corrected: Use `duration` (String) as per schema, not durationMinutes
+    const { name, description, price, duration, image, categoryId, companyId } = req.body;
     try {
-        // Montar o objeto de dados para o Prisma usando 'connect'
-        // Os validadores devem garantir que price e duration são strings válidas
+        // Validate categoryId exists if provided?
         const dataToCreate = {
             name,
             description,
-            price, // Assumindo que o validator garante que é uma string válida
-            duration, // Assumindo que o validator garante que é uma string válida
+            price, // String as per schema
+            duration, // String as per schema
             image,
-            category,
+            category: { connect: { id: parseInt(categoryId, 10) } }, // Connect by category ID (assuming it's Int)
             company: { connect: { id: companyId } },
         };
         const newService = yield serviceRepository_1.serviceRepository.create(dataToCreate);
         res.status(201).json(newService);
     }
     catch (error) {
-        // Erros, incluindo P2003 (FK inválida), serão tratados pelo middleware global
         next(error);
     }
 });
@@ -82,18 +144,19 @@ exports.createService = createService;
 // Atualizar um serviço existente
 const updateService = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
-    // A validação do formato do ID e dos dados do body será feita pelo express-validator
-    // Não permitir atualização do companyId via este endpoint
-    const _a = req.body, { companyId } = _a, dataToUpdate = __rest(_a, ["companyId"]);
+    // Corrected: Use `duration` (String), handle categoryId update
+    const _a = req.body, { companyId, categoryId } = _a, dataToUpdate = __rest(_a, ["companyId", "categoryId"]);
     try {
-        // Os validadores devem garantir que price e duration (se fornecidos) são strings válidas
-        const updatedService = yield serviceRepository_1.serviceRepository.update(id, dataToUpdate);
-        // O repositório deve lançar um erro se o serviço não for encontrado (Prisma P2025)
-        // que será tratado pelo middleware global
+        // Prepare update data, connect category if categoryId is provided
+        const updatePayload = Object.assign({}, dataToUpdate);
+        if (categoryId !== undefined) {
+            updatePayload.category = { connect: { id: parseInt(categoryId, 10) } };
+        }
+        // Price and duration are strings, no conversion needed unless schema changes
+        const updatedService = yield serviceRepository_1.serviceRepository.update(id, updatePayload);
         res.json(updatedService);
     }
     catch (error) {
-        // Erros, incluindo P2025 (não encontrado), serão tratados pelo middleware global
         next(error);
     }
 });
@@ -101,15 +164,11 @@ exports.updateService = updateService;
 // Deletar um serviço
 const deleteService = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
-    // A validação do formato do ID será feita pelo express-validator
     try {
         const deletedService = yield serviceRepository_1.serviceRepository.delete(id);
-        // O repositório deve lançar um erro se o serviço não for encontrado (Prisma P2025)
-        // que será tratado pelo middleware global
         res.status(200).json({ message: "Serviço excluído com sucesso", service: deletedService });
     }
     catch (error) {
-        // Erros, incluindo P2025 (não encontrado) ou P2003 (restrição FK), serão tratados pelo middleware global
         next(error);
     }
 });

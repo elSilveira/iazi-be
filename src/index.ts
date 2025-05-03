@@ -10,6 +10,8 @@ import companyRouter from './routes/companyRoutes';
 import professionalRouter from './routes/professionalRoutes'; // Descomentado
 import appointmentRouter from './routes/appointmentRoutes'; // Descomentado
 import reviewRouter from './routes/reviewRoutes'; // Descomentado
+import userAddressRouter from './routes/userAddressRoutes'; // Added for user addresses
+import companyAddressRouter from './routes/companyAddressRoutes'; // Added for company addresses
 import userRouter from './routes/userRoutes'; // Added for user profile
 import categoryRouter from './routes/categoryRoutes'; // Added for categories
 import { setupSwagger } from './swagger';

@@ -57,7 +57,7 @@ export const getAllProfessionals = async (req: Request, res: Response, next: Nex
     
     // Corrected: Add location filters (based on company address)
     const companyFilter: Prisma.CompanyWhereInput = {};
-    const addressFilter: Prisma.AddressWhereInput = {};
+    const addressFilter: Prisma.CompanyAddressWhereInput = {}; // Corrected type
     if (city) addressFilter.city = { contains: city as string, mode: "insensitive" };
     if (state) addressFilter.state = { contains: state as string, mode: "insensitive" };
     if (Object.keys(addressFilter).length > 0) {

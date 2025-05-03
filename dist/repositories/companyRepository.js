@@ -9,80 +9,104 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.companyRepository = void 0;
-const prisma_1 = require("../lib/prisma");
 const client_1 = require("@prisma/client");
-exports.companyRepository = {
-    getAll() {
+class CompanyRepository {
+    constructor() {
+        this.prisma = new client_1.PrismaClient();
+    }
+    // Implemented findMany to support filtering, ordering, and pagination
+    findMany(filters, orderBy, skip, take) {
         return __awaiter(this, void 0, void 0, function* () {
-            return prisma_1.prisma.company.findMany({
-                include: { address: true }, // Incluir endereço
+            return this.prisma.company.findMany({
+                where: filters,
+                orderBy: orderBy,
+                skip: skip,
+                take: take,
+                include: { address: true }, // Include CompanyAddress
             });
         });
-    },
+    }
+    // Implemented count to support filtering
+    count(filters) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.prisma.company.count({
+                where: filters,
+            });
+        });
+    }
+    // Keep existing findAll for basic pagination without filters
+    findAll(page, limit) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const skip = (page - 1) * limit;
+            const [companies, total] = yield this.prisma.$transaction([
+                this.prisma.company.findMany({
+                    skip: skip,
+                    take: limit,
+                    include: { address: true }, // Include CompanyAddress
+                    orderBy: { createdAt: "desc" },
+                }),
+                this.prisma.company.count(), // Count without filters for total
+            ]);
+            return { companies, total };
+        });
+    }
     findById(id) {
         return __awaiter(this, void 0, void 0, function* () {
-            return prisma_1.prisma.company.findUnique({
+            return this.prisma.company.findUnique({
                 where: { id },
-                include: { address: true }, // Incluir endereço
+                include: {
+                    address: true, // Include CompanyAddress
+                    services: true,
+                    professionals: true,
+                    reviews: {
+                        include: {
+                            user: { select: { id: true, name: true, avatar: true } }, // Include user details in reviews
+                        },
+                        orderBy: { createdAt: "desc" },
+                    },
+                },
             });
         });
-    },
+    }
+    // Use CompanyAddress types for addressData
     create(data, addressData) {
         return __awaiter(this, void 0, void 0, function* () {
-            return prisma_1.prisma.company.create({
-                data: Object.assign(Object.assign({}, data), (addressData && {
-                    address: {
-                        create: addressData,
-                    }
-                })),
-                include: { address: true } // Incluir endereço no retorno
+            return this.prisma.company.create({
+                data: Object.assign(Object.assign({}, data), { address: addressData
+                        ? {
+                            create: addressData, // Use CompanyAddressCreateWithoutCompanyInput
+                        }
+                        : undefined }),
+                include: { address: true }, // Include CompanyAddress
             });
         });
-    },
+    }
+    // Use CompanyAddress types for addressData
     update(id, data, addressData) {
         return __awaiter(this, void 0, void 0, function* () {
-            // addressData = null indica que o endereço deve ser removido (se existir)
-            // addressData = objeto indica que deve ser criado ou atualizado
-            try {
-                return yield prisma_1.prisma.company.update({
-                    where: { id },
-                    data: Object.assign(Object.assign({}, data), { address: addressData === null
-                            ? { delete: true } // Deleta o endereço existente se addressData for null
-                            : addressData !== undefined
-                                ? {
-                                    upsert: {
-                                        create: addressData, // Type assertion needed
-                                        update: addressData, // Type assertion needed
-                                    }
-                                }
-                                : undefined }),
-                    include: { address: true } // Incluir endereço no retorno
-                });
-            }
-            catch (error) {
-                if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-                    // P2025: An operation failed because it depends on one or more records that were required but not found. (e.g. Record to update not found.)
-                    return null;
-                }
-                throw error;
-            }
+            return this.prisma.company.update({
+                where: { id },
+                data: Object.assign(Object.assign({}, data), { address: addressData === null // Handle explicit null to disconnect/delete address if needed
+                        ? { delete: true } // Or { disconnect: true } depending on desired behavior
+                        : addressData
+                            ? {
+                                upsert: {
+                                    create: addressData, // Correct type
+                                    update: addressData, // Correct type
+                                },
+                            }
+                            : undefined }),
+                include: { address: true }, // Include CompanyAddress
+            });
         });
-    },
+    }
     delete(id) {
         return __awaiter(this, void 0, void 0, function* () {
-            // onDelete: Cascade no schema do Address deve cuidar da exclusão do endereço associado.
-            try {
-                return yield prisma_1.prisma.company.delete({
-                    where: { id },
-                });
-            }
-            catch (error) {
-                if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-                    return null;
-                }
-                throw error;
-            }
+            // Consider transaction if related data needs cleanup
+            return this.prisma.company.delete({
+                where: { id },
+            });
         });
-    },
-};
+    }
+}
+exports.default = new CompanyRepository();
