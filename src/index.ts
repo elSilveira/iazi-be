@@ -15,7 +15,7 @@ import categoryRouter from './routes/categoryRoutes'; // Added for categories
 import { setupSwagger } from './swagger';
 
 const app: Express = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3002;
 
 // Middlewares de Segurança e Configuração
 app.use(helmet());

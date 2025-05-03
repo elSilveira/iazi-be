@@ -10,7 +10,7 @@ const serviceRoutes_1 = __importDefault(require("./routes/serviceRoutes")); // U
 const companyRoutes_1 = __importDefault(require("./routes/companyRoutes")); // Updated import
 const swagger_1 = require("./swagger");
 const app = (0, express_1.default)();
-const port = process.env.PORT || 3001; // Porta para o backend
+const port = process.env.PORT || 3002; // Porta para o backend
 app.use((0, cors_1.default)()); // Habilita CORS para permitir requisições do frontend
 app.use(express_1.default.json()); // Middleware para parsear JSON
 // Configuração do Swagger

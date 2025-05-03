@@ -50,6 +50,7 @@ npm install
 #    - Atualize a variável DATABASE_URL no arquivo .env com suas credenciais do PostgreSQL:
 #      DATABASE_URL="postgresql://serviconnect_user:password@localhost:5432/serviconnect_db?schema=public"
 #    - (Opcional) Defina uma JWT_SECRET no .env para maior segurança.
+npx prisma generate
 
 # 6. Aplique as migrações do banco de dados:
 #    Este comando criará as tabelas no banco de dados com base no schema Prisma.
@@ -66,7 +67,7 @@ npm run dev
 # npm start
 ```
 
-O servidor estará disponível em `http://localhost:3001` por padrão.
+O servidor estará disponível em `http://localhost:3002` por padrão.
 
 ## Estrutura do Projeto
 
@@ -123,7 +124,7 @@ Consulte a documentação Swagger para a lista completa e detalhada dos endpoint
 
 ## Documentação da API
 
-A documentação da API está disponível através do Swagger UI em `http://localhost:3001/api-docs` quando o servidor está em execução.
+A documentação da API está disponível através do Swagger UI em `http://localhost:3002/api-docs` quando o servidor está em execução.
 
 ## Próximos Passos (Sugestões)
 
@@ -149,7 +150,7 @@ Para executar o projeto completo, você também precisará configurar e executar
 
 Durante a validação do código após a implementação da Fase 3 (Integração com Banco de Dados), foram encontrados alguns erros persistentes de tipagem no arquivo `src/routes/authRoutes.ts` relacionados às assinaturas das funções de callback do Express. Após tentativas de correção, optou-se por suprimir esses erros específicos usando comentários `// @ts-ignore` para permitir a compilação e execução do servidor. Esta é uma solução temporária e pode ser revisitada no futuro.
 
-Além disso, ao tentar acessar a documentação Swagger UI (`/api-docs`) através do domínio público exposto pelo ambiente de desenvolvimento, foram encontrados erros de conexão (`ERR_CONNECTION_RESET` e `ERR_EMPTY_RESPONSE`). No entanto, a interface do Swagger foi verificada e está funcionando corretamente quando acessada localmente (`http://localhost:3001/api-docs`) dentro do ambiente sandbox. Isso sugere que o problema de acesso externo pode estar relacionado à camada de proxy do ambiente e não à configuração do servidor ou do Swagger em si.
+Além disso, ao tentar acessar a documentação Swagger UI (`/api-docs`) através do domínio público exposto pelo ambiente de desenvolvimento, foram encontrados erros de conexão (`ERR_CONNECTION_RESET` e `ERR_EMPTY_RESPONSE`). No entanto, a interface do Swagger foi verificada e está funcionando corretamente quando acessada localmente (`http://localhost:3002/api-docs`) dentro do ambiente sandbox. Isso sugere que o problema de acesso externo pode estar relacionado à camada de proxy do ambiente e não à configuração do servidor ou do Swagger em si.
 
 
 
