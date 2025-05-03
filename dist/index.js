@@ -52,18 +52,12 @@ const userRoutes_1 = __importDefault(require("./routes/userRoutes")); // Added f
 const categoryRoutes_1 = __importDefault(require("./routes/categoryRoutes")); // Added for categories
 const swagger_1 = require("./swagger");
 const app = (0, express_1.default)();
-<<<<<<< HEAD
-const port = process.env.PORT || 3002; // Porta para o backend
-app.use((0, cors_1.default)()); // Habilita CORS para permitir requisições do frontend
-app.use(express_1.default.json()); // Middleware para parsear JSON
-=======
 exports.app = app;
 const port = process.env.PORT || 3001;
 // Middlewares de Segurança e Configuração
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
->>>>>>> ebe96a03c7f68bd0dd0bd8752dffc44159043a42
 // Configuração do Swagger
 (0, swagger_1.setupSwagger)(app);
 // Rota de teste inicial

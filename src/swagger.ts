@@ -432,12 +432,7 @@ const swaggerSpec = swaggerJsdoc(options);
 
 export const setupSwagger = (app: Express) => {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-<<<<<<< HEAD
   console.log(`[swagger]: Documentação da API disponível em /api-docs`);
   console.log(`[swagger]: Documentação da API disponível em http://localhost:3002/api-docs`); // Log the full URL
-=======
-  // console.log(`[swagger]: Documentação da API disponível em /api-docs`); // Redundant log
-  // console.log(`[swagger]: Documentação da API disponível em http://localhost:3001/api-docs`); // Redundant log
->>>>>>> ebe96a03c7f68bd0dd0bd8752dffc44159043a42
 };
 
