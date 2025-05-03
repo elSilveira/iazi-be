@@ -5,7 +5,7 @@ import { Prisma } from "@prisma/client";
 // Assume an interface for the authenticated user attached by middleware
 interface AuthenticatedUser {
   id: string;
-  name: string;
+  // name: string; // Temporarily removed for consistency with authMiddleware
   // Add other relevant user properties if available
 }
 
@@ -13,7 +13,7 @@ interface AuthenticatedUser {
 declare global {
   namespace Express {
     interface Request {
-      user?: AuthenticatedUser; // Make user optional for flexibility
+      user?: { id: string }; // Consistent with authMiddleware
     }
   }
 }
@@ -146,7 +146,7 @@ export const createProfessional = async (req: Request, res: Response, next: Next
   const authenticatedUser = req.user;
 
   // Determine the name: use request body, fallback to authenticated user's name
-  const professionalName = reqName || authenticatedUser?.name;
+  const professionalName = reqName;
   if (!professionalName) {
     // If name is still missing (e.g., user not authenticated or name not in user object)
     res.status(400).json({ message: "Nome do profissional não fornecido e não pôde ser obtido do usuário autenticado." });

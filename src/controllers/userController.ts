@@ -5,12 +5,12 @@ import bcrypt from "bcrypt";
 import { prisma } from "../lib/prisma";
 
 // Extend Request to include user property from authMiddleware
-interface AuthRequest extends Request {
-  user?: { id: string };
-}
+// interface AuthRequest extends Request { // Removed, using global declaration
+//   user?: { id: string };
+// }
 
 // Get current user profile
-export const getUserProfile = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getUserProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const userId = req.user?.id;
 
   if (!userId) {
@@ -34,7 +34,7 @@ export const getUserProfile = async (req: AuthRequest, res: Response, next: Next
 };
 
 // Update current user profile
-export const updateUserProfile = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const updateUserProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const userId = req.user?.id;
   const { name, email, avatar, password } = req.body;
 

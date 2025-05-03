@@ -7,12 +7,12 @@ import { Prisma, AppointmentStatus } from "@prisma/client";
 import { parseISO, startOfDay, endOfDay, addMinutes, format, parse, isValid, setHours, setMinutes, setSeconds } from 'date-fns'; 
 
 // Extend Express Request type to include user property from auth middleware
-interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    // Add other user properties if needed from the token payload
-  };
-}
+// interface AuthenticatedRequest extends Request { // Removed, using global declaration
+//   user?: {
+//     id: string;
+//     // Add other user properties if needed from the token payload
+//   };
+// }
 
 // Helper function for UUID validation
 const isValidUUID = (uuid: string): boolean => {
@@ -36,7 +36,7 @@ const parseDuration = (duration: string): number | null => {
 // --- Controller Functions ---
 
 // Obter todos os agendamentos (com filtros opcionais)
-export const getAllAppointments = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getAllAppointments = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   // Corrected: Filter by date (day), not startTime
   const { professionalId, companyId, status, date } = req.query; 
   let userId = req.query.userId as string | undefined;
@@ -117,7 +117,7 @@ export const getAllAppointments = async (req: AuthenticatedRequest, res: Respons
 };
 
 // Obter um agendamento específico pelo ID
-export const getAppointmentById = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getAppointmentById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { id } = req.params;
   const userId = req.user?.id;
 
@@ -146,7 +146,7 @@ export const getAppointmentById = async (req: AuthenticatedRequest, res: Respons
 };
 
 // Criar um novo agendamento
-export const createAppointment = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+export const createAppointment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   // Corrected: Use 'date' (ISO string for DateTime) instead of startTime
   const { date, serviceId, professionalId, notes } = req.body;
   const userId = req.user?.id;
@@ -207,7 +207,7 @@ export const createAppointment = async (req: AuthenticatedRequest, res: Response
 };
 
 // Atualizar o status de um agendamento
-export const updateAppointmentStatus = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+export const updateAppointmentStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { id } = req.params;
   const { status } = req.body;
   const userId = req.user?.id; // For authorization
@@ -242,7 +242,7 @@ export const updateAppointmentStatus = async (req: AuthenticatedRequest, res: Re
 };
 
 // Cancelar um agendamento
-export const cancelAppointment = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+export const cancelAppointment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { id } = req.params;
   const userId = req.user?.id;
 
@@ -277,7 +277,7 @@ export const cancelAppointment = async (req: AuthenticatedRequest, res: Response
 };
 
 // Deletar um agendamento (geralmente não recomendado)
-export const deleteAppointment = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+export const deleteAppointment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { id } = req.params;
   const userId = req.user?.id;
 

@@ -2,11 +2,11 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
 // Estender a interface Request do Express para incluir a propriedade user
-interface AuthRequest extends Request {
-  user?: { id: string };
-}
+// interface AuthRequest extends Request { // Removed, using global declaration
+//   user?: { id: string };
+// }
 
-export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction): void => {
+export const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
