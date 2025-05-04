@@ -8,6 +8,7 @@ import { Prisma, AppointmentStatus, UserRole } from "@prisma/client"; // Added U
 import { parseISO, startOfDay, endOfDay, addMinutes, format, parse, isValid, setHours, setMinutes, setSeconds, getDay, isWithinInterval, differenceInHours, isBefore } from 'date-fns'; // Added differenceInHours and isBefore
 import { gamificationService, GamificationEventType } from "../services/gamificationService"; // Import gamification service
 import { logActivity } from "../services/activityLogService"; // Import activity log service
+import { createNotification } from "../services/notificationService"; // Import notification service
 
 // Extend Express Request type to include user with role
 declare global {
@@ -115,14 +116,11 @@ const checkAvailability = async (professionalId: string, start: Date, end: Date)
         status: { in: [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED] }, // Check against pending and confirmed
         OR: [
             { date: { lt: end }, AND: { date: { gte: start } } }, // Starts during the slot
-            { date: { lte: start }, AND: { /* Need end time calculation here */ } }, // Ends during the slot (Requires storing end time or duration)
+            // A more precise check requires knowing the end time of existing appointments:
+            // date < requestedEnd && calculatedEndTime > requestedStart
             // Simplified check: Check if any appointment STARTS within the potential conflict window
-            // This isn't perfect without storing end times, but covers many cases.
-            // A more robust check would involve calculating the end time of existing appointments.
             { date: { gt: start, lt: end } } // Existing appointment starts within the requested slot
         ],
-        // A more precise check requires knowing the end time of existing appointments:
-        // date < requestedEnd && calculatedEndTime > requestedStart
     });
 
     if (conflictingAppointments.length > 0) {
@@ -189,7 +187,6 @@ export const getAllAppointments = async (req: Request, res: Response, next: Next
     const filters: Prisma.AppointmentWhereInput = {};
     
     // Authorization: Non-admins can only see their own appointments unless filtering by professional/company?
-    // This needs refinement based on exact requirements. For now, allow filtering if IDs are provided.
     if (userId) {
         if (userRole !== UserRole.ADMIN && userId !== authenticatedUserId) {
             res.status(403).json({ message: 'Não autorizado a ver agendamentos de outro usuário.' });
@@ -215,12 +212,12 @@ export const getAllAppointments = async (req: Request, res: Response, next: Next
       };
     }
     if (companyId && typeof companyId === 'string') {
-        // Refined filter: If companyId is given, filter by professionals within that company
+        // Filter by professionals within that company
         const professionalsInCompany = await professionalRepository.findMany({ companyId: companyId }, {}, 0, 1000);
         const professionalIds = professionalsInCompany.map(p => p.id);
         if (professionalIds.length > 0) {
             if (filters.professionalId) {
-                // If both professionalId and companyId are given, ensure professional belongs to company
+                // Ensure professional belongs to company if both are given
                 if (!professionalIds.includes(filters.professionalId as string)) {
                     res.json([]); // Professional not in the specified company
                     return;
@@ -234,7 +231,7 @@ export const getAllAppointments = async (req: Request, res: Response, next: Next
         }
     }
 
-    // Ensure at least one context (user, professional, company) is implicitly or explicitly defined for non-admins
+    // Ensure context for non-admins
     if (userRole !== UserRole.ADMIN && !filters.userId && !filters.professionalId && !companyId) {
          res.status(400).json({ message: 'Filtro insuficiente. Forneça userId, professionalId ou companyId.' });
          return;
@@ -267,12 +264,9 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
 
     // Authorization check
     const isOwner = appointment.userId === user?.id;
-    // Check if the authenticated user is the professional assigned to the appointment
     const isProfessionalAssigned = appointment.professionalId === user?.id; 
-    // TODO: Check if user is admin of the company associated with the professional?
     const isAdmin = user?.role === UserRole.ADMIN;
     
-    // Allow access if owner, assigned professional, or admin
     if (!isOwner && !isProfessionalAssigned && !isAdmin) {
         res.status(403).json({ message: 'Não autorizado a ver este agendamento.' });
         return;
@@ -370,8 +364,6 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
     const newAppointment = await appointmentRepository.create(dataToCreate);
 
     // --- ACTIVITY LOG INTEGRATION START ---
-    // Log activity after successful creation
-    // Use await to ensure logging happens, but don't block response if logging fails (handled in logActivity)
     await logActivity(
         userId,
         'NEW_APPOINTMENT',
@@ -379,6 +371,16 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
         { id: newAppointment.id, type: 'Appointment' }
     ).catch(err => console.error("Activity logging failed for NEW_APPOINTMENT:", err));
     // --- ACTIVITY LOG INTEGRATION END ---
+
+    // --- NOTIFICATION INTEGRATION START (Optional: Notify user on PENDING?) ---
+    // Example: Notify user that booking is pending confirmation
+    // await createNotification(
+    //     userId,
+    //     'APPOINTMENT_PENDING',
+    //     `Seu pedido de agendamento para ${service.name} em ${format(appointmentDate, 'dd/MM/yyyy HH:mm')} está pendente de confirmação.`,
+    //     { id: newAppointment.id, type: 'Appointment' }
+    // ).catch(err => console.error("Notification creation failed for APPOINTMENT_PENDING:", err));
+    // --- NOTIFICATION INTEGRATION END ---
 
     res.status(201).json(newAppointment);
   } catch (error) {
@@ -416,14 +418,13 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
       return;
   }
 
-  // Validate status from body (already done by validator, but good practice)
   if (!Object.values(AppointmentStatus).includes(status)) {
       res.status(400).json({ message: 'Status inválido fornecido.' });
       return;
   }
 
   try {
-    const appointment = await appointmentRepository.findByIdWithService(id); // Fetch service for logging message
+    const appointment = await appointmentRepository.findByIdWithService(id); // Fetch service for logging/notification message
     if (!appointment) {
       res.status(404).json({ message: 'Agendamento não encontrado.' });
       return;
@@ -431,8 +432,6 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
 
     // --- Authorization & Business Logic for Status Change ---
     const isAdmin = user.role === UserRole.ADMIN;
-    // Assuming professional's user ID matches appointment.professionalId
-    // This might need adjustment if professionals have separate user accounts
     const isProfessional = appointment.professionalId === user.id; 
     const isOwner = appointment.userId === user.id;
 
@@ -441,6 +440,8 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
     const now = new Date();
     let logMessage = '';
     let logType = '';
+    let notificationMessage = '';
+    let notificationType = '';
 
     switch (status) {
         case AppointmentStatus.CONFIRMED:
@@ -449,6 +450,8 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
                 canUpdate = true;
                 logType = 'APPOINTMENT_CONFIRMED';
                 logMessage = `Seu agendamento para ${appointment.service.name} em ${format(appointment.date, 'dd/MM/yyyy HH:mm')} foi confirmado.`;
+                notificationType = 'APPOINTMENT_CONFIRMED';
+                notificationMessage = logMessage; // Use the same message for notification
             }
             break;
         case AppointmentStatus.COMPLETED:
@@ -457,8 +460,8 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
                  canUpdate = true;
                  logType = 'APPOINTMENT_COMPLETED';
                  logMessage = `Seu agendamento para ${appointment.service.name} em ${format(appointment.date, 'dd/MM/yyyy HH:mm')} foi concluído.`;
+                 // No notification needed for completion? Or maybe a "Rate your experience" notification?
                  // --- GAMIFICATION INTEGRATION START ---
-                 // Trigger event when appointment is completed
                  gamificationService.triggerEvent(appointment.userId, GamificationEventType.APPOINTMENT_COMPLETED, {
                      relatedEntityId: appointment.id,
                      relatedEntityType: "Appointment",
@@ -471,10 +474,8 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
             res.status(400).json({ message: 'Use o endpoint PATCH /api/appointments/{id}/cancel para cancelar.' });
             return; // Prevent using this endpoint for cancellation
         case AppointmentStatus.PENDING:
-             // Generally shouldn't revert to PENDING, maybe only Admin?
              if (isAdmin) {
                  canUpdate = true;
-                 // No specific log for reverting to pending?
              } else {
                  res.status(403).json({ message: 'Não autorizado a redefinir o status para pendente.' });
                  return;
@@ -503,6 +504,17 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
     }
     // --- ACTIVITY LOG INTEGRATION END ---
 
+    // --- NOTIFICATION INTEGRATION START ---
+    if (notificationType && notificationMessage) {
+        await createNotification(
+            appointment.userId, // Notify the user who booked
+            notificationType,
+            notificationMessage,
+            { id: updatedAppointment.id, type: 'Appointment' }
+        ).catch(err => console.error(`Notification creation failed for ${notificationType}:`, err));
+    }
+    // --- NOTIFICATION INTEGRATION END ---
+
     res.json(updatedAppointment);
 
   } catch (error) {
@@ -526,7 +538,7 @@ export const cancelAppointment = async (req: Request, res: Response, next: NextF
     }
 
     try {
-        const appointment = await appointmentRepository.findByIdWithService(id); // Fetch service for logging
+        const appointment = await appointmentRepository.findByIdWithService(id); // Fetch service for logging/notification
         if (!appointment) {
             res.status(404).json({ message: 'Agendamento não encontrado.' });
             return;
@@ -541,7 +553,6 @@ export const cancelAppointment = async (req: Request, res: Response, next: NextF
 
         let canCancel = false;
 
-        // Allow cancellation if already cancelled or completed (idempotent)
         if (appointment.status === AppointmentStatus.CANCELLED || appointment.status === AppointmentStatus.COMPLETED) {
             res.status(200).json({ message: 'Agendamento já está cancelado ou concluído.', appointment });
             return;
@@ -556,7 +567,7 @@ export const cancelAppointment = async (req: Request, res: Response, next: NextF
                 return;
             }
         }
-        // Professional or Admin can cancel PENDING or CONFIRMED anytime (adjust if needed)
+        // Professional or Admin can cancel PENDING or CONFIRMED anytime
         else if ((isProfessional || isAdmin) && (appointment.status === AppointmentStatus.PENDING || appointment.status === AppointmentStatus.CONFIRMED)) {
             canCancel = true;
         }
@@ -578,6 +589,17 @@ export const cancelAppointment = async (req: Request, res: Response, next: NextF
             { id: updatedAppointment.id, type: 'Appointment' }
         ).catch(err => console.error(`Activity logging failed for ${logType}:`, err));
         // --- ACTIVITY LOG INTEGRATION END ---
+
+        // --- NOTIFICATION INTEGRATION START ---
+        const notificationType = 'APPOINTMENT_CANCELLED';
+        const notificationMessage = logMessage; // Use the same message
+        await createNotification(
+            appointment.userId, // Notify the user who booked
+            notificationType,
+            notificationMessage,
+            { id: updatedAppointment.id, type: 'Appointment' }
+        ).catch(err => console.error(`Notification creation failed for ${notificationType}:`, err));
+        // --- NOTIFICATION INTEGRATION END ---
 
         res.json({ message: 'Agendamento cancelado com sucesso.', appointment: updatedAppointment });
 

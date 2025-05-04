@@ -370,3 +370,25 @@ enum UserRole {
   @@map("user_role") // Map enum to lowercase name
 }
 
+
+
+
+// --- NOTIFICATION MODELS ---
+
+// Modelo de Notificação
+model Notification {
+  id                String    @id @default(uuid())
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String    @map("user_id")
+  type              String    // Tipo da notificação (ex: "APPOINTMENT_CONFIRMED", "APPOINTMENT_REMINDER")
+  message           String    // Mensagem da notificação
+  relatedEntityId   String?   @map("related_entity_id") // ID da entidade relacionada (ex: Appointment ID)
+  relatedEntityType String?   @map("related_entity_type") // Tipo da entidade (ex: "Appointment")
+  isRead            Boolean   @default(false) @map("is_read") // Se a notificação foi lida
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@index([userId, isRead, createdAt]) // Index otimizado para buscar não lidas do usuário
+  @@index([createdAt]) // Index para ordenação geral ou limpeza
+  @@map("notifications")
+}
+
