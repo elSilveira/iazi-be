@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express"; // Import NextFunction
 import { reviewRepository } from "../repositories/reviewRepository";
 import { Prisma } from "@prisma/client";
+import { gamificationService, GamificationEventType } from "../services/gamificationService"; // Import gamification service
 
 // Helper function for UUID validation
 const isValidUUID = (uuid: string): boolean => {
@@ -73,17 +74,24 @@ export const getReviewById = async (req: Request, res: Response, next: NextFunct
 
 // Criar uma nova avaliação
 export const createReview = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Added next, void return
-  const { rating, comment, userId, serviceId, professionalId, companyId } = req.body;
+  // Use authenticated user ID instead of taking it from body
+  const userId = req.user?.id;
+  const { rating, comment, serviceId, professionalId, companyId } = req.body;
+
+  if (!userId) {
+      res.status(401).json({ message: "Usuário não autenticado." });
+      return;
+  }
 
   // Validação (Idealmente com express-validator)
-  if (!rating || !userId || (!serviceId && !professionalId && !companyId)) {
+  if (!rating || (!serviceId && !professionalId && !companyId)) {
     res.status(400).json({ 
-      message: "Avaliação (rating), ID do usuário e pelo menos um ID de serviço, profissional ou empresa são obrigatórios" 
+      message: "Avaliação (rating) e pelo menos um ID de serviço, profissional ou empresa são obrigatórios" 
     });
     return;
   }
-  if (!isValidUUID(userId) || (serviceId && !isValidUUID(serviceId)) || (professionalId && !isValidUUID(professionalId)) || (companyId && !isValidUUID(companyId))) {
-    res.status(400).json({ message: 'Formato de ID inválido para usuário, serviço, profissional ou empresa.' });
+  if ((serviceId && !isValidUUID(serviceId)) || (professionalId && !isValidUUID(professionalId)) || (companyId && !isValidUUID(companyId))) {
+    res.status(400).json({ message: 'Formato de ID inválido para serviço, profissional ou empresa.' });
     return;
   }
   const numericRating = Number(rating);
@@ -103,6 +111,15 @@ export const createReview = async (req: Request, res: Response, next: NextFuncti
     };
 
     const newReview = await reviewRepository.create(dataToCreate);
+
+    // --- GAMIFICATION INTEGRATION START ---
+    // Trigger REVIEW_CREATED event after successful creation
+    // Run this asynchronously, don't block the review creation response
+    gamificationService.triggerEvent(userId, GamificationEventType.REVIEW_CREATED, {
+        relatedEntityId: newReview.id,
+        relatedEntityType: "Review",
+    }).catch(err => console.error("Gamification event trigger failed for REVIEW_CREATED:", err));
+    // --- GAMIFICATION INTEGRATION END ---
         
     res.status(201).json(newReview);
   } catch (error) {
@@ -118,6 +135,14 @@ export const createReview = async (req: Request, res: Response, next: NextFuncti
 // Atualizar uma avaliação existente
 export const updateReview = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Added next, void return
   const { id } = req.params;
+  const authenticatedUserId = req.user?.id;
+  const userRole = req.user?.role;
+
+  if (!authenticatedUserId) {
+      res.status(401).json({ message: "Usuário não autenticado." });
+      return;
+  }
+
   if (!isValidUUID(id)) {
     res.status(400).json({ message: "Formato de ID inválido." });
     return;
@@ -134,11 +159,19 @@ export const updateReview = async (req: Request, res: Response, next: NextFuncti
   }
 
   try {
-    const updatedReview = await reviewRepository.update(id, dataToUpdate as Prisma.ReviewUpdateInput);
-    if (!updatedReview) {
-      res.status(404).json({ message: "Avaliação não encontrada para atualização" });
-      return;
+    // Authorization: Check if user is owner or admin
+    const existingReview = await reviewRepository.findById(id);
+    if (!existingReview) {
+        res.status(404).json({ message: "Avaliação não encontrada para atualização" });
+        return;
     }
+    if (existingReview.userId !== authenticatedUserId && userRole !== 'ADMIN') {
+        res.status(403).json({ message: "Não autorizado a atualizar esta avaliação." });
+        return;
+    }
+
+    const updatedReview = await reviewRepository.update(id, dataToUpdate as Prisma.ReviewUpdateInput);
+    // No need to check for null here as Prisma throws P2025 if not found, handled below
         
     res.json(updatedReview);
   } catch (error) {
@@ -154,17 +187,33 @@ export const updateReview = async (req: Request, res: Response, next: NextFuncti
 // Deletar uma avaliação
 export const deleteReview = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Added next, void return
   const { id } = req.params;
+  const authenticatedUserId = req.user?.id;
+  const userRole = req.user?.role;
+
+  if (!authenticatedUserId) {
+      res.status(401).json({ message: "Usuário não autenticado." });
+      return;
+  }
+
   if (!isValidUUID(id)) {
     res.status(400).json({ message: "Formato de ID inválido." });
     return;
   }
 
   try {
-    const deletedReview = await reviewRepository.delete(id);
-    if (!deletedReview) {
-      res.status(404).json({ message: "Avaliação não encontrada para exclusão" });
-      return;
+     // Authorization: Check if user is owner or admin
+    const existingReview = await reviewRepository.findById(id);
+    if (!existingReview) {
+        res.status(404).json({ message: "Avaliação não encontrada para exclusão" });
+        return;
     }
+    if (existingReview.userId !== authenticatedUserId && userRole !== 'ADMIN') {
+        res.status(403).json({ message: "Não autorizado a deletar esta avaliação." });
+        return;
+    }
+
+    await reviewRepository.delete(id);
+    // No need to check for null here as Prisma throws P2025 if not found, handled below
         
     // Use 204 No Content for successful deletion
     res.status(204).send(); 

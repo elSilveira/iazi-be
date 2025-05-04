@@ -3,6 +3,7 @@ import { userRepository } from "../repositories/userRepository";
 import bcrypt from "bcrypt";
 import jwt, { Secret, SignOptions } from "jsonwebtoken"; // Import Secret and SignOptions types
 import { Prisma } from "@prisma/client";
+import { gamificationService, GamificationEventType } from "../services/gamificationService"; // Import gamification service and event types
 
 // Carregar segredos e configurações de forma segura das variáveis de ambiente
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -90,6 +91,13 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       avatar,
     };
     const newUser = await userRepository.create(userData);
+
+    // --- GAMIFICATION INTEGRATION START ---
+    // Trigger USER_REGISTERED event after successful creation
+    // Run this asynchronously, don't block the registration response
+    gamificationService.triggerEvent(newUser.id, GamificationEventType.USER_REGISTERED)
+      .catch(err => console.error("Gamification event trigger failed for USER_REGISTERED:", err));
+    // --- GAMIFICATION INTEGRATION END ---
 
     const { password: _, ...userWithoutPassword } = newUser;
 

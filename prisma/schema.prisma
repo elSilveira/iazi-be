@@ -20,13 +20,17 @@ model User {
   bio           String?   // Added bio field based on controller/frontend usage
   phone         String?   // Added phone field based on controller/frontend usage
   role          UserRole  @default(USER) // Added role field based on controller/test usage
+  points        Int       @default(0) // GAMIFICATION: User points
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
   addresses     UserAddress[] // Relation to UserAddress
   appointments  Appointment[]
   reviews       Review[]
+  badges        UserBadge[] // GAMIFICATION: Badges awarded to user
+  gamificationEvents GamificationEvent[] // GAMIFICATION: History of events
 
   @@index([email]) // Index for login
+  @@index([points]) // GAMIFICATION: Index for leaderboard
   @@map("users") // Map to lowercase table name
 }
 
@@ -65,7 +69,7 @@ model Company {
   phone           String?
   email           String?
   address         CompanyAddress? // Relation to CompanyAddress
-  workingHours    Json?          @map("working_hours")
+  workingHours    Json?          @map("working_hours") // Horário de funcionamento da empresa
   categories      String[]       // TODO: Consider changing to relation with Category model. Indexing String[] might require specific DB features (e.g., GIN in Postgres).
   services        Service[]
   professionals   Professional[]
@@ -105,7 +109,7 @@ model Service {
   name          String
   description   String
   price         Decimal   // Changed from String to support numeric filtering/sorting
-  duration      String
+  duration      String    // Duração do serviço (ex: "30min", "1h", "1h30min") - será parseado na lógica de disponibilidade
   category      Category @relation(fields: [categoryId], references: [id]) // Changed to relation
   categoryId    Int      @map("category_id") // Added categoryId field
   image         String?
@@ -133,12 +137,14 @@ model Professional {
   image         String?
   rating        Float     @default(0)
   totalReviews  Int       @default(0) @map("total_reviews")
+  workingHours  Json?     @map("working_hours") // Horário de trabalho específico do profissional (pode sobrescrever o da empresa)
   company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   companyId     String    @map("company_id")
   services      ProfessionalService[]
   experiences   ProfessionalExperience[] // Added relation
   education     ProfessionalEducation[]  // Added relation
   scheduledAppointments Appointment[] @relation("ProfessionalAppointments")
+  scheduleBlocks ScheduleBlock[] // Added relation to ScheduleBlock
   reviews       Review[]
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
@@ -202,7 +208,7 @@ model ProfessionalService {
 // Modelo de Agendamento
 model Appointment {
   id            String    @id @default(uuid())
-  date          DateTime
+  date          DateTime  // Data e hora de início do agendamento
   status        AppointmentStatus @default(PENDING)
   user          User      @relation(fields: [userId], references: [id])
   userId        String    @map("user_id")
@@ -256,6 +262,74 @@ model Category {
 
   @@map("categories") // Map to lowercase table name
 }
+
+// Modelo de Bloqueio de Agenda (NOVO)
+model ScheduleBlock {
+  id            String    @id @default(uuid())
+  professionalId String    @map("professional_id")
+  professional  Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  startTime     DateTime  @map("start_time") // Início do período de bloqueio/folga
+  endTime       DateTime  @map("end_time")   // Fim do período de bloqueio/folga
+  reason        String?   // Motivo (opcional, ex: "Férias", "Almoço", "Bloqueio Manual")
+  isAllDay      Boolean   @default(false) @map("is_all_day") // Indica se o bloqueio é para o dia todo
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([professionalId]) // Index for querying blocks by professional
+  @@index([startTime])      // Index for querying blocks by time
+  @@index([endTime])        // Index for querying blocks by time
+  @@map("schedule_blocks")
+}
+
+// --- GAMIFICATION MODELS ---
+
+// Modelo de Badge (Conquista)
+model Badge {
+  id              String    @id @default(uuid())
+  name            String    @unique // Nome do badge (ex: "Primeiro Agendamento", "Top Avaliador")
+  description     String    // Descrição do que o badge representa
+  iconUrl         String?   @map("icon_url") // URL para o ícone do badge
+  pointsThreshold Int?      @map("points_threshold") // Pontos necessários para ganhar (opcional)
+  eventTrigger    String?   @map("event_trigger") // Evento específico que concede o badge (ex: "FIRST_APPOINTMENT_COMPLETED")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  users           UserBadge[] // Relação com usuários que possuem o badge
+
+  @@index([name])
+  @@map("badges")
+}
+
+// Tabela de relacionamento entre Usuário e Badge
+model UserBadge {
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id")
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  badgeId   String   @map("badge_id")
+  awardedAt DateTime @default(now()) @map("awarded_at") // Quando o badge foi concedido
+
+  @@id([userId, badgeId]) // Chave primária composta
+  @@index([badgeId]) // Index para buscar usuários por badge
+  @@map("user_badges")
+}
+
+// Modelo de Histórico de Eventos de Gamificação
+model GamificationEvent {
+  id                String    @id @default(uuid())
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String    @map("user_id")
+  eventType         String    @map("event_type") // Tipo do evento (ex: "USER_REGISTERED", "APPOINTMENT_COMPLETED")
+  pointsAwarded     Int       @map("points_awarded") // Pontos concedidos por este evento
+  awardedAt         DateTime  @default(now()) @map("awarded_at")
+  relatedEntityId   String?   @map("related_entity_id") // ID da entidade relacionada (ex: ID do agendamento, ID da avaliação)
+  relatedEntityType String?   @map("related_entity_type") // Tipo da entidade relacionada (ex: "Appointment", "Review")
+
+  @@index([userId])
+  @@index([eventType])
+  @@index([awardedAt])
+  @@map("gamification_events")
+}
+
+// --- ENUMS ---
 
 // Enumeração para status de agendamento
 enum AppointmentStatus {
