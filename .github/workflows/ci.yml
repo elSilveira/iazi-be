@@ -1,0 +1,42 @@
+name: Node.js CI
+
+on:
+  push:
+    branches: [ "main", "develop" ] # Adjust branches as needed
+  pull_request:
+    branches: [ "main", "develop" ] # Adjust branches as needed
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x] # Test on relevant Node versions
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci # Use ci for faster, deterministic installs in CI
+
+    - name: Generate Prisma Client
+      # Add DATABASE_URL as an environment variable if needed for generation
+      # env:
+      #   DATABASE_URL: ${{ secrets.DATABASE_URL }} # Use secrets for sensitive data
+      run: npx prisma generate
+
+    - name: Run tests
+      # Add DATABASE_URL for tests if they require a live database
+      # You might need to set up a test database service (e.g., using Docker Compose)
+      # env:
+      #   DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+      run: npm test -- --runInBand # Run tests sequentially to avoid DB conflicts if using a single test DB
+

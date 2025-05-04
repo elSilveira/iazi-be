@@ -1,6 +1,8 @@
 import request from "supertest";
 import { app } from "../index"; // Assuming your Express app is exported from index.ts
 import { prisma } from "../lib/prisma";
+import { Company, Category, Service, Professional, ProfessionalService } from "@prisma/client"; // Import types
+import { Decimal } from "@prisma/client/runtime/library";
 
 // Helper to create test data (can be shared or adapted)
 const createTestData = async () => {
@@ -8,50 +10,52 @@ const createTestData = async () => {
   const category1 = await prisma.category.upsert({ where: { name: "Test Category Prof 1" }, update: {}, create: { name: "Test Category Prof 1" } });
   const category2 = await prisma.category.upsert({ where: { name: "Test Category Prof 2" }, update: {}, create: { name: "Test Category Prof 2" } });
 
-  // Ensure companies exist
-  const company1 = await prisma.company.upsert({
-    where: { name: "Test Company Prof Alpha" }, // Use a unique name or other identifier
-    update: {},
-    create: {
-      name: "Test Company Prof Alpha",
-      description: "Description Alpha Prof",
-      address: {
-        create: {
-          street: "123 Prof St", number: "100", neighborhood: "Downtown Prof", city: "TestvilleProf", state: "TP", zipCode: "12345",
-        },
-      },
-    },
-    include: { address: true },
-  });
+  // Ensure companies exist (Modified upsert logic)
+  let company1: Company | null = await prisma.company.findFirst({ where: { name: "Test Company Prof Alpha" } });
+  if (!company1) {
+      company1 = await prisma.company.create({
+          data: {
+              name: "Test Company Prof Alpha",
+              description: "Description Alpha Prof",
+              address: {
+                  create: {
+                      street: "123 Prof St", number: "100", neighborhood: "Downtown Prof", city: "TestvilleProf", state: "TP", zipCode: "12345",
+                  },
+              },
+          },
+          include: { address: true },
+      });
+  }
 
-  const company2 = await prisma.company.upsert({
-    where: { name: "Test Company Prof Beta" },
-    update: {},
-    create: {
-      name: "Test Company Prof Beta",
-      description: "Description Beta Prof",
-      address: {
-        create: {
-          street: "456 Prof St", number: "200", neighborhood: "Uptown Prof", city: "AnotherCityProf", state: "AP", zipCode: "67890",
-        },
-      },
-    },
-    include: { address: true },
-  });
+  let company2: Company | null = await prisma.company.findFirst({ where: { name: "Test Company Prof Beta" } });
+  if (!company2) {
+      company2 = await prisma.company.create({
+          data: {
+              name: "Test Company Prof Beta",
+              description: "Description Beta Prof",
+              address: {
+                  create: {
+                      street: "456 Prof St", number: "200", neighborhood: "Uptown Prof", city: "AnotherCityProf", state: "AP", zipCode: "67890",
+                  },
+              },
+          },
+          include: { address: true },
+      });
+  }
 
-  // Ensure services exist
+  // Ensure services exist (Using Decimal for price)
   const service1 = await prisma.service.upsert({
-      where: { name_companyId: { name: "Prof Service A", companyId: company1.id } }, // Need a unique constraint or find first
+      where: { name_companyId: { name: "Prof Service A", companyId: company1.id } },
       update: {},
       create: {
-          name: "Prof Service A", description: "Service A desc", price: 50.0, duration: "30min", categoryId: category1.id, companyId: company1.id
+          name: "Prof Service A", description: "Service A desc", price: new Decimal("50.00"), duration: "30min", categoryId: category1.id, companyId: company1.id
       }
   });
    const service2 = await prisma.service.upsert({
       where: { name_companyId: { name: "Prof Service B", companyId: company2.id } },
       update: {},
       create: {
-          name: "Prof Service B", description: "Service B desc", price: 100.0, duration: "1h", categoryId: category2.id, companyId: company2.id
+          name: "Prof Service B", description: "Service B desc", price: new Decimal("100.00"), duration: "1h", categoryId: category2.id, companyId: company2.id
       }
   });
 
@@ -83,16 +87,26 @@ const createTestData = async () => {
         companyId: company2.id,
       },
     ],
+    skipDuplicates: true, // Add skipDuplicates in case tests run multiple times without full cleanup
   });
   
   // Associate services (assuming professionals were created)
   const alice = await prisma.professional.findFirst({where: {name: "Professional Alice"}});
   const charlie = await prisma.professional.findFirst({where: {name: "Professional Charlie"}});
+  
   if(alice && service1) {
-      await prisma.professionalService.create({ data: { professionalId: alice.id, serviceId: service1.id } });
+      await prisma.professionalService.upsert({ 
+          where: { professionalId_serviceId: { professionalId: alice.id, serviceId: service1.id } },
+          update: {},
+          create: { professionalId: alice.id, serviceId: service1.id }
+      });
   }
   if(charlie && service2) {
-       await prisma.professionalService.create({ data: { professionalId: charlie.id, serviceId: service2.id } });
+       await prisma.professionalService.upsert({ 
+           where: { professionalId_serviceId: { professionalId: charlie.id, serviceId: service2.id } },
+           update: {},
+           create: { professionalId: charlie.id, serviceId: service2.id }
+       });
   }
 };
 
@@ -167,7 +181,8 @@ describe("GET /api/professionals", () => {
     expect(res.statusCode).toEqual(200);
     expect(res.body.data.length).toBeGreaterThan(0);
     res.body.data.forEach((prof: any) => {
-      expect(prof.role).toContain(role);
+      // Use toMatch or check if includes, as role might be part of a larger string or exact match
+      expect(prof.role).toEqual(role); 
     });
   });
 
@@ -176,8 +191,10 @@ describe("GET /api/professionals", () => {
     const res = await request(app).get(`/api/professionals?city=${city}`);
     expect(res.statusCode).toEqual(200);
     expect(res.body.data.length).toBeGreaterThan(0);
+    // Need to ensure company and address are included in the response for this check
+    // Assuming the endpoint includes company.address:
     res.body.data.forEach((prof: any) => {
-      expect(prof.company.address.city).toEqual(city);
+      expect(prof.company?.address?.city).toEqual(city);
     });
   });
 
@@ -186,8 +203,9 @@ describe("GET /api/professionals", () => {
     const res = await request(app).get(`/api/professionals?state=${state}`);
     expect(res.statusCode).toEqual(200);
     expect(res.body.data.length).toBeGreaterThan(0);
+    // Assuming the endpoint includes company.address:
     res.body.data.forEach((prof: any) => {
-      expect(prof.company.address.state).toEqual(state);
+      expect(prof.company?.address?.state).toEqual(state);
     });
   });
 
@@ -217,7 +235,7 @@ describe("GET /api/professionals", () => {
     const res = await request(app).get("/api/professionals");
     expect(res.statusCode).toEqual(200);
     const names = res.body.data.map((p: any) => p.name);
-    expect(names).toEqual([...names].sort());
+    expect(names).toEqual([...names].sort((a: string, b: string) => a.localeCompare(b))); // Use localeCompare for proper string sorting
   });
 
   it("should sort professionals by rating descending", async () => {
