@@ -92,30 +92,44 @@
 <a name='L27'></a><a href='#L27'>27</a>
 <a name='L28'></a><a href='#L28'>28</a>
 <a name='L29'></a><a href='#L29'>29</a>
-<a name='L30'></a><a href='#L30'>30</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -124,11 +138,16 @@
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { body, param } from "express-validator";
 &nbsp;
 export const createProfessionalValidator = [
-  body("name").trim().notEmpty().withMessage("O nome do profissional é obrigatório."),
-  body("role").trim().notEmpty().withMessage("O cargo do profissional é obrigatório."),
-  body("companyId").isUUID().withMessage("ID da empresa inválido."),
+  // Name and Role are now optional in the validator; the controller should handle defaults
+  body("name").optional().trim().notEmpty().withMessage("O nome do profissional não pode ser vazio, se fornecido."),
+  body("role").optional().trim().notEmpty().withMessage("O cargo do profissional não pode ser vazio, se fornecido."),
+  // CompanyId is now optional
+  body("companyId").optional().isUUID().withMessage("ID da empresa inválido, se fornecido."),
   body("image").optional().trim().isURL().withMessage("URL da imagem inválida."),
-  // rating e appointments são geralmente calculados, não definidos na criação
+  // Add validation for other fields from UserProfessionalInfo if needed (e.g., bio, phone)
+  body("bio").optional().trim(),
+  body("phone").optional().trim(), // Add more specific phone validation if required
+  // Consider validating experience and education arrays if they are part of the creation payload
 ];
 &nbsp;
 export const updateProfessionalValidator = [
@@ -136,6 +155,8 @@ export const updateProfessionalValidator = [
   body("name").optional().trim().notEmpty().withMessage("O nome do profissional não pode ser vazio."),
   body("role").optional().trim().notEmpty().withMessage("O cargo do profissional não pode ser vazio."),
   body("image").optional({ nullable: true }).trim().isURL().withMessage("URL da imagem inválida."),
+  body("bio").optional({ nullable: true }).trim(),
+  body("phone").optional({ nullable: true }).trim(),
   // companyId geralmente não é atualizado
 ];
 &nbsp;
@@ -157,7 +178,7 @@ export const professionalServiceAssociationValidator = [
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-04-30T04:01:17.605Z
+                at 2025-05-04T19:22:38.056Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

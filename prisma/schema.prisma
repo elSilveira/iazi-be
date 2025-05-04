@@ -26,6 +26,7 @@ model User {
   appointments  Appointment[]
   reviews       Review[]
 
+  @@index([email]) // Index for login
   @@map("users") // Map to lowercase table name
 }
 
@@ -45,6 +46,9 @@ model UserAddress {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  @@index([userId]) // Index for querying user addresses
+  @@index([city])   // Index for potential location filtering
+  @@index([state])  // Index for potential location filtering
   @@map("user_addresses") // Map to lowercase table name
 }
 
@@ -62,13 +66,16 @@ model Company {
   email           String?
   address         CompanyAddress? // Relation to CompanyAddress
   workingHours    Json?          @map("working_hours")
-  categories      String[]       // TODO: Consider changing to relation with Category model
+  categories      String[]       // TODO: Consider changing to relation with Category model. Indexing String[] might require specific DB features (e.g., GIN in Postgres).
   services        Service[]
   professionals   Professional[]
   reviews         Review[]
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
+  @@index([name])   // Index for sorting and searching
+  @@index([rating]) // Index for sorting and filtering
+  // @@index([categories]) // Indexing array depends on DB
   @@map("companies") // Map to lowercase table name
 }
 
@@ -83,10 +90,12 @@ model CompanyAddress {
   state         String
   zipCode       String    @map("zip_code")
   company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  companyId     String    @unique @map("company_id")
+  companyId     String    @unique @map("company_id") // Unique index already exists
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
+  @@index([city])  // Index for location filtering
+  @@index([state]) // Index for location filtering
   @@map("company_addresses") // Map to lowercase table name
 }
 
@@ -95,7 +104,7 @@ model Service {
   id            String    @id @default(uuid())
   name          String
   description   String
-  price         String
+  price         Decimal   // Changed from String to support numeric filtering/sorting
   duration      String
   category      Category @relation(fields: [categoryId], references: [id]) // Changed to relation
   categoryId    Int      @map("category_id") // Added categoryId field
@@ -108,6 +117,11 @@ model Service {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
+  @@index([name])       // Index for sorting and searching
+  @@index([price])      // Index for sorting and filtering
+  @@index([categoryId]) // Index for filtering
+  @@index([companyId])  // Index for filtering
+  @@unique([name, companyId]) // Add unique constraint for upsert in tests
   @@map("services") // Map to lowercase table name
 }
 
@@ -129,6 +143,10 @@ model Professional {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
+  @@index([name])      // Index for sorting and searching
+  @@index([rating])    // Index for sorting and filtering
+  @@index([companyId]) // Index for filtering
+  @@index([role])      // Index for filtering and searching
   @@map("professionals") // Map to lowercase table name
 }
 
@@ -146,6 +164,7 @@ model ProfessionalExperience {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
+  @@index([professionalId]) // Index for querying experiences
   @@map("professional_experiences")
 }
 
@@ -163,6 +182,7 @@ model ProfessionalEducation {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
+  @@index([professionalId]) // Index for querying education
   @@map("professional_education")
 }
 
@@ -172,9 +192,10 @@ model ProfessionalService {
   professionalId String       @map("professional_id")
   service       Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   serviceId     String       @map("service_id")
-  price         String?
+  price         String?      // Keeping this as String? for now, might need specific pricing per professional
 
   @@id([professionalId, serviceId])
+  @@index([serviceId]) // Index for filtering professionals by service
   @@map("professional_services") // Map to lowercase table name
 }
 
@@ -193,6 +214,10 @@ model Appointment {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
+  @@index([userId])         // Index for user appointments
+  @@index([serviceId])      // Index for service appointments
+  @@index([professionalId]) // Index for professional appointments
+  @@index([date])           // Index for filtering by date
   @@map("appointments") // Map to lowercase table name
 }
 
@@ -212,13 +237,18 @@ model Review {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
+  @@index([userId])         // Index for user reviews
+  @@index([serviceId])      // Index for service reviews
+  @@index([professionalId]) // Index for professional reviews
+  @@index([companyId])      // Index for company reviews
+  @@index([rating])         // Index for filtering by rating
   @@map("reviews") // Map to lowercase table name
 }
 
 // Modelo de Categoria (NOVO)
 model Category {
   id        Int      @id @default(autoincrement())
-  name      String   @unique
+  name      String   @unique // Unique index already exists
   icon      String?
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
