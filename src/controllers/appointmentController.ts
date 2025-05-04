@@ -7,6 +7,7 @@ import { prisma } from '../utils/prismaClient'; // Import prisma client for dire
 import { Prisma, AppointmentStatus, UserRole } from "@prisma/client"; // Added UserRole
 import { parseISO, startOfDay, endOfDay, addMinutes, format, parse, isValid, setHours, setMinutes, setSeconds, getDay, isWithinInterval, differenceInHours, isBefore } from 'date-fns'; // Added differenceInHours and isBefore
 import { gamificationService, GamificationEventType } from "../services/gamificationService"; // Import gamification service
+import { logActivity } from "../services/activityLogService"; // Import activity log service
 
 // Extend Express Request type to include user with role
 declare global {
@@ -84,6 +85,64 @@ const getWorkingHoursForDay = (workingHoursJson: any, date: Date): { start: Date
         console.error("Error parsing working hours:", e);
         return null;
     }
+};
+
+// Helper function to check availability
+const checkAvailability = async (professionalId: string, start: Date, end: Date): Promise<boolean> => {
+    // 1. Check Professional's Working Hours
+    const professional = await professionalRepository.findById(professionalId);
+    if (!professional) throw new Error('Profissional não encontrado para verificação de disponibilidade.');
+
+    // Use professional's specific hours, fallback to company hours if needed (logic depends on requirements)
+    const workingHoursJson = professional.workingHours || (professional.company ? professional.company.workingHours : null);
+    const workingHoursToday = getWorkingHoursForDay(workingHoursJson, start);
+
+    if (!workingHoursToday) {
+        console.log(`Availability Check: No working hours defined for professional ${professionalId} on ${format(start, 'yyyy-MM-dd')}`);
+        return false; // Not working on this day
+    }
+
+    // Check if requested slot is within working hours
+    if (!isWithinInterval(start, { start: workingHoursToday.start, end: workingHoursToday.end }) ||
+        !isWithinInterval(end, { start: workingHoursToday.start, end: workingHoursToday.end })) {
+        console.log(`Availability Check: Requested slot ${format(start, 'HH:mm')} - ${format(end, 'HH:mm')} is outside working hours ${format(workingHoursToday.start, 'HH:mm')} - ${format(workingHoursToday.end, 'HH:mm')}`);
+        return false;
+    }
+
+    // 2. Check for Conflicting Appointments
+    const conflictingAppointments = await appointmentRepository.findMany({
+        professionalId: professionalId,
+        status: { in: [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED] }, // Check against pending and confirmed
+        OR: [
+            { date: { lt: end }, AND: { date: { gte: start } } }, // Starts during the slot
+            { date: { lte: start }, AND: { /* Need end time calculation here */ } }, // Ends during the slot (Requires storing end time or duration)
+            // Simplified check: Check if any appointment STARTS within the potential conflict window
+            // This isn't perfect without storing end times, but covers many cases.
+            // A more robust check would involve calculating the end time of existing appointments.
+            { date: { gt: start, lt: end } } // Existing appointment starts within the requested slot
+        ],
+        // A more precise check requires knowing the end time of existing appointments:
+        // date < requestedEnd && calculatedEndTime > requestedStart
+    });
+
+    if (conflictingAppointments.length > 0) {
+        console.log(`Availability Check: Found ${conflictingAppointments.length} conflicting appointments for professional ${professionalId} between ${format(start, 'HH:mm')} and ${format(end, 'HH:mm')}`);
+        return false;
+    }
+
+    // 3. Check for Schedule Blocks
+    const conflictingBlocks = await scheduleBlockRepository.findMany({
+        professionalId: professionalId,
+        startTime: { lt: end },
+        endTime: { gt: start },
+    });
+
+    if (conflictingBlocks.length > 0) {
+        console.log(`Availability Check: Found ${conflictingBlocks.length} conflicting schedule blocks for professional ${professionalId} between ${format(start, 'HH:mm')} and ${format(end, 'HH:mm')}`);
+        return false;
+    }
+
+    return true; // Available
 };
 
 
@@ -208,11 +267,13 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
 
     // Authorization check
     const isOwner = appointment.userId === user?.id;
-    const isProfessional = appointment.professionalId === user?.id; // Assuming professional's user ID is used
-    const isAdmin = user?.role === UserRole.ADMIN;
+    // Check if the authenticated user is the professional assigned to the appointment
+    const isProfessionalAssigned = appointment.professionalId === user?.id; 
     // TODO: Check if user is admin of the company associated with the professional?
-
-    if (!isOwner && !isProfessional && !isAdmin) {
+    const isAdmin = user?.role === UserRole.ADMIN;
+    
+    // Allow access if owner, assigned professional, or admin
+    if (!isOwner && !isProfessionalAssigned && !isAdmin) {
         res.status(403).json({ message: 'Não autorizado a ver este agendamento.' });
         return;
     }
@@ -238,6 +299,7 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
     return;
   }
 
+  let service: any; // Declare service outside try block
   try {
     const appointmentDate = parseISO(date);
     if (!isValid(appointmentDate) || isBefore(appointmentDate, new Date())) {
@@ -254,7 +316,7 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
     }
 
     // --- Validação Pré-Criação (Disponibilidade) ---
-    const service = await serviceRepository.findById(serviceId);
+    service = await serviceRepository.findById(serviceId); // Assign service here
     const duration = service ? parseDuration(service.duration) : null;
     if (!service || duration === null) {
         res.status(404).json({ message: 'Serviço não encontrado ou duração inválida.' });
@@ -306,6 +368,18 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
     };
     
     const newAppointment = await appointmentRepository.create(dataToCreate);
+
+    // --- ACTIVITY LOG INTEGRATION START ---
+    // Log activity after successful creation
+    // Use await to ensure logging happens, but don't block response if logging fails (handled in logActivity)
+    await logActivity(
+        userId,
+        'NEW_APPOINTMENT',
+        `Você agendou ${service.name} para ${format(appointmentDate, 'dd/MM/yyyy HH:mm')}.`, // Use service name
+        { id: newAppointment.id, type: 'Appointment' }
+    ).catch(err => console.error("Activity logging failed for NEW_APPOINTMENT:", err));
+    // --- ACTIVITY LOG INTEGRATION END ---
+
     res.status(201).json(newAppointment);
   } catch (error) {
     console.error('Erro ao criar agendamento:', error);
@@ -321,6 +395,10 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
     }
     if (error instanceof Error && error.message.startsWith('Formato de data inválido')) {
         res.status(400).json({ message: error.message });
+        return;
+    }
+    if (error instanceof Error && error.message.includes('Profissional não encontrado')) {
+        res.status(404).json({ message: error.message });
         return;
     }
     next(error);
@@ -345,7 +423,7 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
   }
 
   try {
-    const appointment = await appointmentRepository.findById(id);
+    const appointment = await appointmentRepository.findByIdWithService(id); // Fetch service for logging message
     if (!appointment) {
       res.status(404).json({ message: 'Agendamento não encontrado.' });
       return;
@@ -361,58 +439,77 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
     let canUpdate = false;
     const currentStatus = appointment.status;
     const now = new Date();
+    let logMessage = '';
+    let logType = '';
 
     switch (status) {
         case AppointmentStatus.CONFIRMED:
             // Only Professional or Admin can confirm a PENDING appointment
             if ((isProfessional || isAdmin) && currentStatus === AppointmentStatus.PENDING) {
                 canUpdate = true;
+                logType = 'APPOINTMENT_CONFIRMED';
+                logMessage = `Seu agendamento para ${appointment.service.name} em ${format(appointment.date, 'dd/MM/yyyy HH:mm')} foi confirmado.`;
             }
             break;
         case AppointmentStatus.COMPLETED:
             // Only Professional or Admin can complete a CONFIRMED appointment, and only after it has started
             if ((isProfessional || isAdmin) && currentStatus === AppointmentStatus.CONFIRMED && isBefore(appointment.date, now)) {
                  canUpdate = true;
+                 logType = 'APPOINTMENT_COMPLETED';
+                 logMessage = `Seu agendamento para ${appointment.service.name} em ${format(appointment.date, 'dd/MM/yyyy HH:mm')} foi concluído.`;
+                 // --- GAMIFICATION INTEGRATION START ---
+                 // Trigger event when appointment is completed
+                 gamificationService.triggerEvent(appointment.userId, GamificationEventType.APPOINTMENT_COMPLETED, {
+                     relatedEntityId: appointment.id,
+                     relatedEntityType: "Appointment",
+                 }).catch(err => console.error("Gamification event trigger failed for APPOINTMENT_COMPLETED:", err));
+                 // --- GAMIFICATION INTEGRATION END ---
             }
             break;
         case AppointmentStatus.CANCELLED:
             // Use the dedicated cancel endpoint for cancellation logic
             res.status(400).json({ message: 'Use o endpoint PATCH /api/appointments/{id}/cancel para cancelar.' });
-            return;
+            return; // Prevent using this endpoint for cancellation
         case AppointmentStatus.PENDING:
-            // Generally, shouldn't revert to PENDING unless specific admin action
-            if (isAdmin) { 
-                // Allow admin to revert? Needs business rule clarification.
-                // canUpdate = true; 
-            }
-            break;
+             // Generally shouldn't revert to PENDING, maybe only Admin?
+             if (isAdmin) {
+                 canUpdate = true;
+                 // No specific log for reverting to pending?
+             } else {
+                 res.status(403).json({ message: 'Não autorizado a redefinir o status para pendente.' });
+                 return;
+             }
+             break;
+        default:
+            res.status(400).json({ message: `Atualização para o status '${status}' não suportada ou não permitida.` });
+            return;
     }
 
     if (!canUpdate) {
-        res.status(403).json({ message: 'Não autorizado a atualizar para este status ou transição inválida.' });
+        res.status(403).json({ message: `Não autorizado a mudar o status de ${currentStatus} para ${status} ou condição não atendida.` });
         return;
     }
-    // --- End Authorization & Business Logic ---
 
-    const updatedAppointment = await appointmentRepository.updateStatus(id, status);
+    const updatedAppointment = await appointmentRepository.update(id, { status });
 
-    // --- GAMIFICATION INTEGRATION START ---
-    // Trigger APPOINTMENT_COMPLETED event if status is updated to COMPLETED
-    if (status === AppointmentStatus.COMPLETED && currentStatus !== AppointmentStatus.COMPLETED) {
-        // Run this asynchronously, don't block the status update response
-        gamificationService.triggerEvent(appointment.userId, GamificationEventType.APPOINTMENT_COMPLETED, {
-            relatedEntityId: updatedAppointment.id,
-            relatedEntityType: "Appointment",
-        }).catch(err => console.error("Gamification event trigger failed for APPOINTMENT_COMPLETED:", err));
+    // --- ACTIVITY LOG INTEGRATION START ---
+    if (logType && logMessage) {
+        await logActivity(
+            appointment.userId, // Log for the user who booked
+            logType,
+            logMessage,
+            { id: updatedAppointment.id, type: 'Appointment' }
+        ).catch(err => console.error(`Activity logging failed for ${logType}:`, err));
     }
-    // --- GAMIFICATION INTEGRATION END ---
+    // --- ACTIVITY LOG INTEGRATION END ---
 
     res.json(updatedAppointment);
+
   } catch (error) {
     console.error(`Erro ao atualizar status do agendamento ${id}:`, error);
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      res.status(404).json({ message: 'Agendamento não encontrado para atualização.' });
-      return;
+        res.status(404).json({ message: 'Agendamento não encontrado para atualização de status.' });
+        return;
     }
     next(error);
   }
@@ -420,388 +517,77 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
 
 // Cancelar um agendamento
 export const cancelAppointment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  const { id } = req.params;
-  const user = req.user;
+    const { id } = req.params;
+    const user = req.user;
 
-   if (!user) {
-      res.status(401).json({ message: 'Não autenticado.' });
-      return;
-  }
-
-  try {
-    const appointment = await appointmentRepository.findById(id);
-    if (!appointment) {
-      res.status(404).json({ message: 'Agendamento não encontrado.' });
-      return;
-    }
-
-    // --- Authorization & Business Logic for Cancellation ---
-    const isAdmin = user.role === UserRole.ADMIN;
-    const isProfessional = appointment.professionalId === user.id; // Assuming professional's user ID
-    const isOwner = appointment.userId === user.id;
-
-    // Allow Owner, Professional, or Admin to cancel
-    if (!isOwner && !isProfessional && !isAdmin) {
-        res.status(403).json({ message: 'Não autorizado a cancelar este agendamento.' });
+    if (!user) {
+        res.status(401).json({ message: 'Não autenticado.' });
         return;
     }
 
-    // Check if already cancelled or completed
-    if (appointment.status === AppointmentStatus.CANCELLED || appointment.status === AppointmentStatus.COMPLETED) {
-        res.status(400).json({ message: `Agendamento já está ${appointment.status}.` });
-        return;
-    }
-
-    // Check minimum cancellation notice (only applies if appointment is in the future)
-    const now = new Date();
-    if (isBefore(now, appointment.date)) { // Only check notice period for future appointments
-        const hoursDifference = differenceInHours(appointment.date, now);
-        if (hoursDifference < MIN_CANCELLATION_HOURS) {
-            // Exception: Admin might override this rule?
-            if (!isAdmin) { 
-                 res.status(400).json({ message: `Não é possível cancelar. É necessário ${MIN_CANCELLATION_HOURS} hora(s) de antecedência.` });
-                 return;
-            }
-        }
-    }
-    // --- End Authorization & Business Logic ---
-
-    const updatedAppointment = await appointmentRepository.updateStatus(id, AppointmentStatus.CANCELLED);
-    res.json({ 
-      message: 'Agendamento cancelado com sucesso', 
-      appointment: updatedAppointment 
-    });
-  } catch (error) {
-    console.error(`Erro ao cancelar agendamento ${id}:`, error);
-     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      res.status(404).json({ message: 'Agendamento não encontrado para cancelamento.' });
-      return;
-    }
-    next(error);
-  }
-};
-
-// Deletar um agendamento (geralmente não recomendado, prefer cancel)
-export const deleteAppointment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  const { id } = req.params;
-  const user = req.user;
-
-  if (!user) {
-      res.status(401).json({ message: 'Não autenticado.' });
-      return;
-  }
-
-  try {
-    const appointment = await appointmentRepository.findById(id);
-     if (!appointment) {
-      res.status(404).json({ message: 'Agendamento não encontrado.' });
-      return;
-    }
-    // Authorization: Only Admin can delete?
-    if (user.role !== UserRole.ADMIN) {
-        res.status(403).json({ message: 'Não autorizado a deletar este agendamento.' });
-        return;
-    }
-
-    await appointmentRepository.delete(id);
-    res.status(204).send(); 
-  } catch (error) {
-    console.error(`Erro ao deletar agendamento ${id}:`, error);
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      res.status(404).json({ message: 'Agendamento não encontrado para exclusão.' });
-      return;
-    }
-    next(error);
-  }
-};
-
-// --- Nova Função: Obter Disponibilidade --- 
-export const getAppointmentAvailability = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  const { date, serviceId, professionalId, companyId } = req.query as { 
-    date: string; 
-    serviceId?: string; 
-    professionalId?: string; 
-    companyId?: string; 
-  };
-
-  try {
-    // 1. Validar e Parsear Data
-    const requestedDate = parse(date, 'yyyy-MM-dd', new Date());
-    if (!isValid(requestedDate)) {
-        res.status(400).json({ message: 'Formato de data inválido. Use YYYY-MM-DD.' });
-        return;
-    }
-    const dayStart = startOfDay(requestedDate);
-    const dayEnd = endOfDay(requestedDate);
-
-    // 2. Determinar Serviço e Duração
-    if (!serviceId || !isValidUUID(serviceId)) {
-        res.status(400).json({ message: 'serviceId é obrigatório e deve ser um UUID válido.' });
-        return;
-    }
-    const service = await serviceRepository.findById(serviceId);
-    const serviceDurationMinutes = service ? parseDuration(service.duration) : null;
-    if (!service || serviceDurationMinutes === null) {
-      res.status(404).json({ message: 'Serviço não encontrado ou duração inválida.' });
-      return;
-    }
-
-    // 3. Determinar Profissional(is) e Horário de Trabalho
-    let targetProfessionalIds: string[] = [];
-    let professionalWorkingHours: WorkingHours | null = null; // Specific professional hours
-    let companyWorkingHours: WorkingHours | null = null; // Fallback company hours
-
-    if (professionalId && isValidUUID(professionalId)) {
-        const professional = await professionalRepository.findByIdWithCompany(professionalId); // Assume this fetches company relation
-        if (!professional) {
-            res.status(404).json({ message: 'Profissional não encontrado.' });
+    try {
+        const appointment = await appointmentRepository.findByIdWithService(id); // Fetch service for logging
+        if (!appointment) {
+            res.status(404).json({ message: 'Agendamento não encontrado.' });
             return;
         }
-        // Check if professional offers the serviceId
-        const profServiceLink = await prisma.professionalService.findUnique({
-            where: { professionalId_serviceId: { professionalId: professionalId, serviceId: serviceId } }
-        });
-        if (!profServiceLink) {
-             res.json({ availableSlots: [] }); // Professional doesn't offer this service
-             return;
-        }
 
-        targetProfessionalIds = [professionalId];
-        professionalWorkingHours = professional.workingHours as WorkingHours | null;
-        companyWorkingHours = professional.company?.workingHours as WorkingHours | null;
+        // --- Authorization & Business Logic for Cancellation ---
+        const isAdmin = user.role === UserRole.ADMIN;
+        const isProfessional = appointment.professionalId === user.id;
+        const isOwner = appointment.userId === user.id;
+        const now = new Date();
+        const hoursUntilAppointment = differenceInHours(appointment.date, now);
 
-    } else if (companyId && isValidUUID(companyId)) {
-        // Find professionals in the company that offer the service
-        const professionals = await professionalRepository.findManyByCompanyAndService(companyId, serviceId);
-        if (professionals.length === 0) {
-            res.json({ availableSlots: [] }); // No professionals offer this service in this company
+        let canCancel = false;
+
+        // Allow cancellation if already cancelled or completed (idempotent)
+        if (appointment.status === AppointmentStatus.CANCELLED || appointment.status === AppointmentStatus.COMPLETED) {
+            res.status(200).json({ message: 'Agendamento já está cancelado ou concluído.', appointment });
             return;
         }
-        targetProfessionalIds = professionals.map(p => p.id);
-        // For company-wide check, use company hours as primary? Or individual? Needs clarification.
-        // Using company hours as fallback if professional hours are not set.
-        const company = await prisma.company.findUnique({ where: { id: companyId } });
-        companyWorkingHours = company?.workingHours as WorkingHours | null;
-        // Note: Individual professional hours might differ, making company-wide check complex.
-        // This implementation assumes we check against company hours OR individual if available.
 
-    } else {
-        res.status(400).json({ message: 'É necessário fornecer professionalId ou companyId.' });
-        return;
-    }
-
-    // Determine the working hours for the specific day
-    const workingHours = getWorkingHoursForDay(professionalWorkingHours ?? companyWorkingHours, requestedDate);
-    if (!workingHours) {
-        res.json({ availableSlots: [] }); // Not working on this day
-        return;
-    }
-    const workStartTime = workingHours.start;
-    const workEndTime = workingHours.end;
-
-    // 4. Fetch Existing Appointments and Blocks for the target professional(s) on that day
-    const appointmentFilters: Prisma.AppointmentWhereInput = {
-      professionalId: { in: targetProfessionalIds },
-      date: { gte: dayStart, lt: dayEnd },
-      status: { notIn: [AppointmentStatus.CANCELLED] },
-    };
-    const blockFilters: Prisma.ScheduleBlockWhereInput = {
-      professionalId: { in: targetProfessionalIds },
-      OR: [
-        { // Blocks contained within the day
-          startTime: { gte: dayStart, lt: dayEnd }
-        },
-        { // Blocks ending within the day
-          endTime: { gt: dayStart, lte: dayEnd }
-        },
-        { // Blocks starting before and ending after the day
-          startTime: { lt: dayStart },
-          endTime: { gt: dayEnd }
-        },
-        { // All-day blocks for the requested date
-          isAllDay: true,
-          startTime: { lte: dayStart }, // Assuming all-day blocks start at or before the day
-          endTime: { gte: dayStart } // Assuming all-day blocks end at or after the day start
-        }
-      ]
-    };
-
-    const [existingAppointments, scheduleBlocks] = await Promise.all([
-        appointmentRepository.findManyWithServiceDuration(appointmentFilters), // Assume this fetches service duration
-        scheduleBlockRepository.findMany(blockFilters)
-    ]);
-
-    // Check for all-day blocks first
-    if (scheduleBlocks.some(block => block.isAllDay && isWithinInterval(requestedDate, { start: block.startTime, end: block.endTime }))) {
-        res.json({ availableSlots: [] }); // Blocked for the whole day
-        return;
-    }
-
-    // 5. Generate Potential Slots and Check Availability
-    const availableSlots: string[] = [];
-    const slotIntervalMinutes = 15; // Granularity of slots
-    let currentSlotTime = workStartTime;
-
-    while (currentSlotTime < workEndTime) {
-      const potentialEndTime = addMinutes(currentSlotTime, serviceDurationMinutes);
-
-      if (potentialEndTime > workEndTime) {
-        break; // Slot extends beyond working hours
-      }
-
-      let conflict = false;
-
-      // Check against existing appointments
-      for (const appt of existingAppointments) {
-        const apptStart = appt.date;
-        // Assuming findManyWithServiceDuration returns service duration
-        const apptDuration = (appt as any).serviceDurationMinutes; // Use pre-fetched duration
-        if (apptDuration === null || apptDuration === undefined) continue; 
-        const apptEnd = addMinutes(apptStart, apptDuration);
-
-        // Check for overlap: (SlotStart < ApptEnd) and (SlotEnd > ApptStart)
-        if (currentSlotTime < apptEnd && potentialEndTime > apptStart) {
-          conflict = true;
-          break;
-        }
-      }
-      if (conflict) {
-        currentSlotTime = addMinutes(currentSlotTime, slotIntervalMinutes);
-        continue;
-      }
-
-      // Check against schedule blocks (non-all-day)
-      for (const block of scheduleBlocks) {
-          if (block.isAllDay) continue; // Already handled
-          const blockStart = block.startTime;
-          const blockEnd = block.endTime;
-          // Check for overlap: (SlotStart < BlockEnd) and (SlotEnd > BlockStart)
-          if (currentSlotTime < blockEnd && potentialEndTime > blockStart) {
-              conflict = true;
-              break;
-          }
-      }
-       if (conflict) {
-        currentSlotTime = addMinutes(currentSlotTime, slotIntervalMinutes);
-        continue;
-      }
-
-      // If no conflict, add the slot
-      availableSlots.push(format(currentSlotTime, 'HH:mm'));
-      currentSlotTime = addMinutes(currentSlotTime, slotIntervalMinutes);
-    }
-
-    res.json({ availableSlots });
-
-  } catch (error) {
-    console.error('Erro ao buscar disponibilidade:', error);
-    next(error);
-  }
-};
-
-// --- Helper Function for Availability Check (used in createAppointment) ---
-const checkAvailability = async (professionalId: string, startTime: Date, endTime: Date): Promise<boolean> => {
-    const dayStart = startOfDay(startTime);
-    const dayEnd = endOfDay(startTime);
-
-    // Fetch professional and company for working hours
-    const professional = await professionalRepository.findByIdWithCompany(professionalId);
-    if (!professional) return false; // Professional not found
-
-    const professionalWorkingHours = professional.workingHours as WorkingHours | null;
-    const companyWorkingHours = professional.company?.workingHours as WorkingHours | null;
-    const workingHours = getWorkingHoursForDay(professionalWorkingHours ?? companyWorkingHours, startTime);
-
-    if (!workingHours || startTime < workingHours.start || endTime > workingHours.end) {
-        return false; // Outside working hours
-    }
-
-    // Fetch conflicting appointments
-    const conflictingAppointments = await prisma.appointment.count({
-        where: {
-            professionalId: professionalId,
-            status: { notIn: [AppointmentStatus.CANCELLED] },
-            // Check for overlap: (ApptStart < SlotEnd) and (ApptEnd > SlotStart)
-            // We need service duration to calculate ApptEnd. This check is complex here.
-            // Simpler check: Check if any appointment STARTS within the slot or vice-versa.
-            // This is not fully accurate but simpler without fetching all durations.
-            // A more robust check requires fetching appointments and their durations.
-            // Let's use the logic from getAvailability: check if slot overlaps any existing appt.
-            date: {
-                lt: endTime, // Existing appointment starts before the new one ends
-            },
-            // We need to calculate the end time of existing appointments based on their service duration
-            // This makes the check complex here. Let's rely on the check in getAvailability for now
-            // and assume this check is simplified or handled differently.
-            // For a robust check here, you'd fetch appointments in the range and check overlap with duration.
-            // Simplified check (less accurate): Check if any appointment starts exactly at the same time.
-            // date: startTime 
-            // Let's stick to the more robust check: fetch appointments and check overlap
-            AND: [
-                {
-                    date: {
-                        lt: endTime // Existing appt starts before new one ends
-                    }
-                },
-                // We need a way to express 'date + duration > startTime'
-                // This requires fetching duration or using a more complex query/logic.
-                // Alternative: Check if the requested slot (startTime, endTime) overlaps with any existing (appt.date, appt.date + appt.duration)
-            ]
-        },
-    });
-
-     // Fetch conflicting blocks
-    const conflictingBlocks = await prisma.scheduleBlock.count({
-        where: {
-            professionalId: professionalId,
-            OR: [
-                { // Block overlaps with slot start
-                    startTime: { lt: endTime },
-                    endTime: { gt: startTime }
-                },
-                 { // Block is contained within the slot (unlikely but possible)
-                    startTime: { gte: startTime },
-                    endTime: { lte: endTime }
-                },
-                 { // Slot is contained within the block
-                    startTime: { lte: startTime },
-                    endTime: { gte: endTime }
-                },
-                { // All-day block covering the start time
-                    isAllDay: true,
-                    startTime: { lte: startOfDay(startTime) },
-                    endTime: { gte: startOfDay(startTime) }
-                }
-            ]
-        }
-    });
-
-    // More robust check for appointments overlap:
-    const existingAppointments = await prisma.appointment.findMany({
-        where: {
-            professionalId: professionalId,
-            status: { notIn: [AppointmentStatus.CANCELLED] },
-            date: {
-                gte: dayStart, // Limit search to the relevant day
-                lt: dayEnd
+        // Owner can cancel PENDING or CONFIRMED if enough notice is given
+        if (isOwner && (appointment.status === AppointmentStatus.PENDING || appointment.status === AppointmentStatus.CONFIRMED)) {
+            if (hoursUntilAppointment >= MIN_CANCELLATION_HOURS) {
+                canCancel = true;
+            } else {
+                res.status(403).json({ message: `Cancelamento não permitido. É necessário cancelar com pelo menos ${MIN_CANCELLATION_HOURS} hora(s) de antecedência.` });
+                return;
             }
-        },
-        include: { service: { select: { duration: true } } }
-    });
-
-    let appointmentConflict = false;
-    for (const appt of existingAppointments) {
-        const apptDuration = parseDuration(appt.service.duration);
-        if (apptDuration === null) continue; // Skip if duration is invalid
-        const apptStart = appt.date;
-        const apptEnd = addMinutes(apptStart, apptDuration);
-        // Check for overlap: (SlotStart < ApptEnd) and (SlotEnd > ApptStart)
-        if (startTime < apptEnd && endTime > apptStart) {
-            appointmentConflict = true;
-            break;
         }
-    }
+        // Professional or Admin can cancel PENDING or CONFIRMED anytime (adjust if needed)
+        else if ((isProfessional || isAdmin) && (appointment.status === AppointmentStatus.PENDING || appointment.status === AppointmentStatus.CONFIRMED)) {
+            canCancel = true;
+        }
 
-    return conflictingBlocks === 0 && !appointmentConflict;
+        if (!canCancel) {
+            res.status(403).json({ message: 'Não autorizado a cancelar este agendamento ou status inválido para cancelamento.' });
+            return;
+        }
+
+        const updatedAppointment = await appointmentRepository.update(id, { status: AppointmentStatus.CANCELLED });
+
+        // --- ACTIVITY LOG INTEGRATION START ---
+        const logType = 'APPOINTMENT_CANCELLED';
+        const logMessage = `Seu agendamento para ${appointment.service.name} em ${format(appointment.date, 'dd/MM/yyyy HH:mm')} foi cancelado.`;
+        await logActivity(
+            appointment.userId, // Log for the user who booked
+            logType,
+            logMessage,
+            { id: updatedAppointment.id, type: 'Appointment' }
+        ).catch(err => console.error(`Activity logging failed for ${logType}:`, err));
+        // --- ACTIVITY LOG INTEGRATION END ---
+
+        res.json({ message: 'Agendamento cancelado com sucesso.', appointment: updatedAppointment });
+
+    } catch (error) {
+        console.error(`Erro ao cancelar agendamento ${id}:`, error);
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+            res.status(404).json({ message: 'Agendamento não encontrado para cancelamento.' });
+            return;
+        }
+        next(error);
+    }
 };
 

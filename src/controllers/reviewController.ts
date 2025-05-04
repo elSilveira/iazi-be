@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express"; // Import NextFunctio
 import { reviewRepository } from "../repositories/reviewRepository";
 import { Prisma } from "@prisma/client";
 import { gamificationService, GamificationEventType } from "../services/gamificationService"; // Import gamification service
+import { logActivity } from "../services/activityLogService"; // Import activity log service
 
 // Helper function for UUID validation
 const isValidUUID = (uuid: string): boolean => {
@@ -120,12 +121,39 @@ export const createReview = async (req: Request, res: Response, next: NextFuncti
         relatedEntityType: "Review",
     }).catch(err => console.error("Gamification event trigger failed for REVIEW_CREATED:", err));
     // --- GAMIFICATION INTEGRATION END ---
+
+    // --- ACTIVITY LOG INTEGRATION START ---
+    // Log activity after successful review creation
+    let targetName = 'item'; // Default target name
+    if (serviceId) {
+        const service = await prisma.service.findUnique({ where: { id: serviceId }, select: { name: true } });
+        if (service) targetName = `serviço ${service.name}`;
+    } else if (professionalId) {
+        const professional = await prisma.professional.findUnique({ where: { id: professionalId }, select: { name: true } });
+        if (professional) targetName = `profissional ${professional.name}`;
+    } else if (companyId) {
+        const company = await prisma.company.findUnique({ where: { id: companyId }, select: { name: true } });
+        if (company) targetName = `empresa ${company.name}`;
+    }
+
+    await logActivity(
+        userId,
+        'NEW_REVIEW',
+        `Você avaliou o ${targetName} com ${numericRating} estrela(s).`,
+        { id: newReview.id, type: 'Review' }
+    ).catch(err => console.error("Activity logging failed for NEW_REVIEW:", err));
+    // --- ACTIVITY LOG INTEGRATION END ---
         
     res.status(201).json(newReview);
   } catch (error) {
     console.error('Erro ao criar avaliação:', error);
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
       res.status(400).json({ message: 'Um ou mais IDs fornecidos (usuário, serviço, profissional ou empresa) são inválidos.' });
+      return;
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      // This might happen if service/professional/company ID is invalid
+      res.status(404).json({ message: 'Entidade relacionada (serviço, profissional ou empresa) não encontrada.' });
       return;
     }
     next(error); // Pass other errors to error handler
@@ -226,4 +254,5 @@ export const deleteReview = async (req: Request, res: Response, next: NextFuncti
     next(error); // Pass other errors to error handler
   }
 };
+
 

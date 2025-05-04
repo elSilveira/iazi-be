@@ -28,6 +28,7 @@ model User {
   reviews       Review[]
   badges        UserBadge[] // GAMIFICATION: Badges awarded to user
   gamificationEvents GamificationEvent[] // GAMIFICATION: History of events
+  activityLogs  ActivityLog[] // FEED: User's activity logs
 
   @@index([email]) // Index for login
   @@index([points]) // GAMIFICATION: Index for leaderboard
@@ -329,6 +330,25 @@ model GamificationEvent {
   @@map("gamification_events")
 }
 
+// --- FEED MODELS ---
+
+// Modelo de Log de Atividade
+model ActivityLog {
+  id                String    @id @default(uuid())
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String    @map("user_id")
+  type              String    // Tipo da atividade (ex: "NEW_APPOINTMENT", "NEW_REVIEW")
+  message           String    // Mensagem descritiva da atividade
+  relatedEntityId   String?   @map("related_entity_id") // ID da entidade relacionada (ex: Appointment ID)
+  relatedEntityType String?   @map("related_entity_type") // Tipo da entidade (ex: "Appointment")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@index([userId]) // Index para buscar atividades do usuário
+  @@index([createdAt]) // Index para ordenar o feed
+  @@index([type]) // Index para filtrar por tipo de atividade
+  @@map("activity_logs")
+}
+
 // --- ENUMS ---
 
 // Enumeração para status de agendamento
@@ -345,7 +365,7 @@ enum AppointmentStatus {
 enum UserRole {
   USER
   ADMIN
-  // Add other roles like PROFESSIONAL, COMPANY_ADMIN if needed
+  PROFESSIONAL // Added PROFESSIONAL role
 
   @@map("user_role") // Map enum to lowercase name
 }
