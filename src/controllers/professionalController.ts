@@ -1,19 +1,58 @@
 import { Request, Response, NextFunction } from "express";
 import { professionalRepository } from "../repositories/professionalRepository";
-import { Prisma } from "@prisma/client";
+import { companyRepository } from "../repositories/companyRepository"; // Import company repo for ownership check
+import { Prisma, UserRole } from "@prisma/client"; // Added UserRole
+
+// --- Authorization Helpers (Consider moving to middleware) ---
+
+// Helper function for Admin check
+const checkAdminRole = (req: Request, res: Response, next: NextFunction) => {
+    if (req.user?.role !== UserRole.ADMIN) {
+        return res.status(403).json({ message: "Acesso negado. Somente administradores podem realizar esta ação." });
+    }
+    next();
+};
+
+// Helper function to check if user is Admin or owns the company
+// Assumes Company model has an ownerId field linked to the User model
+const checkAdminOrCompanyOwner = async (req: Request, res: Response, next: NextFunction, companyId: string | null | undefined) => {
+    if (!companyId) {
+        // If no companyId is involved (e.g., creating a professional without a company initially), only admin can do it?
+        // Or adjust logic based on requirements.
+        return checkAdminRole(req, res, next);
+    }
+
+    if (req.user?.role === UserRole.ADMIN) {
+        return next(); // Admin can do anything
+    }
+
+    try {
+        // Fetch the company to check its owner
+        // const company = await companyRepository.findById(companyId);
+        // if (company && company.ownerId === req.user?.id) { // Assuming ownerId exists
+        //     return next();
+        // }
+        // Placeholder: Since ownerId is not in the schema, restrict to Admin for now
+        return res.status(403).json({ message: "Acesso negado. Permissão insuficiente (Admin or Company Owner required)." });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// --- End Authorization Helpers ---
+
 
 // Assume an interface for the authenticated user attached by middleware
 interface AuthenticatedUser {
   id: string;
-  // name: string; // Temporarily removed for consistency with authMiddleware
-  // Add other relevant user properties if available
+  role: UserRole; // Added role
 }
 
 // Extend the Express Request interface to include the user property
 declare global {
   namespace Express {
     interface Request {
-      user?: { id: string }; // Consistent with authMiddleware
+      user?: AuthenticatedUser; // Use the defined interface
     }
   }
 }
@@ -24,20 +63,11 @@ const isValidUUID = (uuid: string): boolean => {
   return uuidRegex.test(uuid);
 };
 
-// Obter todos os profissionais (com filtros e paginação)
+// Obter todos os profissionais (com filtros e paginação) - Public
 export const getAllProfessionals = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  // ... (existing code for getAllProfessionals remains the same)
+  // ... (existing code for filtering and pagination) ...
   const { 
-    companyId, 
-    q, // Search term
-    role, // Filter by role/specialty
-    serviceId, // Filter by service offered
-    city, 
-    state, 
-    minRating, 
-    sort, // e.g., "rating_desc", "name_asc"
-    page = "1", // Default page 1
-    limit = "10" // Default 10 items per page
+    companyId, q, role, serviceId, city, state, minRating, sort, page = "1", limit = "10"
   } = req.query;
 
   const pageNum = parseInt(page as string, 10);
@@ -85,7 +115,7 @@ export const getAllProfessionals = async (req: Request, res: Response, next: Nex
       }
     }
 
-    let orderBy: Prisma.ProfessionalOrderByWithRelationInput = {};
+    let orderBy: Prisma.ProfessionalOrderByWithRelationInput = { name: "asc" }; // Default sort
     switch (sort as string) {
       case "rating_desc":
         orderBy = { rating: "desc" }; 
@@ -93,8 +123,6 @@ export const getAllProfessionals = async (req: Request, res: Response, next: Nex
       case "name_asc":
         orderBy = { name: "asc" };
         break;
-      default:
-        orderBy = { name: "asc" }; 
     }
 
     const professionals = await professionalRepository.findMany(filters, orderBy, skip, limitNum);
@@ -115,19 +143,16 @@ export const getAllProfessionals = async (req: Request, res: Response, next: Nex
   }
 };
 
-// Obter um profissional específico pelo ID
+// Obter um profissional específico pelo ID - Public
 export const getProfessionalById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  // ... (existing code for getProfessionalById remains the same)
   const { id } = req.params;
   if (!isValidUUID(id)) {
-    res.status(400).json({ message: "Formato de ID inválido." });
-    return;
+    return res.status(400).json({ message: "Formato de ID inválido." });
   }
   try {
     const professional = await professionalRepository.findById(id);
     if (!professional) {
-      res.status(404).json({ message: "Profissional não encontrado" });
-      return;
+      return res.status(404).json({ message: "Profissional não encontrado" });
     }
     res.json(professional);
   } catch (error) {
@@ -136,106 +161,137 @@ export const getProfessionalById = async (req: Request, res: Response, next: Nex
   }
 };
 
-// Criar um novo profissional
-export const createProfessional = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  // Destructure potentially optional fields
-  const { name: reqName, role: reqRole, image, companyId, serviceIds, bio, phone } = req.body;
+// Criar um novo profissional - Requires ADMIN (or Company Owner)
+export const createProfessional = [
+  // Authorization Middleware/Check
+  async (req: Request, res: Response, next: NextFunction) => {
+      const { companyId } = req.body;
+      // Use the specific helper which checks Admin OR Owner (if implemented)
+      // For now, using Admin only as owner logic is pending schema change
+      await checkAdminOrCompanyOwner(req, res, next, companyId);
+  },
+  // Main Controller Logic
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { name: reqName, role: reqRole, image, companyId, serviceIds, bio, phone } = req.body;
 
-  // **Important:** Authentication middleware should run before this controller
-  // and attach the user object to req.user
-  const authenticatedUser = req.user;
+    const professionalName = reqName;
+    if (!professionalName) {
+      return res.status(400).json({ message: "Nome do profissional não fornecido." });
+    }
+    const professionalRole = reqRole || "Profissional";
 
-  // Determine the name: use request body, fallback to authenticated user's name
-  const professionalName = reqName;
-  if (!professionalName) {
-    // If name is still missing (e.g., user not authenticated or name not in user object)
-    res.status(400).json({ message: "Nome do profissional não fornecido e não pôde ser obtido do usuário autenticado." });
-    return;
-  }
+    try {
+      const dataToCreate: Prisma.ProfessionalCreateInput = {
+        name: professionalName,
+        role: professionalRole,
+        image: image,
+        ...(companyId && isValidUUID(companyId) && { company: { connect: { id: companyId } } }),
+        // bio: bio, // Add if schema supports
+        // phone: phone, // Add if schema supports
+      };
 
-  // Determine the role: use request body, fallback to default
-  const professionalRole = reqRole || "Profissional"; // Default role
-
-  try {
-    const dataToCreate: Prisma.ProfessionalCreateInput = {
-      name: professionalName,
-      role: professionalRole,
-      image: image, // Already optional based on validator
-      // Conditionally connect company only if companyId is provided and valid
-      ...(companyId && isValidUUID(companyId) && { company: { connect: { id: companyId } } }),
-      // Include other optional fields if provided
-      // Assuming Prisma schema matches these fields (bio, phone)
-      // Note: The Professional model in the provided schema doesn't have bio/phone directly
-      // These might belong to the User model instead. Adjust accordingly.
-      // bio: bio, 
-      // phone: phone,
-      // Rating and totalReviews have defaults
-    };
-
-    // Pass serviceIds if provided (repository handles association)
-    const newProfessional = await professionalRepository.create(dataToCreate, serviceIds as string[] | undefined);
-    res.status(201).json(newProfessional);
-  } catch (error) {
-    console.error("Erro ao criar profissional:", error);
-    // Handle potential Prisma errors (e.g., companyId not found if provided)
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2025') { // Foreign key constraint failed
-        res.status(400).json({ message: `Erro ao conectar: ${error.meta?.cause || 'Registro relacionado não encontrado (ex: Empresa não existe)'}` });
-        return;
+      const newProfessional = await professionalRepository.create(dataToCreate, serviceIds as string[] | undefined);
+      res.status(201).json(newProfessional);
+    } catch (error) {
+      console.error("Erro ao criar profissional:", error);
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2025') {
+          return res.status(400).json({ message: `Erro ao conectar: ${error.meta?.cause || 'Registro relacionado não encontrado (ex: Empresa não existe)'}` });
+        }
       }
+      next(error);
     }
-    next(error);
   }
-};
+];
 
-// Atualizar um profissional existente
-export const updateProfessional = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  // ... (existing code for updateProfessional remains the same, ensure it handles optional fields correctly)
-  const { id } = req.params;
-  const { companyId, serviceIds, ...dataToUpdate } = req.body;
+// Atualizar um profissional existente - Requires ADMIN (or Company Owner)
+export const updateProfessional = [
+  // Authorization Middleware/Check
+  async (req: Request, res: Response, next: NextFunction) => {
+      const { id } = req.params;
+      try {
+          const professional = await professionalRepository.findById(id);
+          if (!professional) {
+              return res.status(404).json({ message: "Profissional não encontrado." });
+          }
+          // Check permission based on the professional's associated company
+          await checkAdminOrCompanyOwner(req, res, next, professional.companyId);
+      } catch (error) {
+          next(error);
+      }
+  },
+  // Main Controller Logic
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { id } = req.params;
+    const { companyId, serviceIds, ...dataToUpdate } = req.body;
 
-  try {
-    // Ensure numeric fields are parsed correctly if sent as strings
-    if (dataToUpdate.rating !== undefined && typeof dataToUpdate.rating === 'string') {
-      dataToUpdate.rating = parseFloat(dataToUpdate.rating);
+    try {
+      if (dataToUpdate.rating !== undefined && typeof dataToUpdate.rating === 'string') {
+        dataToUpdate.rating = parseFloat(dataToUpdate.rating);
+      }
+      if (dataToUpdate.totalReviews !== undefined && typeof dataToUpdate.totalReviews === 'string') {
+        dataToUpdate.totalReviews = parseInt(dataToUpdate.totalReviews, 10);
+      }
+
+      delete dataToUpdate.companyId; 
+      delete dataToUpdate.serviceIds;
+
+      const updatedProfessional = await professionalRepository.update(id, dataToUpdate as Prisma.ProfessionalUpdateInput, serviceIds as string[] | undefined);
+      res.json(updatedProfessional); 
+    } catch (error) {
+      console.error(`Erro ao atualizar profissional ${id}:`, error);
+      // Handle P2025 from repo update if needed
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+          return res.status(404).json({ message: `Erro ao atualizar: ${error.meta?.cause || 'Profissional não encontrado'}` });
+      }
+      next(error);
     }
-    if (dataToUpdate.totalReviews !== undefined && typeof dataToUpdate.totalReviews === 'string') {
-      dataToUpdate.totalReviews = parseInt(dataToUpdate.totalReviews, 10);
+  }
+];
+
+// Deletar um profissional - Requires ADMIN (or Company Owner)
+export const deleteProfessional = [
+  // Authorization Middleware/Check
+  async (req: Request, res: Response, next: NextFunction) => {
+      const { id } = req.params;
+      try {
+          const professional = await professionalRepository.findById(id);
+          if (!professional) {
+              // Allow deletion attempt even if not found, repo handles P2025
+              // return res.status(404).json({ message: "Profissional não encontrado." });
+          }
+          // Check permission based on the professional's associated company (if exists)
+          await checkAdminOrCompanyOwner(req, res, next, professional?.companyId);
+      } catch (error) {
+          next(error);
+      }
+  },
+  // Main Controller Logic
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { id } = req.params;
+    try {
+      await professionalRepository.delete(id); 
+      res.status(204).send(); 
+    } catch (error) {
+      console.error(`Erro ao deletar profissional ${id}:`, error);
+      // Handle P2025 from repo delete
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+          return res.status(404).json({ message: `Erro ao deletar: ${error.meta?.cause || 'Profissional não encontrado'}` });
+      }
+      next(error);
     }
-
-    // Remove fields that shouldn't be updated directly or are handled separately
-    delete dataToUpdate.companyId; // Usually not updated here
-    delete dataToUpdate.serviceIds; // Handled by repository logic
-
-    const updatedProfessional = await professionalRepository.update(id, dataToUpdate as Prisma.ProfessionalUpdateInput, serviceIds as string[] | undefined);
-    res.json(updatedProfessional); 
-  } catch (error) {
-    console.error(`Erro ao atualizar profissional ${id}:`, error);
-    next(error);
   }
-};
+];
 
-// Deletar um profissional
-export const deleteProfessional = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  // ... (existing code for deleteProfessional remains the same)
-  const { id } = req.params;
-
-  try {
-    await professionalRepository.delete(id); 
-    res.status(204).send(); 
-  } catch (error) {
-    console.error(`Erro ao deletar profissional ${id}:`, error);
-    next(error);
-  }
-};
-
-// Add Service to Professional (Placeholder)
+// Add Service to Professional - Requires ADMIN (or Company Owner)
 export const addServiceToProfessional = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    // TODO: Implement authorization check based on professional's company
     res.status(501).json({ message: "Not Implemented" });
 };
 
-// Remove Service from Professional (Placeholder)
+// Remove Service from Professional - Requires ADMIN (or Company Owner)
 export const removeServiceFromProfessional = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    // TODO: Implement authorization check based on professional's company
     res.status(501).json({ message: "Not Implemented" });
 };
 
