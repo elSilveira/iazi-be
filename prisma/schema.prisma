@@ -29,6 +29,9 @@ model User {
   badges        UserBadge[] // GAMIFICATION: Badges awarded to user
   gamificationEvents GamificationEvent[] // GAMIFICATION: History of events
   activityLogs  ActivityLog[] // FEED: User's activity logs
+  posts     Post[]    // Postagens criadas pelo usuário
+  comments  Comment[] // Comentários criados pelo usuário
+  likes     Like[]    // Likes dados pelo usuário
 
   @@index([email]) // Index for login
   @@index([points]) // GAMIFICATION: Index for leaderboard
@@ -369,5 +372,68 @@ enum UserRole {
   PROFESSIONAL // Added professional role
 
   @@map("user_role") // Map enum to lowercase name
+}
+
+
+
+
+// --- SOCIAL FEATURES MODELS ---
+
+// Modelo de Postagem
+model Post {
+  id        String    @id @default(uuid())
+  content   String    // Conteúdo textual da postagem
+  imageUrl  String?   @map("image_url") // URL de imagem opcional
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId  String    @map("author_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  comments  Comment[] // Relação com comentários
+  likes     Like[]    // Relação com likes
+
+  @@index([authorId])
+  @@index([createdAt]) // Para ordenar o feed
+  @@map("posts")
+}
+
+// Modelo de Comentário
+model Comment {
+  id        String    @id @default(uuid())
+  content   String    // Conteúdo textual do comentário
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId  String    @map("author_id")
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    String    @map("post_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  likes     Like[]    // Relação com likes
+  // parentComment Comment? @relation("NestedComments", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  // parentCommentId String? @map("parent_comment_id")
+  // replies Comment[] @relation("NestedComments")
+
+  @@index([authorId])
+  @@index([postId])
+  @@index([createdAt])
+  @@map("comments")
+}
+
+// Modelo de Like (Curtida)
+model Like {
+  id        String    @id @default(uuid())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String    @map("user_id")
+  post      Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    String?   @map("post_id")
+  comment   Comment?  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId String?   @map("comment_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  // Garante que um usuário só pode curtir um post ou comentário uma vez
+  @@unique([userId, postId])
+  @@unique([userId, commentId])
+  // Índices para buscar likes por post ou comentário
+  @@index([postId])
+  @@index([commentId])
+  @@map("likes")
 }
 
