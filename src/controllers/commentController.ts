@@ -1,99 +1,89 @@
 import { Request, Response, NextFunction } from 'express';
-import { validationResult } from 'express-validator';
-import * as commentService from '../services/commentService'; // Assuming named exports
-import { AuthenticatedRequest } from '../middlewares/authMiddleware'; // Assuming this type exists for req.user
-import { BadRequestError, NotFoundError } from '../lib/errors'; // Assuming custom error classes exist in lib/errors
-import { Comment } from '@prisma/client'; // Import Comment type for explicit typing
+import * as commentService from '../services/commentService';
+import { AuthenticatedRequest } from '../middlewares/authMiddleware';
+import { BadRequestError } from '../lib/errors';
+import { Comment } from '@prisma/client'; // Import if needed for response typing
 
-// Ensure all async handlers return Promise<void> or call next()
+// Helper to parse pagination query parameters
+const getPaginationParams = (req: Request): { page: number, limit: number } => {
+    const page = parseInt(req.query.page as string || '1', 10);
+    const limit = parseInt(req.query.limit as string || '10', 10);
+    // Add validation if needed (e.g., page > 0, limit > 0)
+    return { page, limit };
+};
 
 export const createComment = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-  const authorId = req.user?.userId;
-  if (!authorId) {
-    next(new Error('Authentication required but user ID not found in request'));
-    return;
-  }
+    const authorId = req.user?.userId;
+    if (!authorId) {
+        return next(new Error('Authentication required but user ID not found in request'));
+    }
 
-  const { postId } = req.params; // postId from the route /api/posts/:postId/comments
-  const { content } = req.body;
+    const { postId } = req.params; // postId from the route /api/posts/:postId/comments
+    const { content } = req.body;
 
-  try {
-    // TODO: Replace placeholder call with actual service call
-    // const newComment = await commentService.createComment(authorId, postId, content);
-    const newComment: Comment = { id: 'mock-comment-id', authorId, postId, content, createdAt: new Date(), updatedAt: new Date(), parentId: null }; // Placeholder response with type
-    res.status(201).json(newComment);
-  } catch (error) {
-    next(error);
-  }
+    if (!content) {
+        return next(new BadRequestError('Comment content is required.'));
+    }
+
+    try {
+        const newComment = await commentService.createComment(authorId, postId, content);
+        // Service throws NotFoundError if user or post doesn't exist
+        res.status(201).json(newComment);
+    } catch (error) {
+        next(error);
+    }
 };
 
 export const getComments = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const { postId } = req.params;
-    const page = parseInt(req.query.page as string || '1', 10);
-    const limit = parseInt(req.query.limit as string || '10', 10);
-    // TODO: Replace placeholder call with actual service call
-    // const comments = await commentService.getCommentsByPost(postId, page, limit);
-    const comments: Comment[] = []; // Placeholder response with explicit type
-    res.status(200).json(comments);
-  } catch (error) {
-    next(error);
-  }
+    try {
+        const { postId } = req.params;
+        const { page, limit } = getPaginationParams(req);
+        const comments = await commentService.getCommentsByPost(postId, page, limit);
+        // Service throws NotFoundError if post doesn't exist
+        res.status(200).json(comments);
+    } catch (error) {
+        next(error);
+    }
 };
 
 export const updateComment = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-  const authorId = req.user?.userId;
-  if (!authorId) {
-    next(new Error('Authentication required but user ID not found in request'));
-    return;
-  }
-
-  const { commentId } = req.params; // commentId from the route /api/comments/:commentId
-  const { content } = req.body;
-
-  if (content === undefined) {
-      next(new BadRequestError('Content is required for update.'));
-      return;
-  }
-
-  try {
-    // TODO: Replace placeholder call with actual service call
-    // const updatedComment = await commentService.updateComment(authorId, commentId, content);
-    // Placeholder needs postId which might not be available here easily, adjust if needed
-    const updatedComment: Partial<Comment> = { id: commentId, authorId, content, updatedAt: new Date() }; // Placeholder response with type
-    if (!updatedComment) {
-        // Service should throw NotFoundError or ForbiddenError
-        next(new NotFoundError('Comment not found or update forbidden (placeholder)'));
-        return;
+    const authorId = req.user?.userId;
+    if (!authorId) {
+        return next(new Error('Authentication required but user ID not found in request'));
     }
-    res.status(200).json(updatedComment);
-  } catch (error) {
-    next(error);
-  }
+
+    const { commentId } = req.params; // commentId from the route /api/comments/:commentId
+    const { content } = req.body;
+
+    if (!content) {
+        return next(new BadRequestError('Content is required for update.'));
+    }
+
+    try {
+        const updatedComment = await commentService.updateComment(authorId, commentId, content);
+        // Service throws NotFoundError or ForbiddenError
+        res.status(200).json(updatedComment);
+    } catch (error) {
+        next(error);
+    }
 };
 
 export const deleteComment = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-  const authorId = req.user?.userId;
-  const userRole = req.user?.role;
-  if (!authorId) {
-    next(new Error('Authentication required but user ID not found in request'));
-    return;
-  }
+    const authorId = req.user?.userId;
+    const userRole = req.user?.role;
 
-  const { commentId } = req.params;
-
-  try {
-    // TODO: Replace placeholder call with actual service call
-    // await commentService.deleteComment(authorId, userRole || 'USER', commentId);
-    const success = true; // Placeholder response
-    if (!success) {
-        // Service should throw NotFoundError or ForbiddenError
-        next(new NotFoundError('Comment not found or deletion forbidden (placeholder)'));
-        return;
+    if (!authorId || !userRole) {
+        return next(new Error('Authentication required but user ID or role not found in request'));
     }
-    res.status(204).send();
-  } catch (error) {
-    next(error);
-  }
+
+    const { commentId } = req.params;
+
+    try {
+        await commentService.deleteComment(authorId, userRole, commentId);
+        // Service throws NotFoundError or ForbiddenError
+        res.status(204).send();
+    } catch (error) {
+        next(error);
+    }
 };
 

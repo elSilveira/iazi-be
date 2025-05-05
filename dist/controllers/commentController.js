@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -10,21 +43,29 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteComment = exports.updateComment = exports.getComments = exports.createComment = void 0;
-const errors_1 = require("../lib/errors"); // Assuming custom error classes exist in lib/errors
-// Ensure all async handlers return Promise<void> or call next()
+const commentService = __importStar(require("../services/commentService"));
+const errors_1 = require("../lib/errors");
+// Helper to parse pagination query parameters
+const getPaginationParams = (req) => {
+    const page = parseInt(req.query.page || '1', 10);
+    const limit = parseInt(req.query.limit || '10', 10);
+    // Add validation if needed (e.g., page > 0, limit > 0)
+    return { page, limit };
+};
 const createComment = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     const authorId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
     if (!authorId) {
-        next(new Error('Authentication required but user ID not found in request'));
-        return;
+        return next(new Error('Authentication required but user ID not found in request'));
     }
     const { postId } = req.params; // postId from the route /api/posts/:postId/comments
     const { content } = req.body;
+    if (!content) {
+        return next(new errors_1.BadRequestError('Comment content is required.'));
+    }
     try {
-        // TODO: Replace placeholder call with actual service call
-        // const newComment = await commentService.createComment(authorId, postId, content);
-        const newComment = { id: 'mock-comment-id', authorId, postId, content, createdAt: new Date(), updatedAt: new Date(), parentId: null }; // Placeholder response with type
+        const newComment = yield commentService.createComment(authorId, postId, content);
+        // Service throws NotFoundError if user or post doesn't exist
         res.status(201).json(newComment);
     }
     catch (error) {
@@ -35,11 +76,9 @@ exports.createComment = createComment;
 const getComments = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { postId } = req.params;
-        const page = parseInt(req.query.page || '1', 10);
-        const limit = parseInt(req.query.limit || '10', 10);
-        // TODO: Replace placeholder call with actual service call
-        // const comments = await commentService.getCommentsByPost(postId, page, limit);
-        const comments = []; // Placeholder response with explicit type
+        const { page, limit } = getPaginationParams(req);
+        const comments = yield commentService.getCommentsByPost(postId, page, limit);
+        // Service throws NotFoundError if post doesn't exist
         res.status(200).json(comments);
     }
     catch (error) {
@@ -51,25 +90,16 @@ const updateComment = (req, res, next) => __awaiter(void 0, void 0, void 0, func
     var _a;
     const authorId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
     if (!authorId) {
-        next(new Error('Authentication required but user ID not found in request'));
-        return;
+        return next(new Error('Authentication required but user ID not found in request'));
     }
     const { commentId } = req.params; // commentId from the route /api/comments/:commentId
     const { content } = req.body;
-    if (content === undefined) {
-        next(new errors_1.BadRequestError('Content is required for update.'));
-        return;
+    if (!content) {
+        return next(new errors_1.BadRequestError('Content is required for update.'));
     }
     try {
-        // TODO: Replace placeholder call with actual service call
-        // const updatedComment = await commentService.updateComment(authorId, commentId, content);
-        // Placeholder needs postId which might not be available here easily, adjust if needed
-        const updatedComment = { id: commentId, authorId, content, updatedAt: new Date() }; // Placeholder response with type
-        if (!updatedComment) {
-            // Service should throw NotFoundError or ForbiddenError
-            next(new errors_1.NotFoundError('Comment not found or update forbidden (placeholder)'));
-            return;
-        }
+        const updatedComment = yield commentService.updateComment(authorId, commentId, content);
+        // Service throws NotFoundError or ForbiddenError
         res.status(200).json(updatedComment);
     }
     catch (error) {
@@ -81,20 +111,13 @@ const deleteComment = (req, res, next) => __awaiter(void 0, void 0, void 0, func
     var _a, _b;
     const authorId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
     const userRole = (_b = req.user) === null || _b === void 0 ? void 0 : _b.role;
-    if (!authorId) {
-        next(new Error('Authentication required but user ID not found in request'));
-        return;
+    if (!authorId || !userRole) {
+        return next(new Error('Authentication required but user ID or role not found in request'));
     }
     const { commentId } = req.params;
     try {
-        // TODO: Replace placeholder call with actual service call
-        // await commentService.deleteComment(authorId, userRole || 'USER', commentId);
-        const success = true; // Placeholder response
-        if (!success) {
-            // Service should throw NotFoundError or ForbiddenError
-            next(new errors_1.NotFoundError('Comment not found or deletion forbidden (placeholder)'));
-            return;
-        }
+        yield commentService.deleteComment(authorId, userRole, commentId);
+        // Service throws NotFoundError or ForbiddenError
         res.status(204).send();
     }
     catch (error) {

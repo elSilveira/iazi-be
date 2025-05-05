@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -10,26 +43,20 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.unlikeComment = exports.likeComment = exports.unlikePost = exports.likePost = void 0;
-const errors_1 = require("../lib/errors"); // Assuming custom error classes exist in lib/errors
-// Ensure all async handlers return Promise<void> or call next()
+const likeService = __importStar(require("../services/likeService"));
 const likePost = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
     if (!userId) {
-        next(new Error('Authentication required but user ID not found in request'));
-        return;
+        return next(new Error('Authentication required but user ID not found in request'));
     }
     const { postId } = req.params; // postId from the route /api/posts/:postId/like
     try {
-        // TODO: Replace placeholder call with actual service call
-        // const newLike = await likeService.likePost(userId, postId);
-        const newLike = { id: 'mock-like-id', userId, postId, commentId: null, createdAt: new Date() }; // Placeholder response with type
-        // Use 201 if creating, 200 if just confirming (service logic decides)
-        res.status(201).json(newLike);
+        const newLike = yield likeService.likePost(userId, postId);
+        // Service throws NotFoundError or ConflictError
+        res.status(201).json(newLike); // 201 Created
     }
     catch (error) {
-        // Handle potential errors like 'already liked' (e.g., Prisma unique constraint)
-        // The service should ideally throw specific errors (e.g., ConflictError)
         next(error);
     }
 });
@@ -38,20 +65,13 @@ const unlikePost = (req, res, next) => __awaiter(void 0, void 0, void 0, functio
     var _a;
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
     if (!userId) {
-        next(new Error('Authentication required but user ID not found in request'));
-        return;
+        return next(new Error('Authentication required but user ID not found in request'));
     }
     const { postId } = req.params;
     try {
-        // TODO: Replace placeholder call with actual service call
-        // await likeService.unlikePost(userId, postId);
-        const success = true; // Placeholder response
-        if (!success) {
-            // Service should throw NotFoundError if the like didn't exist
-            next(new errors_1.NotFoundError('Like not found (placeholder)'));
-            return;
-        }
-        res.status(204).send();
+        yield likeService.unlikePost(userId, postId);
+        // Service throws NotFoundError if the like didn't exist
+        res.status(204).send(); // 204 No Content on successful unlike
     }
     catch (error) {
         next(error);
@@ -62,14 +82,12 @@ const likeComment = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
     var _a;
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
     if (!userId) {
-        next(new Error('Authentication required but user ID not found in request'));
-        return;
+        return next(new Error('Authentication required but user ID not found in request'));
     }
     const { commentId } = req.params; // commentId from the route /api/comments/:commentId/like
     try {
-        // TODO: Replace placeholder call with actual service call
-        // const newLike = await likeService.likeComment(userId, commentId);
-        const newLike = { id: 'mock-like-id', userId, postId: null, commentId, createdAt: new Date() }; // Placeholder response with type
+        const newLike = yield likeService.likeComment(userId, commentId);
+        // Service throws NotFoundError or ConflictError
         res.status(201).json(newLike);
     }
     catch (error) {
@@ -81,19 +99,12 @@ const unlikeComment = (req, res, next) => __awaiter(void 0, void 0, void 0, func
     var _a;
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
     if (!userId) {
-        next(new Error('Authentication required but user ID not found in request'));
-        return;
+        return next(new Error('Authentication required but user ID not found in request'));
     }
     const { commentId } = req.params;
     try {
-        // TODO: Replace placeholder call with actual service call
-        // await likeService.unlikeComment(userId, commentId);
-        const success = true; // Placeholder response
-        if (!success) {
-            // Service should throw NotFoundError
-            next(new errors_1.NotFoundError('Like not found (placeholder)'));
-            return;
-        }
+        yield likeService.unlikeComment(userId, commentId);
+        // Service throws NotFoundError if the like didn't exist
         res.status(204).send();
     }
     catch (error) {

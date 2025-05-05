@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -10,36 +43,37 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deletePost = exports.updatePost = exports.getPostById = exports.getUserPosts = exports.getPosts = exports.createPost = void 0;
-const errors_1 = require("../lib/errors"); // Assuming custom error classes exist in lib/errors
-// Ensure all async handlers return Promise<void> or call next()
+const postService = __importStar(require("../services/postService"));
+const errors_1 = require("../lib/errors");
+// Helper to parse pagination query parameters
+const getPaginationParams = (req) => {
+    const page = parseInt(req.query.page || '1', 10);
+    const limit = parseInt(req.query.limit || '10', 10);
+    // Add validation if needed (e.g., page > 0, limit > 0)
+    return { page, limit };
+};
 const createPost = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     const authorId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
     if (!authorId) {
-        // Use next() for errors
-        next(new Error('Authentication required but user ID not found in request'));
-        return; // Explicit return after next()
+        // This should ideally be caught by the 'protect' middleware, but double-check
+        return next(new Error('Authentication required but user ID not found in request'));
     }
     const { content, imageUrl } = req.body;
+    const postData = { content, imageUrl };
     try {
-        const postData = { content, imageUrl };
-        // TODO: Replace placeholder call with actual service call
-        // const newPost = await postService.createPost(authorId, postData);
-        const newPost = { id: 'mock-post-id', authorId, content, imageUrl: imageUrl || null, createdAt: new Date(), updatedAt: new Date() }; // Placeholder response with type
+        const newPost = yield postService.createPost(authorId, postData);
         res.status(201).json(newPost);
     }
     catch (error) {
-        next(error); // Pass errors to the global error handler
+        next(error); // Pass errors (like NotFoundError from service) to the global error handler
     }
 });
 exports.createPost = createPost;
 const getPosts = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const page = parseInt(req.query.page || '1', 10);
-        const limit = parseInt(req.query.limit || '10', 10);
-        // TODO: Replace placeholder call with actual service call
-        // const posts = await postService.getFeedPosts(page, limit);
-        const posts = []; // Placeholder response with explicit type
+        const { page, limit } = getPaginationParams(req);
+        const posts = yield postService.getFeedPosts(page, limit);
         res.status(200).json(posts);
     }
     catch (error) {
@@ -50,11 +84,9 @@ exports.getPosts = getPosts;
 const getUserPosts = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { userId } = req.params;
-        const page = parseInt(req.query.page || '1', 10);
-        const limit = parseInt(req.query.limit || '10', 10);
-        // TODO: Replace placeholder call with actual service call
-        // const posts = await postService.getUserPosts(userId, page, limit);
-        const posts = []; // Placeholder response with explicit type
+        const { page, limit } = getPaginationParams(req);
+        const posts = yield postService.getUserPosts(userId, page, limit);
+        // Service throws NotFoundError if user doesn't exist
         res.status(200).json(posts);
     }
     catch (error) {
@@ -65,14 +97,8 @@ exports.getUserPosts = getUserPosts;
 const getPostById = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { postId } = req.params;
-        // TODO: Replace placeholder call with actual service call
-        // const post = await postService.getPostById(postId);
-        const post = { id: postId, content: 'Mock Content', authorId: 'mock-user-id', imageUrl: null, createdAt: new Date(), updatedAt: new Date() }; // Placeholder response with type
-        if (!post) {
-            // Service should throw NotFoundError
-            next(new errors_1.NotFoundError('Post not found (placeholder)'));
-            return;
-        }
+        const post = yield postService.getPostById(postId);
+        // Service throws NotFoundError if post doesn't exist
         res.status(200).json(post);
     }
     catch (error) {
@@ -84,25 +110,23 @@ const updatePost = (req, res, next) => __awaiter(void 0, void 0, void 0, functio
     var _a;
     const authorId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
     if (!authorId) {
-        next(new Error('Authentication required but user ID not found in request'));
-        return;
+        return next(new Error('Authentication required but user ID not found in request'));
     }
     const { postId } = req.params;
     const { content, imageUrl } = req.body;
+    // Basic check: ensure at least one field is provided for update
     if (content === undefined && imageUrl === undefined) {
-        next(new errors_1.BadRequestError('No update data provided.'));
-        return;
+        return next(new errors_1.BadRequestError('No update data provided (content or imageUrl required).'));
     }
+    // Construct update data, filtering out undefined fields
+    const updateData = {};
+    if (content !== undefined)
+        updateData.content = content;
+    if (imageUrl !== undefined)
+        updateData.imageUrl = imageUrl;
     try {
-        const updateData = { content, imageUrl };
-        // TODO: Replace placeholder call with actual service call
-        // const updatedPost = await postService.updatePost(authorId, postId, updateData);
-        const updatedPost = { id: postId, authorId, content, imageUrl, updatedAt: new Date() }; // Placeholder response with type
-        if (!updatedPost) {
-            // Service should throw NotFoundError or ForbiddenError
-            next(new errors_1.NotFoundError('Post not found or update forbidden (placeholder)'));
-            return;
-        }
+        const updatedPost = yield postService.updatePost(authorId, postId, updateData);
+        // Service throws NotFoundError or ForbiddenError
         res.status(200).json(updatedPost);
     }
     catch (error) {
@@ -114,20 +138,13 @@ const deletePost = (req, res, next) => __awaiter(void 0, void 0, void 0, functio
     var _a, _b;
     const authorId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
     const userRole = (_b = req.user) === null || _b === void 0 ? void 0 : _b.role; // Assuming role is available on req.user
-    if (!authorId) {
-        next(new Error('Authentication required but user ID not found in request'));
-        return;
+    if (!authorId || !userRole) {
+        return next(new Error('Authentication required but user ID or role not found in request'));
     }
     const { postId } = req.params;
     try {
-        // TODO: Replace placeholder call with actual service call
-        // await postService.deletePost(authorId, userRole || 'USER', postId); // Provide a default role if needed
-        const success = true; // Placeholder response
-        if (!success) {
-            // Service should throw NotFoundError or ForbiddenError
-            next(new errors_1.NotFoundError('Post not found or deletion forbidden (placeholder)'));
-            return;
-        }
+        yield postService.deletePost(authorId, userRole, postId);
+        // Service throws NotFoundError or ForbiddenError
         res.status(204).send(); // No content on successful deletion
     }
     catch (error) {

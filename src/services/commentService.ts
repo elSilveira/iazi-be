@@ -1,96 +1,88 @@
-import { prisma } from "../lib/prisma"; // Corrected import
+import { prisma } from "../lib/prisma";
 import { Comment, Prisma, UserRole } from "@prisma/client";
-import { NotFoundError, ForbiddenError } from "../lib/errors"; // Assuming custom errors
-
-// Placeholder: Implement actual business logic and error handling
+import { NotFoundError, ForbiddenError } from "../lib/errors";
 
 export const createComment = async (authorId: string, postId: string, content: string): Promise<Comment> => {
-    // TODO: Validate input, check user and post existence
-    /* Example checks:
+    // Verifica se o usuário e o post existem
     const userExists = await prisma.user.findUnique({ where: { id: authorId } });
-    if (!userExists) throw new NotFoundError(`User with ID ${authorId} not found`);
+    if (!userExists) {
+        throw new NotFoundError(`User with ID ${authorId} not found`);
+    }
     const postExists = await prisma.post.findUnique({ where: { id: postId } });
-    if (!postExists) throw new NotFoundError(`Post with ID ${postId} not found`);
-    */
+    if (!postExists) {
+        throw new NotFoundError(`Post with ID ${postId} not found`);
+    }
 
-    // TODO: Implement actual Prisma create logic for Comment
-    console.log("Placeholder: Creating comment", { authorId, postId, content });
-    // const newComment = await prisma.comment.create({
-    //     data: { content, authorId, postId }
-    // });
-    const newComment: Comment = {
-        id: "mock-comment-id",
-        content,
-        authorId,
-        postId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    };
+    const newComment = await prisma.comment.create({
+        data: {
+            content,
+            authorId,
+            postId,
+        },
+        include: { // Inclui o autor para retornar informações básicas
+            author: { select: { id: true, name: true, avatar: true } }
+        }
+    });
     return newComment;
 };
 
 export const getCommentsByPost = async (postId: string, page: number, limit: number): Promise<Comment[]> => {
     const skip = (page - 1) * limit;
-    // TODO: Check post existence
-    // TODO: Implement actual Prisma findMany logic for Comments, filter by postId, paginate, include author
-    console.log("Placeholder: Getting comments for post", { postId, page, limit, skip });
-    // const comments = await prisma.comment.findMany({
-    //     where: { postId },
-    //     skip,
-    //     take: limit,
-    //     orderBy: { createdAt: 'asc' }, // Or 'desc'
-    //     include: { author: { select: { id: true, name: true, avatar: true } } }
-    // });
-    return [];
+
+    // Verifica se o post existe
+    const postExists = await prisma.post.findUnique({ where: { id: postId } });
+    if (!postExists) {
+        throw new NotFoundError(`Post with ID ${postId} not found`);
+    }
+
+    const comments = await prisma.comment.findMany({
+        where: { postId },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'asc' }, // Ou 'desc' dependendo da ordem desejada
+        include: {
+            author: { select: { id: true, name: true, avatar: true } },
+            _count: { select: { likes: true } } // Conta likes do comentário
+        }
+    });
+    return comments;
 };
 
-export const updateComment = async (userId: string, commentId: string, content: string): Promise<Comment | null> => {
-    // TODO: Find comment first to check ownership
-    /* Example check:
+export const updateComment = async (userId: string, commentId: string, content: string): Promise<Comment> => {
     const comment = await prisma.comment.findUnique({ where: { id: commentId } });
+
     if (!comment) {
         throw new NotFoundError(`Comment with ID ${commentId} not found`);
     }
+
     if (comment.authorId !== userId) {
         throw new ForbiddenError("User is not authorized to update this comment");
     }
-    */
 
-    // TODO: Implement actual Prisma update logic for Comment
-    console.log("Placeholder: Updating comment", { userId, commentId, content });
-    // const updatedComment = await prisma.comment.update({
-    //     where: { id: commentId }, // Ensure ownership check happened before
-    //     data: { content },
-    // });
-    // return updatedComment;
-
-    // Placeholder response:
-    const mockUpdatedComment: Comment = {
-        id: commentId,
-        content,
-        authorId: userId,
-        postId: "mock-post-id",
-        createdAt: new Date(Date.now() - 3600 * 1000),
-        updatedAt: new Date(),
-    };
-     return Math.random() > 0.1 ? mockUpdatedComment : null; // Simulate success/failure
+    const updatedComment = await prisma.comment.update({
+        where: { id: commentId },
+        data: { content },
+        include: { // Retorna o comentário atualizado com informações do autor
+            author: { select: { id: true, name: true, avatar: true } },
+             _count: { select: { likes: true } }
+        }
+    });
+    return updatedComment;
 };
 
-export const deleteComment = async (userId: string, userRole: UserRole | string, commentId: string): Promise<boolean> => {
-    // TODO: Find comment first to check ownership or admin role
-    /* Example check:
+export const deleteComment = async (userId: string, userRole: UserRole | string, commentId: string): Promise<void> => {
     const comment = await prisma.comment.findUnique({ where: { id: commentId } });
+
     if (!comment) {
         throw new NotFoundError(`Comment with ID ${commentId} not found`);
     }
+
+    // Permite deletar se for o autor OU se for ADMIN
     if (comment.authorId !== userId && userRole !== UserRole.ADMIN) {
         throw new ForbiddenError("User is not authorized to delete this comment");
     }
-    */
 
-    // TODO: Implement actual Prisma delete logic for Comment
-    console.log("Placeholder: Deleting comment", { userId, userRole, commentId });
-    // await prisma.comment.delete({ where: { id: commentId } });
-    return true; // Placeholder success
+    // A deleção em cascata (definida no schema) cuidará dos likes associados
+    await prisma.comment.delete({ where: { id: commentId } });
 };
 

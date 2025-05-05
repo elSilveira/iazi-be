@@ -6,7 +6,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const companyController_1 = require("../controllers/companyController");
 const companyValidators_1 = require("../validators/companyValidators");
-const validationMiddleware_1 = require("../middlewares/validationMiddleware");
 const asyncHandler_1 = __importDefault(require("../utils/asyncHandler")); // Corrected import
 const router = (0, express_1.Router)();
 /**
@@ -198,7 +197,7 @@ router.get("/", (0, asyncHandler_1.default)(companyController_1.getAllCompaniesH
  *         description: Erro interno do servidor.
  */
 router.get("/:id", companyValidators_1.companyIdValidator[0], // Pass the single middleware function directly
-validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(companyController_1.getCompanyByIdHandler));
+validateRequest, (0, asyncHandler_1.default)(companyController_1.getCompanyByIdHandler));
 /**
  * @swagger
  * /api/companies:
@@ -229,7 +228,7 @@ validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(companyContr
  */
 router.post("/", companyController_1.checkAdminRoleMiddleware, // Apply auth middleware
 ...companyValidators_1.createCompanyValidator, // Spread validation middlewares
-validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(companyController_1.createCompanyHandler));
+validateRequest, (0, asyncHandler_1.default)(companyController_1.createCompanyHandler));
 /**
  * @swagger
  * /api/companies/{id}:
@@ -268,7 +267,7 @@ validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(companyContr
  */
 router.put("/:id", companyController_1.checkAdminRoleMiddleware, // Apply auth middleware
 ...companyValidators_1.updateCompanyValidator, // Spread validation middlewares
-validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(companyController_1.updateCompanyHandler));
+validateRequest, (0, asyncHandler_1.default)(companyController_1.updateCompanyHandler));
 /**
  * @swagger
  * /api/companies/{id}:
@@ -306,5 +305,5 @@ validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(companyContr
  */
 router.delete("/:id", companyController_1.checkAdminRoleMiddleware, // Apply auth middleware
 companyValidators_1.companyIdValidator[0], // Pass the single middleware function directly
-validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(companyController_1.deleteCompanyHandler));
+validateRequest, (0, asyncHandler_1.default)(companyController_1.deleteCompanyHandler));
 exports.default = router;

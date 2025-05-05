@@ -15,8 +15,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express"); // Import Request, Response, NextFunction
 const appointmentController_1 = require("../controllers/appointmentController");
 const appointmentValidators_1 = require("../validators/appointmentValidators");
-const validationMiddleware_1 = require("../middlewares/validationMiddleware");
-const authMiddleware_1 = require("../middlewares/authMiddleware"); // Importar o middleware de autenticação
 const asyncHandler_1 = __importDefault(require("../utils/asyncHandler")); // Importar asyncHandler
 const router = (0, express_1.Router)();
 /**
@@ -123,7 +121,7 @@ const router = (0, express_1.Router)();
 //  */
 // router.get("/availability", getAvailabilityValidator, validateRequest, asyncHandler(getAppointmentAvailability)); // Comentado pois a função não está exportada
 // --- Rotas Protegidas --- 
-router.use((0, asyncHandler_1.default)(authMiddleware_1.authMiddleware)); // Aplicar asyncHandler ao middleware async
+router.use((0, asyncHandler_1.default)(authMiddleware)); // Aplicar asyncHandler ao middleware async
 /**
  * @swagger
  * /api/appointments:
@@ -210,7 +208,7 @@ router.get("/", (0, asyncHandler_1.default)(appointmentController_1.listAppointm
  *       500:
  *         description: Erro interno do servidor.
  */
-router.get("/:id", appointmentValidators_1.appointmentIdValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(appointmentController_1.getAppointmentById)); // Usar asyncHandler
+router.get("/:id", appointmentValidators_1.appointmentIdValidator, validateRequest, (0, asyncHandler_1.default)(appointmentController_1.getAppointmentById)); // Usar asyncHandler
 /**
  * @swagger
  * /api/appointments:
@@ -239,7 +237,7 @@ router.get("/:id", appointmentValidators_1.appointmentIdValidator, validationMid
  *       500:
  *         description: Erro interno do servidor.
  */
-router.post("/", appointmentValidators_1.createAppointmentValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(appointmentController_1.createAppointment)); // Usar asyncHandler
+router.post("/", appointmentValidators_1.createAppointmentValidator, validateRequest, (0, asyncHandler_1.default)(appointmentController_1.createAppointment)); // Usar asyncHandler
 /**
  * @swagger
  * /api/appointments/{id}/status:
@@ -284,7 +282,7 @@ router.post("/", appointmentValidators_1.createAppointmentValidator, validationM
  *       500:
  *         description: Erro interno do servidor.
  */
-router.patch("/:id/status", appointmentValidators_1.updateAppointmentValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(appointmentController_1.updateAppointmentStatus)); // Usar asyncHandler
+router.patch("/:id/status", appointmentValidators_1.updateAppointmentValidator, validateRequest, (0, asyncHandler_1.default)(appointmentController_1.updateAppointmentStatus)); // Usar asyncHandler
 /**
  * @swagger
  * /api/appointments/{id}/cancel:
@@ -316,7 +314,7 @@ router.patch("/:id/status", appointmentValidators_1.updateAppointmentValidator, 
  *       500:
  *         description: Erro interno do servidor.
  */
-router.patch("/:id/cancel", appointmentValidators_1.appointmentIdValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+router.patch("/:id/cancel", appointmentValidators_1.appointmentIdValidator, validateRequest, (0, asyncHandler_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     // Wrapper para chamar updateAppointmentStatus com status CANCELLED
     req.body.status = 'CANCELLED'; // Forçar o status
     // TODO: Adicionar validação específica para cancelamento se necessário
