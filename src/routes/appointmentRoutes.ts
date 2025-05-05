@@ -16,8 +16,8 @@ import {
   appointmentIdValidator,
   getAvailabilityValidator // Importar novo validator
 } from "../validators/appointmentValidators";
-import { validateRequest } from "../middlewares/validationMiddleware";
-import { authMiddleware } from "../middlewares/authMiddleware"; // Importar o middleware de autenticação
+
+import { protect } from "../middlewares/authMiddleware"; // Usar 'protect' para autenticação
 import asyncHandler from "../utils/asyncHandler"; // Importar asyncHandler
 
 const router = Router();

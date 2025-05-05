@@ -2,9 +2,9 @@ import { Router } from 'express';
 import { param } from 'express-validator';
 import { handleValidationErrors } from '../middlewares/validationMiddleware'; // Assuming this middleware exists
 import { protect } from '../middlewares/authMiddleware'; // Assuming this middleware exists
-// import * as likeController from '../controllers/likeController'; // Placeholder import
+import * as likeController from '../controllers/likeController'; // Import actual controller
 
-const router = Router({ mergeParams: true }); // mergeParams might be needed if mounted under posts or comments
+const router = Router(); // Not using mergeParams as paths are fully defined here
 
 /**
  * @swagger
@@ -13,11 +13,7 @@ const router = Router({ mergeParams: true }); // mergeParams might be needed if 
  *   description: Liking and unliking posts and comments
  */
 
-// Placeholder functions - replace with actual controller imports later
-const likePost = (req, res) => res.status(501).json({ message: 'Not Implemented' });
-const unlikePost = (req, res) => res.status(501).json({ message: 'Not Implemented' });
-const likeComment = (req, res) => res.status(501).json({ message: 'Not Implemented' });
-const unlikeComment = (req, res) => res.status(501).json({ message: 'Not Implemented' });
+// Removed placeholder functions
 
 /**
  * @swagger
@@ -46,7 +42,7 @@ router.post(
     protect,
     [param('postId').isUUID().withMessage('Invalid Post ID')],
     handleValidationErrors,
-    likePost // Replace with likeController.likePost
+    likeController.likePost // Use actual controller function
 );
 
 /**
@@ -76,7 +72,7 @@ router.delete(
     protect,
     [param('postId').isUUID().withMessage('Invalid Post ID')],
     handleValidationErrors,
-    unlikePost // Replace with likeController.unlikePost
+    likeController.unlikePost // Use actual controller function
 );
 
 /**
@@ -106,7 +102,7 @@ router.post(
     protect,
     [param('commentId').isUUID().withMessage('Invalid Comment ID')],
     handleValidationErrors,
-    likeComment // Replace with likeController.likeComment
+    likeController.likeComment // Use actual controller function
 );
 
 /**
@@ -136,7 +132,7 @@ router.delete(
     protect,
     [param('commentId').isUUID().withMessage('Invalid Comment ID')],
     handleValidationErrors,
-    unlikeComment // Replace with likeController.unlikeComment
+    likeController.unlikeComment // Use actual controller function
 );
 
 export default router;

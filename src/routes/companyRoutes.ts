@@ -12,7 +12,7 @@ import {
   updateCompanyValidator, 
   companyIdValidator 
 } from "../validators/companyValidators";
-import { validateRequest } from "../middlewares/validationMiddleware";
+
 import asyncHandler from "../utils/asyncHandler"; // Corrected import
 
 const router = Router();

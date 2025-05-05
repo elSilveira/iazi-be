@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { login, register, refreshToken } from "../controllers/authController"; // Importa refreshToken
 import { registerValidator, loginValidator } from "../validators/authValidators";
-import { validateRequest } from "../middlewares/validationMiddleware";
+
 
 const router = Router();
 

@@ -1,16 +1,17 @@
-import { prisma } from "../lib/prisma"; // Corrected import
-import { Post, Prisma, UserRole } from "@prisma/client";
-import { NotFoundError, ForbiddenError } from "../lib/errors"; // Assuming custom errors
-
-// Interface/Tipo para os dados de criação/atualização (DTO)
-interface PostData {
-  content: string;
-  imageUrl?: string;
-}
-
+"use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.deletePost = exports.updatePost = exports.getPostById = exports.getUserPosts = exports.getFeedPosts = exports.createPost = void 0;
 // Placeholder: Implement actual business logic and error handling
-
-export const createPost = async (authorId: string, data: PostData): Promise<Post> => {
+const createPost = (authorId, data) => __awaiter(void 0, void 0, void 0, function* () {
     // TODO: Validate input further if needed
     // TODO: Check user existence (optional, FK constraint helps)
     /* Example check:
@@ -19,11 +20,10 @@ export const createPost = async (authorId: string, data: PostData): Promise<Post
       throw new NotFoundError(`User with ID ${authorId} not found`);
     }
     */
-
     // TODO: Implement actual Prisma create logic
     console.log("Placeholder: Creating post", { authorId, data });
     // const newPost = await prisma.post.create({ data: { ...data, authorId } });
-    const newPost: Post = {
+    const newPost = {
         id: "mock-post-id",
         authorId,
         content: data.content,
@@ -32,9 +32,9 @@ export const createPost = async (authorId: string, data: PostData): Promise<Post
         updatedAt: new Date(),
     };
     return newPost;
-};
-
-export const getFeedPosts = async (page: number, limit: number): Promise<Post[]> => {
+});
+exports.createPost = createPost;
+const getFeedPosts = (page, limit) => __awaiter(void 0, void 0, void 0, function* () {
     const skip = (page - 1) * limit;
     // TODO: Implement actual Prisma findMany logic with pagination and ordering
     console.log("Placeholder: Getting feed posts", { page, limit, skip });
@@ -45,9 +45,9 @@ export const getFeedPosts = async (page: number, limit: number): Promise<Post[]>
     //     include: { author: { select: { id: true, name: true, avatar: true } } } // Example include
     // });
     return [];
-};
-
-export const getUserPosts = async (userId: string, page: number, limit: number): Promise<Post[]> => {
+});
+exports.getFeedPosts = getFeedPosts;
+const getUserPosts = (userId, page, limit) => __awaiter(void 0, void 0, void 0, function* () {
     const skip = (page - 1) * limit;
     // TODO: Check user existence
     // TODO: Implement actual Prisma findMany logic with filtering by userId, pagination
@@ -60,9 +60,9 @@ export const getUserPosts = async (userId: string, page: number, limit: number):
     //     include: { author: { select: { id: true, name: true, avatar: true } } }
     // });
     return [];
-};
-
-export const getPostById = async (postId: string): Promise<Post | null> => {
+});
+exports.getUserPosts = getUserPosts;
+const getPostById = (postId) => __awaiter(void 0, void 0, void 0, function* () {
     // TODO: Implement actual Prisma findUnique logic, include relations (author, comments count, likes count)
     console.log("Placeholder: Getting post by ID", { postId });
     // const post = await prisma.post.findUnique({
@@ -77,7 +77,7 @@ export const getPostById = async (postId: string): Promise<Post | null> => {
     // }
     // return post;
     // Placeholder response:
-    const mockPost: Post = {
+    const mockPost = {
         id: postId,
         authorId: "mock-user-id",
         content: "Mock Content",
@@ -86,9 +86,9 @@ export const getPostById = async (postId: string): Promise<Post | null> => {
         updatedAt: new Date(),
     };
     return Math.random() > 0.1 ? mockPost : null; // Simulate finding or not finding
-};
-
-export const updatePost = async (userId: string, postId: string, data: Partial<PostData>): Promise<Post | null> => {
+});
+exports.getPostById = getPostById;
+const updatePost = (userId, postId, data) => __awaiter(void 0, void 0, void 0, function* () {
     // TODO: Find post first to check ownership
     /* Example check:
     const post = await prisma.post.findUnique({ where: { id: postId } });
@@ -99,7 +99,6 @@ export const updatePost = async (userId: string, postId: string, data: Partial<P
         throw new ForbiddenError("User is not authorized to update this post");
     }
     */
-
     // TODO: Implement actual Prisma update logic
     console.log("Placeholder: Updating post", { userId, postId, data });
     // const updatedPost = await prisma.post.update({
@@ -107,9 +106,8 @@ export const updatePost = async (userId: string, postId: string, data: Partial<P
     //     data,
     // });
     // return updatedPost;
-
     // Placeholder response:
-    const mockUpdatedPost: Post = {
+    const mockUpdatedPost = {
         id: postId,
         authorId: userId,
         content: data.content || "Original Content",
@@ -118,23 +116,22 @@ export const updatePost = async (userId: string, postId: string, data: Partial<P
         updatedAt: new Date(),
     };
     return Math.random() > 0.1 ? mockUpdatedPost : null; // Simulate success/failure
-};
-
-export const deletePost = async (userId: string, userRole: UserRole | string, postId: string): Promise<boolean> => {
+});
+exports.updatePost = updatePost;
+const deletePost = (userId, userRole, postId) => __awaiter(void 0, void 0, void 0, function* () {
     // TODO: Find post first to check ownership or admin role
-     /* Example check:
-    const post = await prisma.post.findUnique({ where: { id: postId } });
-    if (!post) {
-        throw new NotFoundError(`Post with ID ${postId} not found`);
-    }
-    if (post.authorId !== userId && userRole !== UserRole.ADMIN) { // Assuming UserRole enum exists
-        throw new ForbiddenError("User is not authorized to delete this post");
-    }
-    */
-
+    /* Example check:
+   const post = await prisma.post.findUnique({ where: { id: postId } });
+   if (!post) {
+       throw new NotFoundError(`Post with ID ${postId} not found`);
+   }
+   if (post.authorId !== userId && userRole !== UserRole.ADMIN) { // Assuming UserRole enum exists
+       throw new ForbiddenError("User is not authorized to delete this post");
+   }
+   */
     // TODO: Implement actual Prisma delete logic
     console.log("Placeholder: Deleting post", { userId, userRole, postId });
     // await prisma.post.delete({ where: { id: postId } });
     return true; // Placeholder success
-};
-
+});
+exports.deletePost = deletePost;

@@ -1,20 +1,51 @@
-import { Router } from 'express';
-import { body, param } from 'express-validator';
-import { handleValidationErrors } from '../middlewares/validationMiddleware'; // Assuming this middleware exists
-import { protect } from '../middlewares/authMiddleware'; // Assuming this middleware exists
-import * as postController from '../controllers/postController'; // Import actual controller
-
-const router = Router();
-
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const express_validator_1 = require("express-validator");
+const validationMiddleware_1 = require("../middlewares/validationMiddleware"); // Assuming this middleware exists
+const authMiddleware_1 = require("../middlewares/authMiddleware"); // Assuming this middleware exists
+const postController = __importStar(require("../controllers/postController")); // Import actual controller
+const router = (0, express_1.Router)();
 /**
  * @swagger
  * tags:
  *   name: Posts
  *   description: Post management
  */
-
 // Removed placeholder functions
-
 /**
  * @swagger
  * /api/posts:
@@ -42,17 +73,12 @@ const router = Router();
  *       400: { description: 'Validation error' }
  *       401: { description: 'Unauthorized' }
  */
-router.post(
-    '/',
-    protect, // Requires authentication
-    [
-        body('content').notEmpty().withMessage('Content is required'),
-        body('imageUrl').optional().isURL().withMessage('Image URL must be a valid URL'),
-    ],
-    handleValidationErrors,
-    postController.createPost // Use actual controller function
+router.post('/', authMiddleware_1.protect, // Requires authentication
+[
+    (0, express_validator_1.body)('content').notEmpty().withMessage('Content is required'),
+    (0, express_validator_1.body)('imageUrl').optional().isURL().withMessage('Image URL must be a valid URL'),
+], validationMiddleware_1.handleValidationErrors, postController.createPost // Use actual controller function
 );
-
 /**
  * @swagger
  * /api/posts:
@@ -76,7 +102,6 @@ router.post(
  *       200: { description: 'List of posts' }
  */
 router.get('/', postController.getPosts); // Use actual controller function
-
 /**
  * @swagger
  * /api/users/{userId}/posts:
@@ -107,13 +132,8 @@ router.get('/', postController.getPosts); // Use actual controller function
  *       200: { description: 'List of user posts' }
  *       404: { description: 'User not found' }
  */
-router.get(
-    '/users/:userId/posts',
-    [param('userId').isUUID().withMessage('Invalid User ID')],
-    handleValidationErrors,
-    postController.getUserPosts // Use actual controller function
+router.get('/users/:userId/posts', [(0, express_validator_1.param)('userId').isUUID().withMessage('Invalid User ID')], validationMiddleware_1.handleValidationErrors, postController.getUserPosts // Use actual controller function
 );
-
 /**
  * @swagger
  * /api/posts/{postId}:
@@ -132,13 +152,8 @@ router.get(
  *       200: { description: 'Post details' }
  *       404: { description: 'Post not found' }
  */
-router.get(
-    '/:postId',
-    [param('postId').isUUID().withMessage('Invalid Post ID')],
-    handleValidationErrors,
-    postController.getPostById // Use actual controller function
+router.get('/:postId', [(0, express_validator_1.param)('postId').isUUID().withMessage('Invalid Post ID')], validationMiddleware_1.handleValidationErrors, postController.getPostById // Use actual controller function
 );
-
 /**
  * @swagger
  * /api/posts/{postId}:
@@ -174,18 +189,13 @@ router.get(
  *       403: { description: 'Forbidden (not author)' }
  *       404: { description: 'Post not found' }
  */
-router.put(
-    '/:postId',
-    protect, // Requires authentication
-    [
-        param('postId').isUUID().withMessage('Invalid Post ID'),
-        body('content').optional().notEmpty().withMessage('Content cannot be empty if provided'),
-        body('imageUrl').optional().isURL().withMessage('Image URL must be a valid URL'),
-    ],
-    handleValidationErrors,
-    postController.updatePost // Use actual controller function
+router.put('/:postId', authMiddleware_1.protect, // Requires authentication
+[
+    (0, express_validator_1.param)('postId').isUUID().withMessage('Invalid Post ID'),
+    (0, express_validator_1.body)('content').optional().notEmpty().withMessage('Content cannot be empty if provided'),
+    (0, express_validator_1.body)('imageUrl').optional().isURL().withMessage('Image URL must be a valid URL'),
+], validationMiddleware_1.handleValidationErrors, postController.updatePost // Use actual controller function
 );
-
 /**
  * @swagger
  * /api/posts/{postId}:
@@ -208,13 +218,7 @@ router.put(
  *       403: { description: 'Forbidden (not author or admin)' }
  *       404: { description: 'Post not found' }
  */
-router.delete(
-    '/:postId',
-    protect, // Requires authentication
-    [param('postId').isUUID().withMessage('Invalid Post ID')],
-    handleValidationErrors,
-    postController.deletePost // Use actual controller function
+router.delete('/:postId', authMiddleware_1.protect, // Requires authentication
+[(0, express_validator_1.param)('postId').isUUID().withMessage('Invalid Post ID')], validationMiddleware_1.handleValidationErrors, postController.deletePost // Use actual controller function
 );
-
-export default router;
-
+exports.default = router;

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { body, param } from 'express-validator';
 import { handleValidationErrors } from '../middlewares/validationMiddleware'; // Assuming this middleware exists
 import { protect } from '../middlewares/authMiddleware'; // Assuming this middleware exists
-// import * as commentController from '../controllers/commentController'; // Placeholder import
+import * as commentController from '../controllers/commentController'; // Import actual controller
 
 const router = Router({ mergeParams: true }); // mergeParams allows access to :postId from parent router
 
@@ -13,11 +13,7 @@ const router = Router({ mergeParams: true }); // mergeParams allows access to :p
  *   description: Comment management on posts
  */
 
-// Placeholder functions - replace with actual controller imports later
-const createComment = (req, res) => res.status(501).json({ message: 'Not Implemented' });
-const getComments = (req, res) => res.status(501).json({ message: 'Not Implemented' });
-const updateComment = (req, res) => res.status(501).json({ message: 'Not Implemented' });
-const deleteComment = (req, res) => res.status(501).json({ message: 'Not Implemented' });
+// Removed placeholder functions
 
 /**
  * @swagger
@@ -53,14 +49,14 @@ const deleteComment = (req, res) => res.status(501).json({ message: 'Not Impleme
  *       404: { description: 'Post not found' }
  */
 router.post(
-    '/',
+    '/', // Path relative to where it's mounted (/api/posts/:postId/comments)
     protect, // Requires authentication
     [
-        param('postId').isUUID().withMessage('Invalid Post ID'),
+        param('postId').isUUID().withMessage('Invalid Post ID'), // Validate postId from mergeParams
         body('content').notEmpty().withMessage('Content is required'),
     ],
     handleValidationErrors,
-    createComment // Replace with commentController.createComment
+    commentController.createComment // Use actual controller function
 );
 
 /**
@@ -94,10 +90,10 @@ router.post(
  *       404: { description: 'Post not found' }
  */
 router.get(
-    '/',
-    [param('postId').isUUID().withMessage('Invalid Post ID')],
+    '/', // Path relative to where it's mounted (/api/posts/:postId/comments)
+    [param('postId').isUUID().withMessage('Invalid Post ID')], // Validate postId from mergeParams
     handleValidationErrors,
-    getComments // Replace with commentController.getComments
+    commentController.getComments // Use actual controller function
 );
 
 /**
@@ -135,14 +131,14 @@ router.get(
  *       404: { description: 'Comment not found' }
  */
 router.put(
-    '/:commentId', // Note: This route might need adjustment depending on how it's mounted in app.ts
+    '/:commentId', // Mounted separately, e.g., app.use('/api/comments', commentRoutes)
     protect, // Requires authentication
     [
         param('commentId').isUUID().withMessage('Invalid Comment ID'),
         body('content').notEmpty().withMessage('Content is required'),
     ],
     handleValidationErrors,
-    updateComment // Replace with commentController.updateComment
+    commentController.updateComment // Use actual controller function
 );
 
 /**
@@ -168,11 +164,11 @@ router.put(
  *       404: { description: 'Comment not found' }
  */
 router.delete(
-    '/:commentId', // Note: This route might need adjustment depending on how it's mounted in app.ts
+    '/:commentId', // Mounted separately, e.g., app.use('/api/comments', commentRoutes)
     protect, // Requires authentication
     [param('commentId').isUUID().withMessage('Invalid Comment ID')],
     handleValidationErrors,
-    deleteComment // Replace with commentController.deleteComment
+    commentController.deleteComment // Use actual controller function
 );
 
 export default router;

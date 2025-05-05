@@ -114,3 +114,8 @@ if (process.env.NODE_ENV !== 'test') {
         console.log(`[swagger]: Documentação da API disponível em http://localhost:${port}/api-docs`);
     });
 }
+const postRoutes_1 = __importDefault(require("./routes/postRoutes"));
+const likeRoutes_1 = __importDefault(require("./routes/likeRoutes"));
+// Rotas Sociais
+app.use("/api/posts", postRoutes_1.default); // Monta as rotas de posts e comentários aninhados
+app.use("/api", likeRoutes_1.default); // Monta as rotas de likes (com caminhos completos definidos nelas)

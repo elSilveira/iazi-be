@@ -1,8 +1,8 @@
 import { Router } from "express";
 import * as companyAddressController from "../controllers/companyAddressController";
 import { companyAddressValidationRules, companyAddressIdValidationRules } from "../validators/companyAddressValidators";
-import { authMiddleware } from "../middlewares/authMiddleware"; // Corrected import name
-import { validateRequest } from "../middlewares/validationMiddleware"; // Corrected import path
+import { protect } from "../middlewares/authMiddleware"; // Usar 'protect' para autenticação
+ // Corrected import path
 
 const router = Router();
 

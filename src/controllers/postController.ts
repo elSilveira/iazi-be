@@ -2,15 +2,18 @@ import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
 import * as postService from '../services/postService'; // Assuming named exports
 import { AuthenticatedRequest } from '../middlewares/authMiddleware'; // Assuming this type exists for req.user
-import { BadRequestError } from '../lib/errors'; // Assuming custom error classes exist in lib/errors
+import { BadRequestError, NotFoundError } from '../lib/errors'; // Assuming custom error classes exist in lib/errors
+import { Post } from '@prisma/client'; // Import Post type for explicit typing
 
-export const createPost = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  // Validation handled by middleware in routes
+// Ensure all async handlers return Promise<void> or call next()
+
+export const createPost = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   const authorId = req.user?.userId;
 
   if (!authorId) {
-    // This should ideally be caught by the 'protect' middleware, but double-check
-    return next(new Error('Authentication required but user ID not found in request'));
+    // Use next() for errors
+    next(new Error('Authentication required but user ID not found in request'));
+    return; // Explicit return after next()
   }
 
   const { content, imageUrl } = req.body;
@@ -19,49 +22,50 @@ export const createPost = async (req: AuthenticatedRequest, res: Response, next:
     const postData = { content, imageUrl };
     // TODO: Replace placeholder call with actual service call
     // const newPost = await postService.createPost(authorId, postData);
-    const newPost = { id: 'mock-post-id', authorId, ...postData, createdAt: new Date(), updatedAt: new Date() }; // Placeholder response
+    const newPost: Post = { id: 'mock-post-id', authorId, content, imageUrl: imageUrl || null, createdAt: new Date(), updatedAt: new Date() }; // Placeholder response with type
     res.status(201).json(newPost);
   } catch (error) {
     next(error); // Pass errors to the global error handler
   }
 };
 
-export const getPosts = async (req: Request, res: Response, next: NextFunction) => {
+export const getPosts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const page = parseInt(req.query.page as string || '1', 10);
     const limit = parseInt(req.query.limit as string || '10', 10);
     // TODO: Replace placeholder call with actual service call
     // const posts = await postService.getFeedPosts(page, limit);
-    const posts = []; // Placeholder response
+    const posts: Post[] = []; // Placeholder response with explicit type
     res.status(200).json(posts);
   } catch (error) {
     next(error);
   }
 };
 
-export const getUserPosts = async (req: Request, res: Response, next: NextFunction) => {
+export const getUserPosts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { userId } = req.params;
     const page = parseInt(req.query.page as string || '1', 10);
     const limit = parseInt(req.query.limit as string || '10', 10);
     // TODO: Replace placeholder call with actual service call
     // const posts = await postService.getUserPosts(userId, page, limit);
-    const posts = []; // Placeholder response
+    const posts: Post[] = []; // Placeholder response with explicit type
     res.status(200).json(posts);
   } catch (error) {
     next(error);
   }
 };
 
-export const getPostById = async (req: Request, res: Response, next: NextFunction) => {
+export const getPostById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { postId } = req.params;
     // TODO: Replace placeholder call with actual service call
     // const post = await postService.getPostById(postId);
-    const post = { id: postId, content: 'Mock Content', authorId: 'mock-user-id', createdAt: new Date(), updatedAt: new Date() }; // Placeholder response
+    const post: Post | null = { id: postId, content: 'Mock Content', authorId: 'mock-user-id', imageUrl: null, createdAt: new Date(), updatedAt: new Date() }; // Placeholder response with type
     if (!post) {
-        // In a real scenario, the service would throw NotFoundError
-        return res.status(404).json({ message: 'Post not found (placeholder)' });
+        // Service should throw NotFoundError
+        next(new NotFoundError('Post not found (placeholder)'));
+        return;
     }
     res.status(200).json(post);
   } catch (error) {
@@ -69,28 +73,30 @@ export const getPostById = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-export const updatePost = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const updatePost = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   const authorId = req.user?.userId;
   if (!authorId) {
-    return next(new Error('Authentication required but user ID not found in request'));
+    next(new Error('Authentication required but user ID not found in request'));
+    return;
   }
 
   const { postId } = req.params;
   const { content, imageUrl } = req.body;
 
-  // Basic check: Ensure at least one field is being updated
   if (content === undefined && imageUrl === undefined) {
-      return next(new BadRequestError('No update data provided.'));
+      next(new BadRequestError('No update data provided.'));
+      return;
   }
 
   try {
     const updateData = { content, imageUrl };
     // TODO: Replace placeholder call with actual service call
     // const updatedPost = await postService.updatePost(authorId, postId, updateData);
-    const updatedPost = { id: postId, authorId, ...updateData, updatedAt: new Date() }; // Placeholder response
+    const updatedPost: Partial<Post> = { id: postId, authorId, content, imageUrl, updatedAt: new Date() }; // Placeholder response with type
      if (!updatedPost) {
-        // In a real scenario, the service would throw NotFoundError or ForbiddenError
-        return res.status(404).json({ message: 'Post not found or update forbidden (placeholder)' });
+        // Service should throw NotFoundError or ForbiddenError
+        next(new NotFoundError('Post not found or update forbidden (placeholder)'));
+        return;
     }
     res.status(200).json(updatedPost);
   } catch (error) {
@@ -98,12 +104,13 @@ export const updatePost = async (req: AuthenticatedRequest, res: Response, next:
   }
 };
 
-export const deletePost = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const deletePost = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   const authorId = req.user?.userId;
   const userRole = req.user?.role; // Assuming role is available on req.user
 
   if (!authorId) {
-    return next(new Error('Authentication required but user ID not found in request'));
+    next(new Error('Authentication required but user ID not found in request'));
+    return;
   }
 
   const { postId } = req.params;
@@ -113,8 +120,9 @@ export const deletePost = async (req: AuthenticatedRequest, res: Response, next:
     // await postService.deletePost(authorId, userRole || 'USER', postId); // Provide a default role if needed
     const success = true; // Placeholder response
     if (!success) {
-         // In a real scenario, the service would throw NotFoundError or ForbiddenError
-        return res.status(404).json({ message: 'Post not found or deletion forbidden (placeholder)' });
+         // Service should throw NotFoundError or ForbiddenError
+        next(new NotFoundError('Post not found or deletion forbidden (placeholder)'));
+        return;
     }
     res.status(204).send(); // No content on successful deletion
   } catch (error) {

@@ -2,13 +2,16 @@ import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
 import * as likeService from '../services/likeService'; // Assuming named exports
 import { AuthenticatedRequest } from '../middlewares/authMiddleware'; // Assuming this type exists for req.user
-import { BadRequestError } from '../lib/errors'; // Assuming custom error classes exist in lib/errors
+import { BadRequestError, NotFoundError } from '../lib/errors'; // Assuming custom error classes exist in lib/errors
+import { Like } from '@prisma/client'; // Import Like type for explicit typing
 
-export const likePost = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  // Validation handled by middleware in routes
+// Ensure all async handlers return Promise<void> or call next()
+
+export const likePost = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   const userId = req.user?.userId;
   if (!userId) {
-    return next(new Error('Authentication required but user ID not found in request'));
+    next(new Error('Authentication required but user ID not found in request'));
+    return;
   }
 
   const { postId } = req.params; // postId from the route /api/posts/:postId/like
@@ -16,7 +19,7 @@ export const likePost = async (req: AuthenticatedRequest, res: Response, next: N
   try {
     // TODO: Replace placeholder call with actual service call
     // const newLike = await likeService.likePost(userId, postId);
-    const newLike = { id: 'mock-like-id', userId, postId, createdAt: new Date() }; // Placeholder response
+    const newLike: Like = { id: 'mock-like-id', userId, postId, commentId: null, createdAt: new Date() }; // Placeholder response with type
     // Use 201 if creating, 200 if just confirming (service logic decides)
     res.status(201).json(newLike);
   } catch (error) {
@@ -26,10 +29,11 @@ export const likePost = async (req: AuthenticatedRequest, res: Response, next: N
   }
 };
 
-export const unlikePost = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const unlikePost = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   const userId = req.user?.userId;
   if (!userId) {
-    return next(new Error('Authentication required but user ID not found in request'));
+    next(new Error('Authentication required but user ID not found in request'));
+    return;
   }
 
   const { postId } = req.params;
@@ -39,8 +43,9 @@ export const unlikePost = async (req: AuthenticatedRequest, res: Response, next:
     // await likeService.unlikePost(userId, postId);
     const success = true; // Placeholder response
     if (!success) {
-        // Service would throw NotFoundError if the like didn't exist
-        return res.status(404).json({ message: 'Like not found (placeholder)' });
+        // Service should throw NotFoundError if the like didn't exist
+        next(new NotFoundError('Like not found (placeholder)'));
+        return;
     }
     res.status(204).send();
   } catch (error) {
@@ -48,10 +53,11 @@ export const unlikePost = async (req: AuthenticatedRequest, res: Response, next:
   }
 };
 
-export const likeComment = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const likeComment = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   const userId = req.user?.userId;
   if (!userId) {
-    return next(new Error('Authentication required but user ID not found in request'));
+    next(new Error('Authentication required but user ID not found in request'));
+    return;
   }
 
   const { commentId } = req.params; // commentId from the route /api/comments/:commentId/like
@@ -59,17 +65,18 @@ export const likeComment = async (req: AuthenticatedRequest, res: Response, next
   try {
     // TODO: Replace placeholder call with actual service call
     // const newLike = await likeService.likeComment(userId, commentId);
-    const newLike = { id: 'mock-like-id', userId, commentId, createdAt: new Date() }; // Placeholder response
+    const newLike: Like = { id: 'mock-like-id', userId, postId: null, commentId, createdAt: new Date() }; // Placeholder response with type
     res.status(201).json(newLike);
   } catch (error) {
     next(error);
   }
 };
 
-export const unlikeComment = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const unlikeComment = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   const userId = req.user?.userId;
   if (!userId) {
-    return next(new Error('Authentication required but user ID not found in request'));
+    next(new Error('Authentication required but user ID not found in request'));
+    return;
   }
 
   const { commentId } = req.params;
@@ -79,8 +86,9 @@ export const unlikeComment = async (req: AuthenticatedRequest, res: Response, ne
     // await likeService.unlikeComment(userId, commentId);
     const success = true; // Placeholder response
     if (!success) {
-        // Service would throw NotFoundError
-        return res.status(404).json({ message: 'Like not found (placeholder)' });
+        // Service should throw NotFoundError
+        next(new NotFoundError('Like not found (placeholder)'));
+        return;
     }
     res.status(204).send();
   } catch (error) {
