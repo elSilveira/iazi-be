@@ -97,3 +97,17 @@ if (process.env.NODE_ENV !== 'test') {
   });
 }
 
+
+import postRoutes from './routes/postRoutes';
+import commentRoutes from './routes/commentRoutes';
+import likeRoutes from './routes/likeRoutes';
+
+
+
+// Rotas Sociais
+app.use("/api/posts", postRoutes); // Monta as rotas de posts
+// Monta as rotas de comentários sob /api/posts/:postId/comments (se commentRoutes usar mergeParams)
+// Ou monta rotas de comentários/likes separadamente se não usarem mergeParams ou tiverem caminhos independentes
+app.use("/api", commentRoutes); // Ajustar prefixo se necessário (ex: /api/comments)
+app.use("/api", likeRoutes);    // Ajustar prefixo se necessário (ex: /api/likes)
+
