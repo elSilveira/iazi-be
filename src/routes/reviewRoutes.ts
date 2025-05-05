@@ -12,24 +12,30 @@ import {
   reviewIdValidator
   // getReviewsValidator // Remover importação, pois não existe
 } from "../validators/reviewValidators";
-import { validateRequest } from "../middlewares/validationMiddleware";
-import { authMiddleware } from "../middlewares/authMiddleware"; // Importar authMiddleware
+import { handleValidationErrors } from "../middlewares/validationMiddleware";
+import { protect } from "../middlewares/authMiddleware"; // Importar protect
 import asyncHandler from "../utils/asyncHandler"; // Import asyncHandler
 
 const router = Router();
 
 // Usar spread operator para desestruturar arrays de validadores na chamada da rota
-router.get("/", /* ...getReviewsValidator, */ validateRequest, asyncHandler(getReviews)); // getReviewsValidator comentado/removido
+// A rota GET para listar reviews geralmente não precisa de autenticação, mas pode precisar dependendo da lógica de negócios.
+// Se for pública, remover asyncHandler(protect).
+// Se precisar de autenticação, adicionar asyncHandler(protect).
+// Assumindo que é pública por enquanto:
+router.get("/", /* ...getReviewsValidator, */ handleValidationErrors, asyncHandler(getReviews)); // getReviewsValidator comentado/removido, validateRequest -> handleValidationErrors
 
-router.get("/:id", ...reviewIdValidator, validateRequest, asyncHandler(getReviewById));
+// Rota para obter uma review específica por ID. Geralmente pública.
+router.get("/:id", ...reviewIdValidator, handleValidationErrors, asyncHandler(getReviewById)); // validateRequest -> handleValidationErrors
 
-// Adicionar asyncHandler ao authMiddleware também se ele for async
+// Rotas que modificam dados (POST, PUT, DELETE) geralmente requerem autenticação.
+// Usar asyncHandler(protect) para aplicar o middleware de autenticação.
 // Usar spread operator para desestruturar arrays de validadores na chamada da rota
-router.post("/", asyncHandler(authMiddleware), ...createReviewValidator, validateRequest, asyncHandler(createReview)); 
+router.post("/", asyncHandler(protect), ...createReviewValidator, handleValidationErrors, asyncHandler(createReview)); // authMiddleware -> protect, validateRequest -> handleValidationErrors
 
-router.put("/:id", asyncHandler(authMiddleware), ...updateReviewValidator, validateRequest, asyncHandler(updateReview)); 
+router.put("/:id", asyncHandler(protect), ...updateReviewValidator, handleValidationErrors, asyncHandler(updateReview)); // authMiddleware -> protect, validateRequest -> handleValidationErrors
 
-router.delete("/:id", asyncHandler(authMiddleware), ...reviewIdValidator, validateRequest, asyncHandler(deleteReview)); 
+router.delete("/:id", asyncHandler(protect), ...reviewIdValidator, handleValidationErrors, asyncHandler(deleteReview)); // authMiddleware -> protect, validateRequest -> handleValidationErrors
 
 export default router;
 

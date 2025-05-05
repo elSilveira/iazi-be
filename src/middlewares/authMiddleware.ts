@@ -6,21 +6,15 @@ import { UserRole } from '@prisma/client'; // Import UserRole enum
 
 // Define a type for the decoded JWT payload
 interface JwtPayload {
-  userId: string;
+  userId: string; // Keep userId here as it comes from the token payload
   role: UserRole; // Include role from the token
   iat: number;
   exp: number;
 }
 
-// Extend the Express Request interface to include the user property
-export interface AuthenticatedRequest extends Request {
-  user?: {
-    userId: string;
-    role: UserRole;
-  };
-}
+// No need for AuthenticatedRequest interface, rely on global augmentation in src/types/express/index.d.ts
 
-export const protect = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+export const protect = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   let token;
 
   if (
@@ -39,7 +33,7 @@ export const protect = async (req: AuthenticatedRequest, res: Response, next: Ne
       // In production, you might want to check if the user still exists or is active.
       /*
       const user = await prisma.user.findUnique({
-        where: { id: decoded.userId },
+        where: { id: decoded.userId }, // Use decoded.userId to find user by ID
         select: { id: true, role: true, isActive: true } // Select necessary fields
       });
 
@@ -49,9 +43,9 @@ export const protect = async (req: AuthenticatedRequest, res: Response, next: Ne
       }
       */
 
-      // Attach user info to the request object
+      // Attach user info to the request object using the globally augmented type
       req.user = {
-        userId: decoded.userId,
+        id: decoded.userId, // Use 'id' to match global Express.Request type
         role: decoded.role, // Pass role from token
       };
 
@@ -67,8 +61,8 @@ export const protect = async (req: AuthenticatedRequest, res: Response, next: Ne
 
 // Optional: Middleware to check for specific roles
 export const authorize = (...roles: UserRole[]) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    if (!req.user || !roles.includes(req.user.role)) {
+  return (req: Request, res: Response, next: NextFunction) => { // Use Request type
+    if (!req.user || !roles.includes(req.user.role)) { // Access req.user.role (as defined globally)
       return next(new UnauthorizedError(`User role ${req.user?.role} is not authorized to access this route`));
     }
     next();

@@ -36,7 +36,7 @@ const router = Router();
 // router.get("/availability", getAvailabilityValidator, handleValidationErrors, asyncHandler(getAppointmentAvailability)); // Comentado pois a função não está exportada
 
 // --- Rotas Protegidas --- 
-router.use(protect); // Corrected: Use protect instead of authMiddleware
+router.use(asyncHandler(protect)); // Corrected: Use protect wrapped with asyncHandler
 
 /**
  * @swagger
