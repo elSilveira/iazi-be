@@ -1,10 +1,10 @@
 import { Router } from "express";
 import {
-  getAllCompanies,
-  getCompanyById,
-  createCompany,
-  updateCompany,
-  deleteCompany,
+  getAllCompaniesHandler as getAllCompanies,
+  getCompanyByIdHandler as getCompanyById,
+  createCompanyHandler as createCompany,
+  updateCompanyHandler as updateCompany,
+  deleteCompanyHandler as deleteCompany,
   checkAdminRoleMiddleware // Import middleware
 } from "../controllers/companyController";
 import { 
