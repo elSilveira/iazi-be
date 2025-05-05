@@ -240,7 +240,7 @@ router.get("/:id", appointmentIdValidator, validateRequest, asyncHandler(getAppo
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Appointment' }
  *       400:
- *         description: Erro de validação nos dados da requisição (ex: horário indisponível, dados inválidos).
+ *         description: 'Erro de validação nos dados da requisição (ex: horário indisponível, dados inválidos).'
  *       401:
  *         description: Não autorizado.
  *       404:
@@ -254,7 +254,7 @@ router.post("/", createAppointmentValidator, validateRequest, asyncHandler(creat
  * @swagger
  * /api/appointments/{id}/status:
  *   patch:
- *     summary: Atualiza o status de um agendamento (ex: confirmar, completar)
+ *     summary: 'Atualiza o status de um agendamento (ex: confirmar, completar)'
  *     tags: [Appointments]
  *     security:
  *       - bearerAuth: []
@@ -317,7 +317,7 @@ router.patch("/:id/status", updateAppointmentValidator, validateRequest, asyncHa
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Appointment' }
  *       400:
- *         description: ID inválido ou agendamento não pode ser cancelado (ex: já passou).
+ *         description: 'ID inválido ou agendamento não pode ser cancelado (ex: já passou).'
  *       401:
  *         description: Não autorizado.
  *       403:
