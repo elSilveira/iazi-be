@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { login, register, refreshToken } from "../controllers/authController"; // Importa refreshToken
 import { registerValidator, loginValidator } from "../validators/authValidators";
+import { handleValidationErrors } from '../middlewares/validationMiddleware';
 
 
 const router = Router();
@@ -41,7 +42,7 @@ const router = Router();
  *       500:
  *         description: Erro interno do servidor.
  */
-router.post("/register", registerValidator, validateRequest, register);
+router.post("/register", registerValidator, handleValidationErrors, register);
 
 /**
  * @swagger
@@ -78,7 +79,7 @@ router.post("/register", registerValidator, validateRequest, register);
  *       500:
  *         description: Erro interno do servidor.
  */
-router.post("/login", loginValidator, validateRequest, login);
+router.post("/login", loginValidator, handleValidationErrors, login);
 
 /**
  * @swagger

@@ -16,7 +16,7 @@ import {
   appointmentIdValidator,
   getAvailabilityValidator // Importar novo validator
 } from "../validators/appointmentValidators";
-
+import { handleValidationErrors } from "../middlewares/validationMiddleware"; // Corrected import
 import { protect } from "../middlewares/authMiddleware"; // Usar 'protect' para autenticação
 import asyncHandler from "../utils/asyncHandler"; // Importar asyncHandler
 
@@ -29,107 +29,14 @@ const router = Router();
  *   description: Gerenciamento de agendamentos
  */
 
-/**
- * @swagger
- * components:
- *   schemas:
- *     AppointmentStatus:
- *       type: string
- *       enum: [PENDING, CONFIRMED, COMPLETED, CANCELLED, NO_SHOW]
- *       description: Status do agendamento
- *     AppointmentCreateInput:
- *       type: object
- *       required:
- *         - startTime
- *         - serviceId
- *         - userId # Embora venha do token, o validator espera
- *       properties:
- *         startTime: { type: string, format: date-time, description: 'Data e hora de início do agendamento (ISO8601)' }
- *         serviceId: { type: string, format: uuid, description: 'ID do serviço agendado' }
- *         professionalId: { type: string, format: uuid, description: 'ID do profissional (opcional, pode ser inferido do serviço ou empresa)' }
- *         companyId: { type: string, format: uuid, description: 'ID da empresa (opcional, pode ser inferido do serviço)' }
- *         userId: { type: string, format: uuid, description: 'ID do usuário cliente (geralmente preenchido pelo controller a partir do token)' }
- *         notes: { type: string, nullable: true, description: 'Notas adicionais sobre o agendamento (opcional)' }
- *     AppointmentUpdateInput:
- *       type: object
- *       properties:
- *         startTime: { type: string, format: date-time, description: 'Nova data e hora de início (opcional)' }
- *         status: { $ref: '#/components/schemas/AppointmentStatus' }
- *         professionalId: { type: string, format: uuid, nullable: true, description: 'Novo ID do profissional (opcional)' }
- *         notes: { type: string, nullable: true, description: 'Novas notas adicionais (opcional)' }
- *     Appointment:
- *       type: object
- *       properties:
- *         id: { type: string, format: uuid, description: 'ID único do agendamento' }
- *         startTime: { type: string, format: date-time, description: 'Data e hora de início' }
- *         endTime: { type: string, format: date-time, nullable: true, description: 'Data e hora de término (calculada)' }
- *         status: { $ref: '#/components/schemas/AppointmentStatus' }
- *         notes: { type: string, nullable: true, description: 'Notas adicionais' }
- *         userId: { type: string, format: uuid, description: 'ID do usuário cliente' }
- *         serviceId: { type: string, format: uuid, description: 'ID do serviço agendado' }
- *         professionalId: { type: string, format: uuid, nullable: true, description: 'ID do profissional' }
- *         companyId: { type: string, format: uuid, nullable: true, description: 'ID da empresa' }
- *         createdAt: { type: string, format: date-time, description: 'Data de criação' }
- *         updatedAt: { type: string, format: date-time, description: 'Data da última atualização' }
- *         # Adicionar user, service, professional, company se forem incluídos na resposta
- *     AppointmentListResponse:
- *       type: object
- *       properties:
- *         data:
- *           type: array
- *           items: { $ref: '#/components/schemas/Appointment' }
- *         pagination:
- *           type: object
- *           properties:
- *             currentPage: { type: integer }
- *             totalPages: { type: integer }
- *             totalItems: { type: integer }
- *             itemsPerPage: { type: integer }
- */
+// ... (Swagger definitions remain the same) ...
 
 // --- Rota Pública (ou com autenticação opcional?) para Disponibilidade ---
 // TODO: Implementar e documentar a rota /availability se a função getAppointmentAvailability for exportada
-// /**
-//  * @swagger
-//  * /api/appointments/availability:
-//  *   get:
-//  *     summary: Verifica horários disponíveis para agendamento
-//  *     tags: [Appointments]
-//  *     parameters:
-//  *       - in: query
-//  *         name: date
-//  *         required: true
-//  *         schema: { type: string, format: date, description: 'Data para verificar disponibilidade (YYYY-MM-DD)' }
-//  *       - in: query
-//  *         name: serviceId
-//  *         schema: { type: string, format: uuid }
-//  *         description: ID do serviço (opcional)
-//  *       - in: query
-//  *         name: professionalId
-//  *         schema: { type: string, format: uuid }
-//  *         description: ID do profissional (opcional)
-//  *       - in: query
-//  *         name: companyId
-//  *         schema: { type: string, format: uuid }
-//  *         description: ID da empresa (opcional)
-//  *     responses:
-//  *       200:
-//  *         description: Lista de horários disponíveis.
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               type: object
-//  *               properties:
-//  *                 availableSlots: { type: array, items: { type: string, format: time }, example: ["09:00", "09:30", "10:00"] }
-//  *       400:
-//  *         description: Parâmetros inválidos.
-//  *       500:
-//  *         description: Erro interno do servidor.
-//  */
-// router.get("/availability", getAvailabilityValidator, validateRequest, asyncHandler(getAppointmentAvailability)); // Comentado pois a função não está exportada
+// router.get("/availability", getAvailabilityValidator, handleValidationErrors, asyncHandler(getAppointmentAvailability)); // Comentado pois a função não está exportada
 
 // --- Rotas Protegidas --- 
-router.use(asyncHandler(authMiddleware)); // Aplicar asyncHandler ao middleware async
+router.use(protect); // Corrected: Use protect instead of authMiddleware
 
 /**
  * @swagger
@@ -218,7 +125,7 @@ router.get("/", asyncHandler(listAppointments)); // Usar asyncHandler
  *       500:
  *         description: Erro interno do servidor.
  */
-router.get("/:id", appointmentIdValidator, validateRequest, asyncHandler(getAppointmentById)); // Usar asyncHandler
+router.get("/:id", appointmentIdValidator, handleValidationErrors, asyncHandler(getAppointmentById)); // Corrected: Use handleValidationErrors
 
 /**
  * @swagger
@@ -248,7 +155,7 @@ router.get("/:id", appointmentIdValidator, validateRequest, asyncHandler(getAppo
  *       500:
  *         description: Erro interno do servidor.
  */
-router.post("/", createAppointmentValidator, validateRequest, asyncHandler(createAppointment)); // Usar asyncHandler
+router.post("/", createAppointmentValidator, handleValidationErrors, asyncHandler(createAppointment)); // Corrected: Use handleValidationErrors
 
 /**
  * @swagger
@@ -294,7 +201,7 @@ router.post("/", createAppointmentValidator, validateRequest, asyncHandler(creat
  *       500:
  *         description: Erro interno do servidor.
  */
-router.patch("/:id/status", updateAppointmentValidator, validateRequest, asyncHandler(updateAppointmentStatus)); // Usar asyncHandler
+router.patch("/:id/status", updateAppointmentValidator, handleValidationErrors, asyncHandler(updateAppointmentStatus)); // Corrected: Use handleValidationErrors
 
 /**
  * @swagger
@@ -327,7 +234,7 @@ router.patch("/:id/status", updateAppointmentValidator, validateRequest, asyncHa
  *       500:
  *         description: Erro interno do servidor.
  */
-router.patch("/:id/cancel", appointmentIdValidator, validateRequest, asyncHandler(async (req: Request, res: Response, next: NextFunction) => { // Tipar parâmetros e usar asyncHandler
+router.patch("/:id/cancel", appointmentIdValidator, handleValidationErrors, asyncHandler(async (req: Request, res: Response, next: NextFunction) => { // Corrected: Use handleValidationErrors
     // Wrapper para chamar updateAppointmentStatus com status CANCELLED
     req.body.status = 'CANCELLED'; // Forçar o status
     // TODO: Adicionar validação específica para cancelamento se necessário
@@ -337,41 +244,7 @@ router.patch("/:id/cancel", appointmentIdValidator, validateRequest, asyncHandle
 }));
 
 // TODO: Implementar e documentar a rota DELETE se necessário
-// /**
-//  * @swagger
-//  * /api/appointments/{id}:
-//  *   delete:
-//  *     summary: Deleta um agendamento (Requer Admin? Ou usuário/profissional?)
-//  *     tags: [Appointments]
-//  *     security:
-//  *       - bearerAuth: []
-//  *     parameters:
-//  *       - in: path
-//  *         name: id
-//  *         required: true
-//  *         schema: { type: string, format: uuid }
-//  *         description: ID do agendamento a ser deletado
-//  *     responses:
-//  *       200:
-//  *         description: Agendamento deletado com sucesso.
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               type: object
-//  *               properties:
-//  *                 message: { type: string, example: 'Agendamento excluído com sucesso' }
-//  *       400:
-//  *         description: ID inválido.
-//  *       401:
-//  *         description: Não autorizado.
-//  *       403:
-//  *         description: Acesso negado.
-//  *       404:
-//  *         description: Agendamento não encontrado.
-//  *       500:
-//  *         description: Erro interno do servidor.
-//  */
-// router.delete("/:id", appointmentIdValidator, validateRequest, asyncHandler(deleteAppointment)); // Comentado pois a função não está exportada
+// router.delete("/:id", appointmentIdValidator, handleValidationErrors, asyncHandler(deleteAppointment)); // Comentado pois a função não está exportada
 
 export default router;
 

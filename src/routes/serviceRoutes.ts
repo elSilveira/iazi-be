@@ -14,7 +14,7 @@ import {
   updateServiceValidator, 
   serviceIdValidator 
 } from "../validators/serviceValidators";
-import { validateRequest } from "../middlewares/validationMiddleware";
+import { handleValidationErrors } from "../middlewares/validationMiddleware";
 import asyncHandler from "../utils/asyncHandler"; // Corrected import
 
 const router = Router();
@@ -26,7 +26,7 @@ router.get("/", asyncHandler(getAllServicesHandler));
 router.get(
   "/:id", 
   serviceIdValidator[0], // Pass the single middleware function directly
-  validateRequest, 
+  handleValidationErrors, // Corrected: Use handleValidationErrors
   asyncHandler(getServiceByIdHandler)
 );
 
@@ -35,7 +35,7 @@ router.post(
   "/", 
   checkAdminRoleMiddleware, // Apply auth middleware
   ...createServiceValidator, // Spread validation middlewares
-  validateRequest, 
+  handleValidationErrors, // Corrected: Use handleValidationErrors
   asyncHandler(createServiceHandler)
 );
 
@@ -45,7 +45,7 @@ router.put(
   loadExistingServiceMiddleware, // Load service first
   checkAdminOrCompanyOwnerMiddleware, // Then check ownership/admin
   ...updateServiceValidator, // Spread validation middlewares
-  validateRequest, 
+  handleValidationErrors, // Corrected: Use handleValidationErrors
   asyncHandler(updateServiceHandler)
 );
 
@@ -55,7 +55,7 @@ router.delete(
   loadExistingServiceMiddleware, // Load service first
   checkAdminOrCompanyOwnerMiddleware, // Then check ownership/admin
   serviceIdValidator[0], // Pass the single ID validation middleware directly
-  validateRequest, 
+  handleValidationErrors, // Corrected: Use handleValidationErrors
   asyncHandler(deleteServiceHandler)
 );
 

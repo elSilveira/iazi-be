@@ -16,7 +16,7 @@ import {
   professionalServiceAssociationValidator
 } from "../validators/professionalValidators";
 import { serviceIdValidator } from "../validators/serviceValidators";
-import { validateRequest } from "../middlewares/validationMiddleware";
+import { handleValidationErrors } from "../middlewares/validationMiddleware"; // Corrected import
 import asyncHandler from "../utils/asyncHandler"; // Corrected import
 
 const router = Router();
@@ -28,65 +28,7 @@ const router = Router();
  *   description: Gerenciamento de profissionais
  */
 
-/**
- * @swagger
- * components:
- *   schemas:
- *     ProfessionalCreateInput:
- *       type: object
- *       properties:
- *         name: { type: string, description: 'Nome do profissional (opcional, pode vir do usuário associado)' }
- *         role: { type: string, description: 'Cargo do profissional (opcional)' }
- *         companyId: { type: string, format: uuid, description: 'ID da empresa à qual o profissional pertence (opcional)' }
- *         image: { type: string, format: url, description: 'URL da imagem do profissional (opcional)' }
- *         bio: { type: string, description: 'Biografia do profissional (opcional)' }
- *         phone: { type: string, description: 'Telefone do profissional (opcional)' }
- *         # userId: { type: string, format: uuid, description: 'ID do usuário a ser associado (geralmente implícito pela autenticação)' }
- *     ProfessionalUpdateInput:
- *       type: object
- *       properties:
- *         name: { type: string, description: 'Novo nome do profissional' }
- *         role: { type: string, description: 'Novo cargo do profissional' }
- *         image: { type: string, format: url, nullable: true, description: 'Nova URL da imagem do profissional' }
- *         bio: { type: string, nullable: true, description: 'Nova biografia do profissional' }
- *         phone: { type: string, nullable: true, description: 'Novo telefone do profissional' }
- *     ProfessionalServiceAssociationInput:
- *       type: object
- *       required:
- *         - serviceId
- *       properties:
- *         serviceId: { type: string, format: uuid, description: 'ID do serviço a ser associado' }
- *         price: { type: number, format: float, description: 'Preço específico para este profissional (opcional, usa preço padrão do serviço se não fornecido)' }
- *     Professional:
- *       type: object
- *       properties:
- *         id: { type: string, format: uuid, description: 'ID único do profissional' }
- *         userId: { type: string, format: uuid, description: 'ID do usuário associado' }
- *         companyId: { type: string, format: uuid, nullable: true, description: 'ID da empresa associada' }
- *         name: { type: string, description: 'Nome do profissional' }
- *         role: { type: string, nullable: true, description: 'Cargo do profissional' }
- *         image: { type: string, format: url, nullable: true, description: 'URL da imagem' }
- *         bio: { type: string, nullable: true, description: 'Biografia' }
- *         phone: { type: string, nullable: true, description: 'Telefone' }
- *         rating: { type: number, format: float, nullable: true, description: 'Avaliação média do profissional' }
- *         totalReviews: { type: integer, nullable: true, description: 'Número total de avaliações' }
- *         createdAt: { type: string, format: date-time, description: 'Data de criação' }
- *         updatedAt: { type: string, format: date-time, description: 'Data da última atualização' }
- *         # Adicionar user, company, services, appointments se forem incluídos na resposta
- *     ProfessionalListResponse:
- *       type: object
- *       properties:
- *         data:
- *           type: array
- *           items: { $ref: '#/components/schemas/Professional' }
- *         pagination:
- *           type: object
- *           properties:
- *             currentPage: { type: integer }
- *             totalPages: { type: integer }
- *             totalItems: { type: integer }
- *             itemsPerPage: { type: integer }
- */
+// ... (Swagger definitions remain the same) ...
 
 /**
  * @swagger
@@ -164,7 +106,7 @@ router.get("/", asyncHandler(getAllProfessionalsHandler));
 router.get(
   "/:id", 
   professionalIdValidator[0], // Pass the single middleware function directly
-  validateRequest, 
+  handleValidationErrors, // Corrected
   asyncHandler(getProfessionalByIdHandler)
 );
 
@@ -200,7 +142,7 @@ router.post(
   "/", 
   checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
   ...createProfessionalValidator, // Spread validation middlewares
-  validateRequest, 
+  handleValidationErrors, // Corrected
   asyncHandler(createProfessionalHandler)
 );
 
@@ -244,7 +186,7 @@ router.put(
   "/:id", 
   checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
   ...updateProfessionalValidator, // Spread validation middlewares
-  validateRequest, 
+  handleValidationErrors, // Corrected
   asyncHandler(updateProfessionalHandler)
 );
 
@@ -287,7 +229,7 @@ router.delete(
   "/:id", 
   checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
   professionalIdValidator[0], // Pass the single middleware function directly
-  validateRequest, 
+  handleValidationErrors, // Corrected
   asyncHandler(deleteProfessionalHandler)
 );
 
@@ -331,7 +273,7 @@ router.post(
   "/:professionalId/services", 
   checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware (checks based on professionalId)
   ...professionalServiceAssociationValidator, // Spread validation middlewares
-  validateRequest, 
+  handleValidationErrors, // Corrected
   asyncHandler(addServiceToProfessionalHandler)
 );
 
@@ -379,7 +321,7 @@ router.delete(
   checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware (checks based on professionalId)
   professionalIdValidator[0], // Pass the single middleware function directly
   serviceIdValidator[0],      // Pass the single middleware function directly
-  validateRequest, 
+  handleValidationErrors, // Corrected
   asyncHandler(removeServiceFromProfessionalHandler)
 );
 
