@@ -1,12 +1,13 @@
-import { Router, Request, Response, NextFunction } from "express"; // Import Request, Response, NextFunction
+import { Router } from "express";
 import {
-  getAllProfessionals,
-  getProfessionalById,
-  createProfessional,
-  updateProfessional,
-  deleteProfessional,
-  addServiceToProfessional, // Assumindo que existe no controller
-  removeServiceFromProfessional // Assumindo que existe no controller
+  getAllProfessionalsHandler,
+  getProfessionalByIdHandler,
+  createProfessionalHandler,
+  updateProfessionalHandler,
+  deleteProfessionalHandler,
+  addServiceToProfessionalHandler,
+  removeServiceFromProfessionalHandler,
+  checkAdminOrCompanyOwnerMiddleware // Import middleware
 } from "../controllers/professionalController";
 import { 
   createProfessionalValidator, 
@@ -14,33 +15,67 @@ import {
   professionalIdValidator,
   professionalServiceAssociationValidator
 } from "../validators/professionalValidators";
-import { serviceIdValidator } from "../validators/serviceValidators"; // Importar serviceIdValidator
+import { serviceIdValidator } from "../validators/serviceValidators";
 import { validateRequest } from "../middlewares/validationMiddleware";
-import { asyncHandler } from "../utils/asyncHandler"; // Import asyncHandler
-// TODO: Adicionar middleware de autenticação/autorização para rotas protegidas
+import asyncHandler from "../utils/asyncHandler"; // Corrected import
 
 const router = Router();
 
-// Aplicar asyncHandler a todas as rotas que usam funções async do controller
-router.get("/", asyncHandler(getAllProfessionals));
+// GET / - Get all professionals
+router.get("/", asyncHandler(getAllProfessionalsHandler));
 
-// Usar spread operator para desestruturar arrays de validadores na chamada da rota
-router.get("/:id", ...professionalIdValidator, validateRequest, asyncHandler(getProfessionalById));
-
-router.post("/", ...createProfessionalValidator, validateRequest, asyncHandler(createProfessional));
-
-router.put("/:id", ...updateProfessionalValidator, validateRequest, asyncHandler(updateProfessional));
-
-router.delete("/:id", ...professionalIdValidator, validateRequest, asyncHandler(deleteProfessional));
-
-router.post("/:professionalId/services", ...professionalServiceAssociationValidator, validateRequest, asyncHandler(addServiceToProfessional));
-
-router.delete("/:professionalId/services/:serviceId", 
-  // Usar spread operator para desestruturar arrays de validadores na chamada da rota
-  ...professionalIdValidator, 
-  ...serviceIdValidator, 
+// GET /:id - Get professional by ID
+router.get(
+  "/:id", 
+  professionalIdValidator[0], // Pass the single middleware function directly
   validateRequest, 
-  asyncHandler(removeServiceFromProfessional)
+  asyncHandler(getProfessionalByIdHandler)
+);
+
+// POST / - Create a new professional
+router.post(
+  "/", 
+  checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
+  ...createProfessionalValidator, // Spread validation middlewares
+  validateRequest, 
+  asyncHandler(createProfessionalHandler)
+);
+
+// PUT /:id - Update a professional
+router.put(
+  "/:id", 
+  checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
+  ...updateProfessionalValidator, // Spread validation middlewares
+  validateRequest, 
+  asyncHandler(updateProfessionalHandler)
+);
+
+// DELETE /:id - Delete a professional
+router.delete(
+  "/:id", 
+  checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
+  professionalIdValidator[0], // Pass the single middleware function directly
+  validateRequest, 
+  asyncHandler(deleteProfessionalHandler)
+);
+
+// POST /:professionalId/services - Associate a service with a professional
+router.post(
+  "/:professionalId/services", 
+  checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware (checks based on professionalId)
+  ...professionalServiceAssociationValidator, // Spread validation middlewares
+  validateRequest, 
+  asyncHandler(addServiceToProfessionalHandler)
+);
+
+// DELETE /:professionalId/services/:serviceId - Disassociate a service from a professional
+router.delete(
+  "/:professionalId/services/:serviceId", 
+  checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware (checks based on professionalId)
+  professionalIdValidator[0], // Pass the single middleware function directly
+  serviceIdValidator[0],      // Pass the single middleware function directly
+  validateRequest, 
+  asyncHandler(removeServiceFromProfessionalHandler)
 );
 
 export default router;

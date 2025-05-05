@@ -1,34 +1,59 @@
-import { Router, Request, Response, NextFunction } from "express"; // Import Request, Response, NextFunction
+import { Router } from "express";
 import {
   getAllCompanies,
   getCompanyById,
   createCompany,
   updateCompany,
   deleteCompany,
+  checkAdminRoleMiddleware // Import middleware
 } from "../controllers/companyController";
 import { 
-  // createCompanyValidator, // Temporarily commented out
+  createCompanyValidator, 
   updateCompanyValidator, 
   companyIdValidator 
 } from "../validators/companyValidators";
 import { validateRequest } from "../middlewares/validationMiddleware";
-import { asyncHandler } from "../utils/asyncHandler"; // Import asyncHandler
-import { dummyMiddleware } from "../middlewares/dummyMiddleware"; // Import dummy middleware
-// TODO: Adicionar middleware de autenticação/autorização para rotas protegidas
+import asyncHandler from "../utils/asyncHandler"; // Corrected import
 
 const router = Router();
 
-// Aplicar asyncHandler a todas as rotas que usam funções async do controller
+// GET / - Get all companies
 router.get("/", asyncHandler(getAllCompanies));
 
-// Usar spread operator para desestruturar arrays de validadores na chamada da rota
-router.get("/:id", ...companyIdValidator, validateRequest, asyncHandler(getCompanyById));
+// GET /:id - Get company by ID
+router.get(
+  "/:id", 
+  companyIdValidator[0], // Pass the single middleware function directly
+  validateRequest, 
+  asyncHandler(getCompanyById)
+);
 
-// Test: Replace validator with dummy middleware
-router.post("/", dummyMiddleware, validateRequest, asyncHandler(createCompany)); // Using dummyMiddleware + validateRequest
+// POST / - Create a new company
+router.post(
+  "/", 
+  checkAdminRoleMiddleware, // Apply auth middleware
+  ...createCompanyValidator, // Spread validation middlewares
+  validateRequest, 
+  asyncHandler(createCompany)
+);
 
-router.put("/:id", ...updateCompanyValidator, validateRequest, asyncHandler(updateCompany));
+// PUT /:id - Update a company
+router.put(
+  "/:id", 
+  checkAdminRoleMiddleware, // Apply auth middleware
+  ...updateCompanyValidator, // Spread validation middlewares
+  validateRequest, 
+  asyncHandler(updateCompany)
+);
 
-router.delete("/:id", ...companyIdValidator, validateRequest, asyncHandler(deleteCompany));
+// DELETE /:id - Delete a company
+router.delete(
+  "/:id", 
+  checkAdminRoleMiddleware, // Apply auth middleware
+  companyIdValidator[0], // Pass the single middleware function directly
+  validateRequest, 
+  asyncHandler(deleteCompany)
+);
 
 export default router;
+

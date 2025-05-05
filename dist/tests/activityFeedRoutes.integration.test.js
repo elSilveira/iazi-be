@@ -13,7 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const supertest_1 = __importDefault(require("supertest"));
-const app_1 = require("../src/app"); // Corrected import path
+const index_1 = require("../index"); // Corrected import path
 const prismaClient_1 = require("../utils/prismaClient");
 const client_1 = require("@prisma/client"); // Added UserRole
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken")); // Import jwt directly
@@ -157,7 +157,7 @@ describe("Activity Feed API (/api/users/me/feed)", () => {
         const appointmentDate = new Date();
         appointmentDate.setDate(appointmentDate.getDate() + 2); // Book 2 days in advance
         appointmentDate.setHours(14, 0, 0, 0); // Set to 14:00
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${token}`)
             .send({
@@ -186,7 +186,7 @@ describe("Activity Feed API (/api/users/me/feed)", () => {
         const appointmentDate = new Date();
         appointmentDate.setDate(appointmentDate.getDate() + 3); // Book 3 days in advance
         appointmentDate.setHours(15, 0, 0, 0); // Set to 15:00
-        const createRes = yield (0, supertest_1.default)(app_1.app)
+        const createRes = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${token}`)
             .send({
@@ -198,7 +198,7 @@ describe("Activity Feed API (/api/users/me/feed)", () => {
         const appointmentId = createRes.body.id;
         createdAppointmentId = appointmentId; // Mark for cleanup
         // Now, cancel the appointment using the status endpoint
-        const cancelRes = yield (0, supertest_1.default)(app_1.app)
+        const cancelRes = yield (0, supertest_1.default)(index_1.app)
             .patch(`/api/appointments/${appointmentId}/status`)
             .set("Authorization", `Bearer ${token}`)
             .send({ status: "CANCELLED" });
@@ -222,7 +222,7 @@ describe("Activity Feed API (/api/users/me/feed)", () => {
             comment: "Excellent service!",
             serviceId: service.id, // Reviewing the service
         };
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .post("/api/reviews")
             .set("Authorization", `Bearer ${token}`)
             .send(reviewData);
@@ -247,7 +247,7 @@ describe("Activity Feed API (/api/users/me/feed)", () => {
         // Depending on test order, might be 2 or 3. Let's check >= 2
         expect(logsCount).toBeGreaterThanOrEqual(2);
         // Test fetching the first page
-        const responsePage1 = yield (0, supertest_1.default)(app_1.app)
+        const responsePage1 = yield (0, supertest_1.default)(index_1.app)
             .get("/api/users/me/feed?page=1&pageSize=2")
             .set("Authorization", `Bearer ${token}`);
         expect(responsePage1.status).toBe(200);
@@ -266,7 +266,7 @@ describe("Activity Feed API (/api/users/me/feed)", () => {
         }
         // Test fetching the second page if there are enough logs
         if (logsCount > 2) {
-            const responsePage2 = yield (0, supertest_1.default)(app_1.app)
+            const responsePage2 = yield (0, supertest_1.default)(index_1.app)
                 .get("/api/users/me/feed?page=2&pageSize=2")
                 .set("Authorization", `Bearer ${token}`);
             expect(responsePage2.status).toBe(200);
@@ -281,11 +281,11 @@ describe("Activity Feed API (/api/users/me/feed)", () => {
         }
     }));
     it("should return 401 if no token is provided", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app).get("/api/users/me/feed");
+        const response = yield (0, supertest_1.default)(index_1.app).get("/api/users/me/feed");
         expect(response.status).toBe(401);
     }));
     it("should return 400 if pagination parameters are invalid", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get("/api/users/me/feed?page=0&pageSize=-5") // Invalid page and pageSize
             .set("Authorization", `Bearer ${token}`);
         expect(response.status).toBe(400);

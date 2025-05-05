@@ -85,7 +85,6 @@ beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
     // Create the Professional profile linked to the user
     const profProfile = yield prismaClient_1.prisma.professional.create({
         data: {
-            user: { connect: { id: testProfUserId } }, // Link to the created user
             companyId: testCompanyId,
             name: professionalUser.name, // Use user's name or specific professional name
             // bio: "Test Professional Bio", // Assuming bio exists on Professional model

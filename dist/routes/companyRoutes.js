@@ -1,19 +1,29 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express"); // Import Request, Response, NextFunction
+const express_1 = require("express");
 const companyController_1 = require("../controllers/companyController");
 const companyValidators_1 = require("../validators/companyValidators");
 const validationMiddleware_1 = require("../middlewares/validationMiddleware");
-const asyncHandler_1 = require("../utils/asyncHandler"); // Import asyncHandler
-const dummyMiddleware_1 = require("../middlewares/dummyMiddleware"); // Import dummy middleware
-// TODO: Adicionar middleware de autenticação/autorização para rotas protegidas
+const asyncHandler_1 = __importDefault(require("../utils/asyncHandler")); // Corrected import
 const router = (0, express_1.Router)();
-// Aplicar asyncHandler a todas as rotas que usam funções async do controller
-router.get("/", (0, asyncHandler_1.asyncHandler)(companyController_1.getAllCompanies));
-// Usar spread operator para desestruturar arrays de validadores na chamada da rota
-router.get("/:id", ...companyValidators_1.companyIdValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.asyncHandler)(companyController_1.getCompanyById));
-// Test: Replace validator with dummy middleware
-router.post("/", dummyMiddleware_1.dummyMiddleware, validationMiddleware_1.validateRequest, (0, asyncHandler_1.asyncHandler)(companyController_1.createCompany)); // Using dummyMiddleware + validateRequest
-router.put("/:id", ...companyValidators_1.updateCompanyValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.asyncHandler)(companyController_1.updateCompany));
-router.delete("/:id", ...companyValidators_1.companyIdValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.asyncHandler)(companyController_1.deleteCompany));
+// GET / - Get all companies
+router.get("/", (0, asyncHandler_1.default)(companyController_1.getAllCompanies));
+// GET /:id - Get company by ID
+router.get("/:id", companyValidators_1.companyIdValidator[0], // Pass the single middleware function directly
+validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(companyController_1.getCompanyById));
+// POST / - Create a new company
+router.post("/", companyController_1.checkAdminRoleMiddleware, // Apply auth middleware
+...companyValidators_1.createCompanyValidator, // Spread validation middlewares
+validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(companyController_1.createCompany));
+// PUT /:id - Update a company
+router.put("/:id", companyController_1.checkAdminRoleMiddleware, // Apply auth middleware
+...companyValidators_1.updateCompanyValidator, // Spread validation middlewares
+validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(companyController_1.updateCompany));
+// DELETE /:id - Delete a company
+router.delete("/:id", companyController_1.checkAdminRoleMiddleware, // Apply auth middleware
+companyValidators_1.companyIdValidator[0], // Pass the single middleware function directly
+validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(companyController_1.deleteCompany));
 exports.default = router;

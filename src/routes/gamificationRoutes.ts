@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express"; // Import Request, Response, NextFunction
 import { getGamificationProfile, getLeaderboard } from "../controllers/gamificationController";
 import { authMiddleware } from "../middlewares/authMiddleware"; // Corrected import path assuming it's in middlewares
-import { asyncHandler } from "../utils/asyncHandler"; // Import asyncHandler
+import asyncHandler from "../utils/asyncHandler"; // Import asyncHandler
 
 const router = Router();
 

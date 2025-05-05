@@ -54,7 +54,7 @@ const isValidUUID = (uuid: string): boolean => {
 };
 
 // Helper function to parse duration string (e.g., "PT1H30M") to minutes
-const parseDuration = (durationString: string | null): number | null => {
+export const parseDuration = (durationString: string | null): number | null => {
     if (!durationString) return null;
     // Updated regex to handle ISO 8601 duration format (PTnHnM)
     const match = durationString.match(/^PT(?:(\d+)H)?(?:(\d+)M)?$/);
@@ -73,7 +73,7 @@ const parseDuration = (durationString: string | null): number | null => {
 };
 
 // Helper function to get working hours for a specific day
-const getWorkingHoursForDay = (workingHoursJson: Prisma.JsonValue | null | undefined, date: Date): { start: Date, end: Date } | null => {
+export const getWorkingHoursForDay = (workingHoursJson: Prisma.JsonValue | null | undefined, date: Date): { start: Date, end: Date } | null => {
     // Check if workingHoursJson is a valid object and not null/undefined
     if (!workingHoursJson || typeof workingHoursJson !== 'object' || Array.isArray(workingHoursJson)) return null;
 

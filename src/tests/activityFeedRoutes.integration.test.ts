@@ -1,5 +1,5 @@
 import request from "supertest";
-import { app } from "../src/app"; // Corrected import path
+import { app } from "../index"; // Corrected import path
 import { prisma } from "../utils/prismaClient";
 import { User, Service, Professional, Company, Appointment, Review, ActivityLog, UserRole } from "@prisma/client"; // Added UserRole
 import jwt from "jsonwebtoken"; // Import jwt directly

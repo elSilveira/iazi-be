@@ -13,11 +13,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const supertest_1 = __importDefault(require("supertest"));
-const app_1 = require("../src/app"); // Corrected path to app
+const index_1 = require("../index"); // Corrected path to app
 const prismaClient_1 = require("../utils/prismaClient");
 const client_1 = require("@prisma/client");
 const date_fns_1 = require("date-fns");
-const jwt_1 = require("../src/utils/jwt"); // Corrected path to jwt utils
+const jwt_1 = require("../utils/jwt"); // Corrected path to jwt utils
 const gamificationService_1 = require("../services/gamificationService"); // Added import for enum
 // --- Test Data Setup ---
 let testUser;
@@ -116,7 +116,6 @@ beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
     testProfessional = yield prismaClient_1.prisma.professional.create({
         data: {
             // Link professional profile to the professional user account if needed
-            userId: testProfessionalUser.id,
             name: testProfessionalUser.name,
             role: "Hair Stylist",
             companyId: testCompany.id,
@@ -177,7 +176,7 @@ afterAll(() => __awaiter(void 0, void 0, void 0, function* () {
 describe("GET /api/appointments/availability", () => {
     it("should return available slots for a professional on a working day", () => __awaiter(void 0, void 0, void 0, function* () {
         const dateString = (0, date_fns_1.formatISO)(nextMonday, { representation: 'date' });
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get("/api/appointments/availability")
             .query({
             date: dateString,
@@ -204,7 +203,7 @@ describe("GET /api/appointments/availability", () => {
                 status: client_1.AppointmentStatus.CONFIRMED,
             }
         });
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get("/api/appointments/availability")
             .query({
             date: dateString,
@@ -233,7 +232,7 @@ describe("GET /api/appointments/availability", () => {
                 reason: "Lunch",
             }
         });
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get("/api/appointments/availability")
             .query({
             date: dateString,
@@ -255,7 +254,7 @@ describe("GET /api/appointments/availability", () => {
     it("should return empty slots for a non-working day (Sunday)", () => __awaiter(void 0, void 0, void 0, function* () {
         const sunday = getNextDayOfWeek(0);
         const dateString = (0, date_fns_1.formatISO)(sunday, { representation: 'date' });
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get("/api/appointments/availability")
             .query({
             date: dateString,
@@ -266,7 +265,7 @@ describe("GET /api/appointments/availability", () => {
         expect(response.body.availableSlots).toEqual([]);
     }));
     it("should return 400 for invalid date format", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get("/api/appointments/availability")
             .query({ date: "invalid-date", serviceId: testService.id, professionalId: testProfessional.id });
         expect(response.status).toBe(400);
@@ -275,7 +274,7 @@ describe("GET /api/appointments/availability", () => {
     }));
     it("should return 400 if serviceId is missing", () => __awaiter(void 0, void 0, void 0, function* () {
         const dateString = (0, date_fns_1.formatISO)(nextMonday, { representation: 'date' });
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get("/api/appointments/availability")
             .query({ date: dateString, professionalId: testProfessional.id });
         expect(response.status).toBe(400);
@@ -284,7 +283,7 @@ describe("GET /api/appointments/availability", () => {
     it("should return 404 if serviceId is invalid or not found", () => __awaiter(void 0, void 0, void 0, function* () {
         const dateString = (0, date_fns_1.formatISO)(nextMonday, { representation: 'date' });
         const invalidServiceId = "00000000-0000-0000-0000-000000000000";
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get("/api/appointments/availability")
             .query({ date: dateString, serviceId: invalidServiceId, professionalId: testProfessional.id });
         expect(response.status).toBe(404);
@@ -292,7 +291,7 @@ describe("GET /api/appointments/availability", () => {
     }));
     it("should return 400 if professionalId and companyId are missing", () => __awaiter(void 0, void 0, void 0, function* () {
         const dateString = (0, date_fns_1.formatISO)(nextMonday, { representation: 'date' });
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get("/api/appointments/availability")
             .query({ date: dateString, serviceId: testService.id });
         expect(response.status).toBe(400);
@@ -301,7 +300,7 @@ describe("GET /api/appointments/availability", () => {
     it("should return 404 if professionalId is invalid or not found", () => __awaiter(void 0, void 0, void 0, function* () {
         const dateString = (0, date_fns_1.formatISO)(nextMonday, { representation: 'date' });
         const invalidProfId = "00000000-0000-0000-0000-000000000000";
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get("/api/appointments/availability")
             .query({ date: dateString, serviceId: testService.id, professionalId: invalidProfId });
         // Depending on implementation, might be 404 for professional or just empty slots
@@ -323,7 +322,7 @@ describe("POST /api/appointments", () => {
         }
     }));
     it("should create an appointment for an authenticated user in an available slot", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
             .send({
@@ -348,7 +347,7 @@ describe("POST /api/appointments", () => {
         // expect(gamificationEvents.length).toBeGreaterThan(0); 
     }));
     it("should return 401 if user is not authenticated", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
             .send({
             date: (0, date_fns_1.formatISO)(bookableTime),
@@ -358,7 +357,7 @@ describe("POST /api/appointments", () => {
         expect(response.status).toBe(401);
     }));
     it("should return 400 if date is missing", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
             .send({ serviceId: testService.id, professionalId: testProfessional.id });
@@ -367,7 +366,7 @@ describe("POST /api/appointments", () => {
     }));
     it("should return 400 if date is in the past", () => __awaiter(void 0, void 0, void 0, function* () {
         const pastDate = (0, date_fns_1.subHours)(new Date(), 2);
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
             .send({ date: (0, date_fns_1.formatISO)(pastDate), serviceId: testService.id, professionalId: testProfessional.id });
@@ -376,7 +375,7 @@ describe("POST /api/appointments", () => {
     }));
     it("should return 400 if booking too close to current time", () => __awaiter(void 0, void 0, void 0, function* () {
         const tooSoonDate = (0, date_fns_1.addMinutes)(new Date(), 30); // Less than MIN_BOOKING_ADVANCE_HOURS (1 hour)
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
             .send({ date: (0, date_fns_1.formatISO)(tooSoonDate), serviceId: testService.id, professionalId: testProfessional.id });
@@ -385,7 +384,7 @@ describe("POST /api/appointments", () => {
     }));
     it("should return 404 if serviceId is invalid", () => __awaiter(void 0, void 0, void 0, function* () {
         const invalidServiceId = "00000000-0000-0000-0000-000000000000";
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
             .send({ date: (0, date_fns_1.formatISO)(bookableTime), serviceId: invalidServiceId, professionalId: testProfessional.id });
@@ -396,7 +395,7 @@ describe("POST /api/appointments", () => {
         // Create a second service offered by another professional
         const otherProf = yield prismaClient_1.prisma.professional.create({ data: { name: "Other Prof", role: "Stylist", companyId: testCompany.id } });
         yield prismaClient_1.prisma.professionalService.create({ data: { professionalId: otherProf.id, serviceId: testService.id } });
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
             .send({ date: (0, date_fns_1.formatISO)(bookableTime), serviceId: testService.id }); // Missing professionalId
@@ -408,7 +407,7 @@ describe("POST /api/appointments", () => {
     }));
     it("should return 400 if specified professional does not offer the service", () => __awaiter(void 0, void 0, void 0, function* () {
         const otherService = yield prismaClient_1.prisma.service.create({ data: { name: "Other Service", description: "Desc for other service", price: new library_1.Decimal("50.00"), duration: "60min", categoryId: testCategory.id, companyId: testCompany.id } });
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
             .send({ date: (0, date_fns_1.formatISO)(bookableTime), serviceId: otherService.id, professionalId: testProfessional.id });
@@ -418,7 +417,7 @@ describe("POST /api/appointments", () => {
     }));
     it("should return 409 if the slot is already booked", () => __awaiter(void 0, void 0, void 0, function* () {
         // First, book the slot
-        const firstBooking = yield (0, supertest_1.default)(app_1.app)
+        const firstBooking = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
             .send({
@@ -429,7 +428,7 @@ describe("POST /api/appointments", () => {
         expect(firstBooking.status).toBe(201);
         createdAppointmentId = firstBooking.body.id;
         // Try to book the same slot again
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${user2Token}`) // Different user
             .send({
@@ -451,7 +450,7 @@ describe("POST /api/appointments", () => {
                 reason: "Meeting",
             }
         });
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
             .send({
@@ -494,7 +493,7 @@ describe("GET /api/appointments", () => {
         yield prismaClient_1.prisma.appointment.deleteMany({ where: { id: { in: [appointment1.id, appointment2.id] } } });
     }));
     it("should return appointments for the authenticated user by default", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`);
         expect(response.status).toBe(200);
@@ -504,7 +503,7 @@ describe("GET /api/appointments", () => {
         expect(response.body[0].userId).toBe(testUser.id);
     }));
     it("should allow admin to get all appointments", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get("/api/appointments")
             .set("Authorization", `Bearer ${adminToken}`);
         expect(response.status).toBe(200);
@@ -514,7 +513,7 @@ describe("GET /api/appointments", () => {
         expect(response.body.some((a) => a.id === appointment2.id)).toBe(true);
     }));
     it("should allow admin to filter appointments by userId", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get("/api/appointments")
             .set("Authorization", `Bearer ${adminToken}`)
             .query({ userId: testUser2.id });
@@ -525,14 +524,14 @@ describe("GET /api/appointments", () => {
         expect(response.body[0].userId).toBe(testUser2.id);
     }));
     it("should deny non-admin from getting another user's appointments", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
             .query({ userId: testUser2.id });
         expect(response.status).toBe(403);
     }));
     it("should filter appointments by professionalId", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get("/api/appointments")
             .set("Authorization", `Bearer ${adminToken}`) // Admin can see all
             .query({ professionalId: testProfessional.id });
@@ -542,7 +541,7 @@ describe("GET /api/appointments", () => {
         expect(response.body.every((a) => a.professionalId === testProfessional.id)).toBe(true);
     }));
     it("should filter appointments by status", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get("/api/appointments")
             .set("Authorization", `Bearer ${adminToken}`)
             .query({ status: client_1.AppointmentStatus.PENDING });
@@ -554,7 +553,7 @@ describe("GET /api/appointments", () => {
     }));
     it("should filter appointments by date", () => __awaiter(void 0, void 0, void 0, function* () {
         const dateString = (0, date_fns_1.formatISO)(nextMonday, { representation: 'date' });
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get("/api/appointments")
             .set("Authorization", `Bearer ${adminToken}`)
             .query({ date: dateString });
@@ -565,7 +564,7 @@ describe("GET /api/appointments", () => {
         expect(response.body.some((a) => a.id === appointment1.id)).toBe(true);
     }));
     it("should return 400 for invalid status filter", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get("/api/appointments")
             .set("Authorization", `Bearer ${adminToken}`)
             .query({ status: "INVALID_STATUS" });
@@ -573,7 +572,7 @@ describe("GET /api/appointments", () => {
         expect(response.body.errors[0].msg).toContain("Status inválido");
     }));
     it("should return 400 for invalid date filter format", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get("/api/appointments")
             .set("Authorization", `Bearer ${adminToken}`)
             .query({ date: "invalid-date" });
@@ -599,7 +598,7 @@ describe("GET /api/appointments/:id", () => {
         yield prismaClient_1.prisma.appointment.delete({ where: { id: testAppointment.id } });
     }));
     it("should return the appointment details for the owner", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get(`/api/appointments/${testAppointment.id}`)
             .set("Authorization", `Bearer ${userToken}`);
         expect(response.status).toBe(200);
@@ -608,7 +607,7 @@ describe("GET /api/appointments/:id", () => {
     }));
     it("should return the appointment details for the assigned professional's user", () => __awaiter(void 0, void 0, void 0, function* () {
         // This assumes the professional profile is linked to testProfessionalUser
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get(`/api/appointments/${testAppointment.id}`)
             .set("Authorization", `Bearer ${professionalToken}`);
         expect(response.status).toBe(200);
@@ -616,33 +615,33 @@ describe("GET /api/appointments/:id", () => {
         expect(response.body.professionalId).toBe(testProfessional.id);
     }));
     it("should return the appointment details for an admin", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get(`/api/appointments/${testAppointment.id}`)
             .set("Authorization", `Bearer ${adminToken}`);
         expect(response.status).toBe(200);
         expect(response.body.id).toBe(testAppointment.id);
     }));
     it("should return 403 for an unrelated user", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get(`/api/appointments/${testAppointment.id}`)
             .set("Authorization", `Bearer ${user2Token}`);
         expect(response.status).toBe(403);
     }));
     it("should return 401 if not authenticated", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get(`/api/appointments/${testAppointment.id}`);
         expect(response.status).toBe(401);
     }));
     it("should return 404 for an invalid appointment ID", () => __awaiter(void 0, void 0, void 0, function* () {
         const invalidId = "00000000-0000-0000-0000-000000000000";
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get(`/api/appointments/${invalidId}`)
             .set("Authorization", `Bearer ${adminToken}`);
         expect(response.status).toBe(404);
     }));
     it("should return 400 for a malformed appointment ID", () => __awaiter(void 0, void 0, void 0, function* () {
         const malformedId = "invalid-uuid";
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .get(`/api/appointments/${malformedId}`)
             .set("Authorization", `Bearer ${adminToken}`);
         expect(response.status).toBe(400);
@@ -681,7 +680,7 @@ describe("PATCH /api/appointments/:id/status", () => {
         yield prismaClient_1.prisma.gamificationEvent.deleteMany({ where: { relatedEntityId: { in: [pendingAppointment.id, confirmedAppointment.id] } } });
     }));
     it("should allow admin to confirm a pending appointment", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .patch(`/api/appointments/${pendingAppointment.id}/status`)
             .set("Authorization", `Bearer ${adminToken}`)
             .send({ status: client_1.AppointmentStatus.CONFIRMED });
@@ -692,7 +691,7 @@ describe("PATCH /api/appointments/:id/status", () => {
         expect(logs.length).toBe(1);
     }));
     it("should allow owner to cancel a pending appointment with enough notice", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .patch(`/api/appointments/${pendingAppointment.id}/status`)
             .set("Authorization", `Bearer ${userToken}`) // Owner token
             .send({ status: client_1.AppointmentStatus.CANCELLED });
@@ -703,7 +702,7 @@ describe("PATCH /api/appointments/:id/status", () => {
         expect(logs.length).toBe(1);
     }));
     it("should allow owner to cancel a confirmed appointment with enough notice", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .patch(`/api/appointments/${confirmedAppointment.id}/status`)
             .set("Authorization", `Bearer ${user2Token}`) // Owner token
             .send({ status: client_1.AppointmentStatus.CANCELLED });
@@ -722,7 +721,7 @@ describe("PATCH /api/appointments/:id/status", () => {
                 status: client_1.AppointmentStatus.CONFIRMED,
             }
         });
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .patch(`/api/appointments/${soonAppt.id}/status`)
             .set("Authorization", `Bearer ${userToken}`)
             .send({ status: client_1.AppointmentStatus.CANCELLED });
@@ -731,7 +730,7 @@ describe("PATCH /api/appointments/:id/status", () => {
         yield prismaClient_1.prisma.appointment.delete({ where: { id: soonAppt.id } }); // Cleanup
     }));
     it("should allow admin to mark a confirmed appointment as completed", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .patch(`/api/appointments/${confirmedAppointment.id}/status`)
             .set("Authorization", `Bearer ${adminToken}`)
             .send({ status: client_1.AppointmentStatus.COMPLETED });
@@ -745,14 +744,14 @@ describe("PATCH /api/appointments/:id/status", () => {
         expect(gamificationEvent).toBeDefined();
     }));
     it("should deny non-admin/non-owner from changing status", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .patch(`/api/appointments/${pendingAppointment.id}/status`)
             .set("Authorization", `Bearer ${user2Token}`) // Unrelated user
             .send({ status: client_1.AppointmentStatus.CONFIRMED });
         expect(response.status).toBe(403);
     }));
     it("should return 400 for invalid status value", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .patch(`/api/appointments/${pendingAppointment.id}/status`)
             .set("Authorization", `Bearer ${adminToken}`)
             .send({ status: "INVALID" });
@@ -761,14 +760,14 @@ describe("PATCH /api/appointments/:id/status", () => {
     }));
     it("should return 404 for non-existent appointment ID", () => __awaiter(void 0, void 0, void 0, function* () {
         const invalidId = "00000000-0000-0000-0000-000000000000";
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .patch(`/api/appointments/${invalidId}/status`)
             .set("Authorization", `Bearer ${adminToken}`)
             .send({ status: client_1.AppointmentStatus.CONFIRMED });
         expect(response.status).toBe(404);
     }));
     it("should return 403 for invalid status transition (e.g., PENDING to COMPLETED)", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app_1.app)
+        const response = yield (0, supertest_1.default)(index_1.app)
             .patch(`/api/appointments/${pendingAppointment.id}/status`)
             .set("Authorization", `Bearer ${adminToken}`)
             .send({ status: client_1.AppointmentStatus.COMPLETED });

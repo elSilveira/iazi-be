@@ -8,24 +8,27 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express"); // Import Request, Response, NextFunction
 const appointmentController_1 = require("../controllers/appointmentController");
 const appointmentValidators_1 = require("../validators/appointmentValidators");
 const validationMiddleware_1 = require("../middlewares/validationMiddleware");
 const authMiddleware_1 = require("../middlewares/authMiddleware"); // Importar o middleware de autenticação
-const asyncHandler_1 = require("../utils/asyncHandler"); // Importar asyncHandler
+const asyncHandler_1 = __importDefault(require("../utils/asyncHandler")); // Importar asyncHandler
 const router = (0, express_1.Router)();
 // --- Rota Pública (ou com autenticação opcional?) para Disponibilidade ---
 // router.get("/availability", getAvailabilityValidator, validateRequest, asyncHandler(getAppointmentAvailability)); // Comentado pois a função não está exportada
 // --- Rotas Protegidas --- 
-router.use((0, asyncHandler_1.asyncHandler)(authMiddleware_1.authMiddleware)); // Aplicar asyncHandler ao middleware async
-router.get("/", (0, asyncHandler_1.asyncHandler)(appointmentController_1.listAppointments)); // Usar asyncHandler
-router.get("/:id", appointmentValidators_1.appointmentIdValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.asyncHandler)(appointmentController_1.getAppointmentById)); // Usar asyncHandler
-router.post("/", appointmentValidators_1.createAppointmentValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.asyncHandler)(appointmentController_1.createAppointment)); // Usar asyncHandler
-router.patch("/:id/status", appointmentValidators_1.updateAppointmentValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.asyncHandler)(appointmentController_1.updateAppointmentStatus)); // Usar asyncHandler
+router.use((0, asyncHandler_1.default)(authMiddleware_1.authMiddleware)); // Aplicar asyncHandler ao middleware async
+router.get("/", (0, asyncHandler_1.default)(appointmentController_1.listAppointments)); // Usar asyncHandler
+router.get("/:id", appointmentValidators_1.appointmentIdValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(appointmentController_1.getAppointmentById)); // Usar asyncHandler
+router.post("/", appointmentValidators_1.createAppointmentValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(appointmentController_1.createAppointment)); // Usar asyncHandler
+router.patch("/:id/status", appointmentValidators_1.updateAppointmentValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(appointmentController_1.updateAppointmentStatus)); // Usar asyncHandler
 // Rota para cancelamento (usando updateStatus)
-router.patch("/:id/cancel", appointmentValidators_1.appointmentIdValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.asyncHandler)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+router.patch("/:id/cancel", appointmentValidators_1.appointmentIdValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     // Wrapper para chamar updateAppointmentStatus com status CANCELLED
     req.body.status = 'CANCELLED'; // Forçar o status
     // TODO: Adicionar validação específica para cancelamento se necessário

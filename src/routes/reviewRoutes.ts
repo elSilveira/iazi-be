@@ -14,7 +14,7 @@ import {
 } from "../validators/reviewValidators";
 import { validateRequest } from "../middlewares/validationMiddleware";
 import { authMiddleware } from "../middlewares/authMiddleware"; // Importar authMiddleware
-import { asyncHandler } from "../utils/asyncHandler"; // Import asyncHandler
+import asyncHandler from "../utils/asyncHandler"; // Import asyncHandler
 
 const router = Router();
 

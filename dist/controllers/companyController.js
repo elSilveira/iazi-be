@@ -23,25 +23,55 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteCompany = exports.updateCompany = exports.createCompany = exports.getCompanyById = exports.getAllCompanies = void 0;
+exports.deleteCompanyHandler = exports.updateCompanyHandler = exports.createCompanyHandler = exports.getCompanyByIdHandler = exports.getAllCompaniesHandler = exports.checkAdminOrCompanyOwnerMiddleware = exports.checkAdminRoleMiddleware = void 0;
 const companyRepository_1 = __importDefault(require("../repositories/companyRepository")); // Corrected: default import
 const client_1 = require("@prisma/client"); // Added UserRole
-// Helper function for authorization check (can be moved to middleware later)
-const checkAdminRole = (req, res, next) => {
+// Middleware for authorization check (Admin only for now)
+// TODO: Refactor into a dedicated middleware file and add Company Owner check
+const checkAdminRoleMiddleware = (req, res, next) => {
     var _a;
     if (((_a = req.user) === null || _a === void 0 ? void 0 : _a.role) !== client_1.UserRole.ADMIN) {
-        return res.status(403).json({ message: "Acesso negado. Somente administradores podem realizar esta ação." });
+        res.status(403).json({ message: "Acesso negado. Somente administradores podem realizar esta ação." });
+        return; // Stop execution
     }
     next();
 };
+exports.checkAdminRoleMiddleware = checkAdminRoleMiddleware;
+// Middleware to check if user is Admin or owns the company
+// TODO: Implement this properly when Company has an ownerId
+const checkAdminOrCompanyOwnerMiddleware = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    const companyId = req.params.id || req.body.companyId;
+    if (((_a = req.user) === null || _a === void 0 ? void 0 : _a.role) === client_1.UserRole.ADMIN) {
+        return next(); // Admin can do anything
+    }
+    if (!companyId) {
+        // If no companyId, only admin can proceed (e.g., creating a company)
+        return (0, exports.checkAdminRoleMiddleware)(req, res, next);
+    }
+    try {
+        // Fetch the company to check its owner
+        // const company = await companyRepository.findById(companyId);
+        // if (company && company.ownerId === req.user?.id) { // Assuming ownerId exists
+        //     return next();
+        // }
+        // Placeholder: Since ownerId is not in the schema, restrict to Admin for now
+        res.status(403).json({ message: "Acesso negado. Permissão insuficiente (Admin or Company Owner required)." });
+        // No return needed here as response is sent
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.checkAdminOrCompanyOwnerMiddleware = checkAdminOrCompanyOwnerMiddleware;
 // Obter todas as empresas (com filtros e paginação) - Public or requires different auth?
-const getAllCompanies = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+const getAllCompaniesHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { q, category, city, state, minRating, sort, page = "1", limit = "10" } = req.query;
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
     if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1) {
-        // Return the response directly
-        return res.status(400).json({ message: "Parâmetros de paginação inválidos (page e limit devem ser números positivos)." });
+        res.status(400).json({ message: "Parâmetros de paginação inválidos (page e limit devem ser números positivos)." });
+        return; // Stop execution
     }
     const skip = (pageNum - 1) * limitNum;
     try {
@@ -83,8 +113,7 @@ const getAllCompanies = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
         }
         const companies = yield companyRepository_1.default.findMany(filters, orderBy, skip, limitNum);
         const totalCompanies = yield companyRepository_1.default.count(filters);
-        // Return the response
-        return res.json({
+        res.json({
             data: companies,
             pagination: {
                 currentPage: pageNum,
@@ -98,112 +127,108 @@ const getAllCompanies = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
         next(error);
     }
 });
-exports.getAllCompanies = getAllCompanies;
+exports.getAllCompaniesHandler = getAllCompaniesHandler;
 // Obter uma empresa específica pelo ID - Public or requires different auth?
-const getCompanyById = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+const getCompanyByIdHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     try {
         const company = yield companyRepository_1.default.findById(id);
         if (!company) {
-            // Return the response directly
-            return res.status(404).json({ message: "Empresa não encontrada" });
+            res.status(404).json({ message: "Empresa não encontrada" });
+            return; // Stop execution
         }
-        // Return the response
-        return res.json(company);
+        res.json(company);
     }
     catch (error) {
         next(error);
     }
 });
-exports.getCompanyById = getCompanyById;
+exports.getCompanyByIdHandler = getCompanyByIdHandler;
 // Criar uma nova empresa - Requires ADMIN role
-exports.createCompany = [
-    checkAdminRole, // Add authorization check middleware
-    (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-        const _a = req.body, { address } = _a, companyData = __rest(_a, ["address"]); // Destructure address and company data
-        try {
-            if (companyData.categories && !Array.isArray(companyData.categories)) {
-                companyData.categories = [companyData.categories];
-            }
-            // TODO: Add ownerId based on req.user.id if schema changes
-            const newCompany = yield companyRepository_1.default.create(companyData, address);
-            // Return the response
-            return res.status(201).json(newCompany);
+// Main handler logic
+const createCompanyHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const _a = req.body, { address } = _a, companyData = __rest(_a, ["address"]); // Destructure address and company data
+    try {
+        // Authorization already checked by middleware
+        if (companyData.categories && !Array.isArray(companyData.categories)) {
+            companyData.categories = [companyData.categories];
         }
-        catch (error) {
-            next(error);
-        }
-    })
-];
+        // TODO: Add ownerId based on req.user.id if schema changes
+        const newCompany = yield companyRepository_1.default.create(companyData, address);
+        res.status(201).json(newCompany);
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.createCompanyHandler = createCompanyHandler;
 // Atualizar uma empresa existente - Requires ADMIN role (or owner)
-exports.updateCompany = [
-    checkAdminRole, // Add authorization check middleware (simplest approach for now)
-    (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-        const { id } = req.params;
-        const _a = req.body, { address } = _a, companyData = __rest(_a, ["address"]); // Destructure address and company data
-        try {
-            // TODO: Add check: if not ADMIN, verify req.user.id owns company with id `id`
-            // Ensure company exists before attempting update (optional, repo might handle)
-            const existingCompany = yield companyRepository_1.default.findById(id);
-            if (!existingCompany) {
-                // Return the response directly
-                return res.status(404).json({ message: "Empresa não encontrada para atualização." });
-            }
-            // Authorization check (placeholder for ownership)
-            // if (req.user?.role !== UserRole.ADMIN && existingCompany.ownerId !== req.user?.id) {
-            //     return res.status(403).json({ message: "Acesso negado." });
-            // }
-            if (companyData.categories && !Array.isArray(companyData.categories)) {
-                companyData.categories = [companyData.categories];
-            }
-            // Ensure rating and totalReviews are numbers if provided
-            if (companyData.rating !== undefined)
-                companyData.rating = parseFloat(companyData.rating);
-            if (companyData.totalReviews !== undefined)
-                companyData.totalReviews = parseInt(companyData.totalReviews, 10);
-            const updatedCompany = yield companyRepository_1.default.update(id, companyData, address);
-            // Return the response
-            return res.json(updatedCompany);
+// Main handler logic
+const updateCompanyHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id } = req.params;
+    const _a = req.body, { address } = _a, companyData = __rest(_a, ["address"]); // Destructure address and company data
+    try {
+        // Authorization already checked by middleware
+        // Ensure company exists before attempting update (optional, repo might handle)
+        const existingCompany = yield companyRepository_1.default.findById(id);
+        if (!existingCompany) {
+            res.status(404).json({ message: "Empresa não encontrada para atualização." });
+            return; // Stop execution
         }
-        catch (error) {
-            // Handle Prisma P2025 specifically if repo doesn't
-            if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-                // Return the response directly
-                return res.status(404).json({ message: "Empresa não encontrada para atualização." });
-            }
-            next(error);
+        // Additional Authorization check (placeholder for ownership)
+        // if (req.user?.role !== UserRole.ADMIN && existingCompany.ownerId !== req.user?.id) {
+        //     res.status(403).json({ message: "Acesso negado." });
+        //     return;
+        // }
+        if (companyData.categories && !Array.isArray(companyData.categories)) {
+            companyData.categories = [companyData.categories];
         }
-    })
-];
+        // Ensure rating and totalReviews are numbers if provided
+        if (companyData.rating !== undefined)
+            companyData.rating = parseFloat(String(companyData.rating));
+        if (companyData.totalReviews !== undefined)
+            companyData.totalReviews = parseInt(String(companyData.totalReviews), 10);
+        const updatedCompany = yield companyRepository_1.default.update(id, companyData, address);
+        res.json(updatedCompany);
+    }
+    catch (error) {
+        // Handle Prisma P2025 specifically if repo doesn't
+        if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+            res.status(404).json({ message: "Empresa não encontrada para atualização." });
+            return; // Stop execution
+        }
+        next(error);
+    }
+});
+exports.updateCompanyHandler = updateCompanyHandler;
 // Deletar uma empresa - Requires ADMIN role (or owner)
-exports.deleteCompany = [
-    checkAdminRole, // Add authorization check middleware (simplest approach for now)
-    (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-        const { id } = req.params;
-        try {
-            // TODO: Add check: if not ADMIN, verify req.user.id owns company with id `id`
-            // Ensure company exists before attempting delete (optional, repo might handle)
-            const existingCompany = yield companyRepository_1.default.findById(id);
-            if (!existingCompany) {
-                // Return the response directly
-                return res.status(404).json({ message: "Empresa não encontrada para exclusão." });
-            }
-            // Authorization check (placeholder for ownership)
-            // if (req.user?.role !== UserRole.ADMIN && existingCompany.ownerId !== req.user?.id) {
-            //     return res.status(403).json({ message: "Acesso negado." });
-            // }
-            const deletedCompany = yield companyRepository_1.default.delete(id);
-            // Repo delete might throw if not found, handle P2025 if needed
-            // Return the response
-            return res.status(200).json({ message: "Empresa excluída com sucesso", company: deletedCompany });
+// Main handler logic
+const deleteCompanyHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id } = req.params;
+    try {
+        // Authorization already checked by middleware
+        // Ensure company exists before attempting delete (optional, repo might handle)
+        const existingCompany = yield companyRepository_1.default.findById(id);
+        if (!existingCompany) {
+            res.status(404).json({ message: "Empresa não encontrada para exclusão." });
+            return; // Stop execution
         }
-        catch (error) {
-            // Handle Prisma P2025 specifically if repo doesn't
-            if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-                // Return the response directly
-                return res.status(404).json({ message: "Empresa não encontrada para exclusão." });
-            }
-            next(error);
+        // Additional Authorization check (placeholder for ownership)
+        // if (req.user?.role !== UserRole.ADMIN && existingCompany.ownerId !== req.user?.id) {
+        //     res.status(403).json({ message: "Acesso negado." });
+        //     return;
+        // }
+        const deletedCompany = yield companyRepository_1.default.delete(id);
+        // Repo delete might throw if not found, handle P2025 if needed
+        res.status(200).json({ message: "Empresa excluída com sucesso", company: deletedCompany });
+    }
+    catch (error) {
+        // Handle Prisma P2025 specifically if repo doesn't
+        if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+            res.status(404).json({ message: "Empresa não encontrada para exclusão." });
+            return; // Stop execution
         }
-    })
-];
+        next(error);
+    }
+});
+exports.deleteCompanyHandler = deleteCompanyHandler;

@@ -1,9 +1,9 @@
 import request from "supertest";
-import { app } from "../src/app"; // Corrected path to app
+import { app } from "../index"; // Corrected path to app
 import { prisma } from "../utils/prismaClient";
 import { AppointmentStatus, UserRole } from "@prisma/client";
 import { addHours, formatISO, startOfDay, addDays, setHours, setMinutes, subHours, addMinutes } from "date-fns";
-import { generateToken } from "../src/utils/jwt"; // Corrected path to jwt utils
+import { generateToken } from "../utils/jwt"; // Corrected path to jwt utils
 import { GamificationEventType } from "../services/gamificationService"; // Added import for enum
 
 // --- Test Data Setup ---
@@ -110,7 +110,6 @@ beforeAll(async () => {
     testProfessional = await prisma.professional.create({
         data: {
             // Link professional profile to the professional user account if needed
-            userId: testProfessionalUser.id, 
             name: testProfessionalUser.name,
             role: "Hair Stylist",
             companyId: testCompany.id,

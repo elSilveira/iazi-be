@@ -1,10 +1,13 @@
-import { Router, Request, Response, NextFunction } from "express"; // Import Request, Response, NextFunction
+import { Router } from "express";
 import {
-  getAllServices,
-  getServiceById,
-  createService,
-  updateService,
-  deleteService,
+  getAllServicesHandler,
+  getServiceByIdHandler,
+  createServiceHandler,
+  updateServiceHandler,
+  deleteServiceHandler,
+  checkAdminRoleMiddleware,
+  checkAdminOrCompanyOwnerMiddleware,
+  loadExistingServiceMiddleware
 } from "../controllers/serviceController";
 import { 
   createServiceValidator, 
@@ -12,21 +15,49 @@ import {
   serviceIdValidator 
 } from "../validators/serviceValidators";
 import { validateRequest } from "../middlewares/validationMiddleware";
-import { asyncHandler } from "../utils/asyncHandler"; // Import asyncHandler
-// TODO: Adicionar middleware de autenticação/autorização para rotas protegidas (create, update, delete)
+import asyncHandler from "../utils/asyncHandler"; // Corrected import
 
 const router = Router();
 
-// Aplicar asyncHandler e usar spread operator para arrays de validadores
-router.get("/", asyncHandler(getAllServices)); 
+// GET / - Get all services
+router.get("/", asyncHandler(getAllServicesHandler));
 
-router.get("/:id", ...serviceIdValidator, validateRequest, asyncHandler(getServiceById));
+// GET /:id - Get service by ID
+router.get(
+  "/:id", 
+  serviceIdValidator[0], // Pass the single middleware function directly
+  validateRequest, 
+  asyncHandler(getServiceByIdHandler)
+);
 
-router.post("/", ...createServiceValidator, validateRequest, asyncHandler(createService));
+// POST / - Create a new service
+router.post(
+  "/", 
+  checkAdminRoleMiddleware, // Apply auth middleware
+  ...createServiceValidator, // Spread validation middlewares
+  validateRequest, 
+  asyncHandler(createServiceHandler)
+);
 
-router.put("/:id", ...updateServiceValidator, validateRequest, asyncHandler(updateService));
+// PUT /:id - Update a service
+router.put(
+  "/:id", 
+  loadExistingServiceMiddleware, // Load service first
+  checkAdminOrCompanyOwnerMiddleware, // Then check ownership/admin
+  ...updateServiceValidator, // Spread validation middlewares
+  validateRequest, 
+  asyncHandler(updateServiceHandler)
+);
 
-router.delete("/:id", ...serviceIdValidator, validateRequest, asyncHandler(deleteService));
+// DELETE /:id - Delete a service
+router.delete(
+  "/:id", 
+  loadExistingServiceMiddleware, // Load service first
+  checkAdminOrCompanyOwnerMiddleware, // Then check ownership/admin
+  serviceIdValidator[0], // Pass the single ID validation middleware directly
+  validateRequest, 
+  asyncHandler(deleteServiceHandler)
+);
 
 export default router;
 

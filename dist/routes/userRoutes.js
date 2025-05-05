@@ -92,7 +92,7 @@ router.get("/me", userController_1.getUserProfile);
  *       401:
  *         description: Não autorizado.
  *       409:
- *         description: Conflito (ex: email já em uso).
+ *         description: "Conflito (ex: email já em uso)."
  *       500:
  *         description: Erro interno do servidor ao atualizar.
  */

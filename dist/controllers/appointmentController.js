@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAvailability = exports.updateAppointmentStatus = exports.getAppointmentById = exports.listAppointments = exports.createAppointment = exports.checkAvailability = exports.MIN_CANCELLATION_HOURS = exports.MIN_BOOKING_ADVANCE_HOURS = void 0;
+exports.getAvailability = exports.updateAppointmentStatus = exports.getAppointmentById = exports.listAppointments = exports.createAppointment = exports.checkAvailability = exports.getWorkingHoursForDay = exports.parseDuration = exports.MIN_CANCELLATION_HOURS = exports.MIN_BOOKING_ADVANCE_HOURS = void 0;
 const appointmentRepository_1 = require("../repositories/appointmentRepository");
 const serviceRepository_1 = require("../repositories/serviceRepository");
 const professionalRepository_1 = require("../repositories/professionalRepository");
@@ -48,6 +48,7 @@ const parseDuration = (durationString) => {
     const minutes = parseInt(match[2] || '0', 10);
     return hours * 60 + minutes;
 };
+exports.parseDuration = parseDuration;
 // Helper function to get working hours for a specific day
 const getWorkingHoursForDay = (workingHoursJson, date) => {
     // Check if workingHoursJson is a valid object and not null/undefined
@@ -78,6 +79,7 @@ const getWorkingHoursForDay = (workingHoursJson, date) => {
     }
     return { start: startTime, end: endTime };
 };
+exports.getWorkingHoursForDay = getWorkingHoursForDay;
 // Helper function to check availability
 const checkAvailability = (professionalId, start, end) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
@@ -88,7 +90,7 @@ const checkAvailability = (professionalId, start, end) => __awaiter(void 0, void
         throw new Error('Profissional não encontrado para verificação de disponibilidade.');
     // Use professional's specific hours, fallback to company hours if needed
     const workingHoursJson = professional.workingHours || ((_a = professional.company) === null || _a === void 0 ? void 0 : _a.workingHours) || null;
-    const workingHoursToday = getWorkingHoursForDay(workingHoursJson, start);
+    const workingHoursToday = (0, exports.getWorkingHoursForDay)(workingHoursJson, start);
     if (!workingHoursToday) {
         console.log(`Availability Check: No working hours defined for professional ${professionalId} on ${(0, date_fns_1.format)(start, 'yyyy-MM-dd')}`);
         return false; // Not working on this day
@@ -112,7 +114,7 @@ const checkAvailability = (professionalId, start, end) => __awaiter(void 0, void
     });
     for (const appt of conflictingAppointments) {
         const apptService = yield serviceRepository_1.serviceRepository.findById(appt.serviceId);
-        const apptDuration = apptService ? parseDuration(apptService.duration) : 0;
+        const apptDuration = apptService ? (0, exports.parseDuration)(apptService.duration) : 0;
         if (apptDuration === null || apptDuration <= 0)
             continue; // Skip if duration is invalid
         const apptEnd = (0, date_fns_1.addMinutes)(appt.date, apptDuration);
@@ -183,7 +185,7 @@ const createAppointment = (req, res, next) => __awaiter(void 0, void 0, void 0, 
         }
         // --- Entity Validation & Selection ---
         const service = yield serviceRepository_1.serviceRepository.findById(serviceId);
-        const durationMinutes = service ? parseDuration(service.duration) : null;
+        const durationMinutes = service ? (0, exports.parseDuration)(service.duration) : null;
         if (!service || durationMinutes === null || durationMinutes <= 0) {
             return res.status(404).json({ message: 'Serviço não encontrado ou duração inválida.' });
         }
@@ -524,7 +526,7 @@ const getAvailability = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
             return res.status(400).json({ message: "Formato de data inválido. Use YYYY-MM-DD." });
         }
         const service = yield serviceRepository_1.serviceRepository.findById(serviceId);
-        const duration = service ? parseDuration(service.duration) : null;
+        const duration = service ? (0, exports.parseDuration)(service.duration) : null;
         if (!service || duration === null || duration <= 0) { // Check duration validity
             return res.status(404).json({ message: "Serviço não encontrado ou duração inválida." });
         }
@@ -563,7 +565,7 @@ const getAvailability = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
             allAvailableSlots[profId] = [];
             // Access company safely
             const workingHoursJson = prof.workingHours || ((_a = prof.company) === null || _a === void 0 ? void 0 : _a.workingHours) || null;
-            const workingHoursToday = getWorkingHoursForDay(workingHoursJson, targetDate);
+            const workingHoursToday = (0, exports.getWorkingHoursForDay)(workingHoursJson, targetDate);
             if (!workingHoursToday)
                 continue; // Skip if not working
             // Get existing appointments and blocks for this professional on this day
@@ -585,7 +587,7 @@ const getAvailability = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
             const appointmentServiceIds = existingAppointments.map(a => a.serviceId);
             const appointmentServices = yield serviceRepository_1.serviceRepository.findMany({ id: { in: appointmentServiceIds } }, {}, 0, 9999); // Provide default args
             const serviceDurationMap = new Map();
-            appointmentServices.forEach(s => serviceDurationMap.set(s.id, parseDuration(s.duration)));
+            appointmentServices.forEach(s => serviceDurationMap.set(s.id, (0, exports.parseDuration)(s.duration)));
             // Iterate through potential slots
             let currentSlotStart = workingHoursToday.start;
             while (currentSlotStart < workingHoursToday.end) {
