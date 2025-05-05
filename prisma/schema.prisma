@@ -71,7 +71,7 @@ model Company {
   email           String?
   address         CompanyAddress? // Relation to CompanyAddress
   workingHours    Json?          @map("working_hours") // Horário de funcionamento da empresa
-  categories      String[]       // TODO: Consider changing to relation with Category model. Indexing String[] might require specific DB features (e.g., GIN in Postgres).
+  categories      String[]       // TODO: Consider changing to relation with Category model.
   services        Service[]
   professionals   Professional[]
   reviews         Review[]
@@ -80,7 +80,7 @@ model Company {
 
   @@index([name])   // Index for sorting and searching
   @@index([rating]) // Index for sorting and filtering
-  // @@index([categories]) // Indexing array depends on DB
+  @@index([categories], type: Gin) // Added GIN index for categories array (PostgreSQL)
   @@map("companies") // Map to lowercase table name
 }
 
@@ -225,6 +225,7 @@ model Appointment {
   @@index([serviceId])      // Index for service appointments
   @@index([professionalId]) // Index for professional appointments
   @@index([date])           // Index for filtering by date
+  @@index([status])         // Added index for status filtering
   @@map("appointments") // Map to lowercase table name
 }
 
@@ -361,34 +362,12 @@ enum AppointmentStatus {
   @@map("appointment_status") // Map enum to lowercase name
 }
 
-// Enumeração para papel do usuário (NOVO)
+// Enumeração para papel do usuário
 enum UserRole {
   USER
   ADMIN
-  PROFESSIONAL // Added PROFESSIONAL role
+  PROFESSIONAL // Added professional role
 
   @@map("user_role") // Map enum to lowercase name
-}
-
-
-
-
-// --- NOTIFICATION MODELS ---
-
-// Modelo de Notificação
-model Notification {
-  id                String    @id @default(uuid())
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId            String    @map("user_id")
-  type              String    // Tipo da notificação (ex: "APPOINTMENT_CONFIRMED", "APPOINTMENT_REMINDER")
-  message           String    // Mensagem da notificação
-  relatedEntityId   String?   @map("related_entity_id") // ID da entidade relacionada (ex: Appointment ID)
-  relatedEntityType String?   @map("related_entity_type") // Tipo da entidade (ex: "Appointment")
-  isRead            Boolean   @default(false) @map("is_read") // Se a notificação foi lida
-  createdAt         DateTime  @default(now()) @map("created_at")
-
-  @@index([userId, isRead, createdAt]) // Index otimizado para buscar não lidas do usuário
-  @@index([createdAt]) // Index para ordenação geral ou limpeza
-  @@map("notifications")
 }
 

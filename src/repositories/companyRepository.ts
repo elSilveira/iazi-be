@@ -13,13 +13,28 @@ class CompanyRepository {
     orderBy: Prisma.CompanyOrderByWithRelationInput,
     skip: number,
     take: number
-  ): Promise<Company[]> {
+  ): Promise<Partial<Company>[]> { // Return Partial<Company> as we are selecting fields
     return this.prisma.company.findMany({
       where: filters,
       orderBy: orderBy,
       skip: skip,
       take: take,
-      include: { address: true }, // Include CompanyAddress
+      // Select only necessary fields for the list view
+      select: {
+        id: true,
+        name: true,
+        logo: true,
+        rating: true,
+        totalReviews: true,
+        address: {
+          select: {
+            city: true,
+            state: true,
+          }
+        },
+        categories: true, // Keep categories for filtering/display
+        // Add other essential fields for list view if needed
+      },
     });
   }
 
@@ -31,13 +46,27 @@ class CompanyRepository {
   }
 
   // Keep existing findAll for basic pagination without filters
-  async findAll(page: number, limit: number): Promise<{ companies: Company[], total: number }> {
+  async findAll(page: number, limit: number): Promise<{ companies: Partial<Company>[], total: number }> {
     const skip = (page - 1) * limit;
     const [companies, total] = await this.prisma.$transaction([
       this.prisma.company.findMany({
         skip: skip,
         take: limit,
-        include: { address: true }, // Include CompanyAddress
+        // Select only necessary fields for the list view
+        select: {
+          id: true,
+          name: true,
+          logo: true,
+          rating: true,
+          totalReviews: true,
+          address: {
+            select: {
+              city: true,
+              state: true,
+            }
+          },
+          categories: true,
+        },
         orderBy: { createdAt: "desc" },
       }),
       this.prisma.company.count(), // Count without filters for total
@@ -49,9 +78,9 @@ class CompanyRepository {
     return this.prisma.company.findUnique({
       where: { id },
       include: {
-        address: true, // Include CompanyAddress
-        services: true,
-        professionals: true,
+        address: true, // Include full CompanyAddress for detail view
+        services: { select: { id: true, name: true, price: true, duration: true } }, // Select specific service fields
+        professionals: { select: { id: true, name: true, role: true, image: true } }, // Select specific professional fields
         reviews: {
           include: {
             user: { select: { id: true, name: true, avatar: true } }, // Include user details in reviews
@@ -73,7 +102,7 @@ class CompanyRepository {
             }
           : undefined,
       },
-      include: { address: true }, // Include CompanyAddress
+      include: { address: true }, // Include CompanyAddress on create/update result
     });
   }
 
@@ -94,7 +123,7 @@ class CompanyRepository {
             }
           : undefined,
       },
-      include: { address: true }, // Include CompanyAddress
+      include: { address: true }, // Include CompanyAddress on create/update result
     });
   }
 
