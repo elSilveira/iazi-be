@@ -25,16 +25,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteCompany = exports.updateCompany = exports.createCompany = exports.getCompanyById = exports.getAllCompanies = void 0;
 const companyRepository_1 = __importDefault(require("../repositories/companyRepository")); // Corrected: default import
-// Obter todas as empresas (com filtros e paginação)
+const client_1 = require("@prisma/client"); // Added UserRole
+// Helper function for authorization check (can be moved to middleware later)
+const checkAdminRole = (req, res, next) => {
+    var _a;
+    if (((_a = req.user) === null || _a === void 0 ? void 0 : _a.role) !== client_1.UserRole.ADMIN) {
+        return res.status(403).json({ message: "Acesso negado. Somente administradores podem realizar esta ação." });
+    }
+    next();
+};
+// Obter todas as empresas (com filtros e paginação) - Public or requires different auth?
 const getAllCompanies = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    // Extrair filtros e paginação da query string
-    const { q, // Search term
-    category, // Filter by category (from categories array)
-    city, state, minRating, sort, // e.g., "rating_desc", "name_asc"
-    page = "1", // Default page 1
-    limit = "10" // Default 10 items per page
-     } = req.query;
-    // Validar e converter parâmetros de paginação
+    // ... (existing code for filtering and pagination) ...
+    const { q, category, city, state, minRating, sort, page = "1", limit = "10" } = req.query;
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
     if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1) {
@@ -43,7 +46,6 @@ const getAllCompanies = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
     }
     const skip = (pageNum - 1) * limitNum;
     try {
-        // Construir objeto de filtros para Prisma
         const filters = {};
         if (category)
             filters.categories = { has: category };
@@ -53,30 +55,25 @@ const getAllCompanies = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
                 { name: { contains: searchTerm, mode: "insensitive" } },
                 { description: { contains: searchTerm, mode: "insensitive" } },
                 { categories: { has: searchTerm } },
-                // Add search in address fields
                 { address: { city: { contains: searchTerm, mode: "insensitive" } } },
                 { address: { state: { contains: searchTerm, mode: "insensitive" } } },
             ];
         }
-        // Corrected: Add location filters properly
-        const addressFilter = {}; // Corrected type
+        const addressFilter = {};
         if (city)
             addressFilter.city = { contains: city, mode: "insensitive" };
         if (state)
             addressFilter.state = { contains: state, mode: "insensitive" };
-        // Only add the address filter if city or state was provided
         if (Object.keys(addressFilter).length > 0) {
             filters.address = addressFilter;
         }
-        // Add rating filter (schema has rating as Float)
         if (minRating) {
             const ratingNum = parseFloat(minRating);
             if (!isNaN(ratingNum)) {
                 filters.rating = { gte: ratingNum };
             }
         }
-        // Construir objeto de ordenação para Prisma
-        let orderBy = {};
+        let orderBy = { name: "asc" }; // Default sort
         switch (sort) {
             case "rating_desc":
                 orderBy = { rating: "desc" };
@@ -84,10 +81,7 @@ const getAllCompanies = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
             case "name_asc":
                 orderBy = { name: "asc" };
                 break;
-            default:
-                orderBy = { name: "asc" }; // Default sort
         }
-        // Assume repository methods findMany and count exist
         const companies = yield companyRepository_1.default.findMany(filters, orderBy, skip, limitNum);
         const totalCompanies = yield companyRepository_1.default.count(filters);
         res.json({
@@ -105,15 +99,14 @@ const getAllCompanies = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
     }
 });
 exports.getAllCompanies = getAllCompanies;
-// Obter uma empresa específica pelo ID
+// Obter uma empresa específica pelo ID - Public or requires different auth?
 const getCompanyById = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     try {
         const company = yield companyRepository_1.default.findById(id);
         if (!company) {
-            const error = new Error("Empresa não encontrada");
-            error.statusCode = 404;
-            return next(error);
+            // Use status 404 directly instead of custom error property
+            return res.status(404).json({ message: "Empresa não encontrada" });
         }
         res.json(company);
     }
@@ -122,50 +115,86 @@ const getCompanyById = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
     }
 });
 exports.getCompanyById = getCompanyById;
-// Criar uma nova empresa
-const createCompany = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const _a = req.body, { address } = _a, companyData = __rest(_a, ["address"]);
-    try {
-        if (companyData.categories && !Array.isArray(companyData.categories)) {
-            companyData.categories = [companyData.categories];
+// Criar uma nova empresa - Requires ADMIN role
+exports.createCompany = [
+    checkAdminRole, // Add authorization check middleware
+    (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+        const _a = req.body, { address } = _a, companyData = __rest(_a, ["address"]);
+        try {
+            if (companyData.categories && !Array.isArray(companyData.categories)) {
+                companyData.categories = [companyData.categories];
+            }
+            // TODO: Add ownerId based on req.user.id if schema changes
+            const newCompany = yield companyRepository_1.default.create(companyData, address);
+            res.status(201).json(newCompany);
         }
-        const newCompany = yield companyRepository_1.default.create(companyData, address);
-        res.status(201).json(newCompany);
-    }
-    catch (error) {
-        next(error);
-    }
-});
-exports.createCompany = createCompany;
-// Atualizar uma empresa existente
-const updateCompany = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params;
-    const _a = req.body, { address } = _a, companyData = __rest(_a, ["address"]);
-    try {
-        if (companyData.categories && !Array.isArray(companyData.categories)) {
-            companyData.categories = [companyData.categories];
+        catch (error) {
+            next(error);
         }
-        if (companyData.rating !== undefined)
-            companyData.rating = parseFloat(companyData.rating);
-        if (companyData.totalReviews !== undefined)
-            companyData.totalReviews = parseInt(companyData.totalReviews, 10);
-        const updatedCompany = yield companyRepository_1.default.update(id, companyData, address);
-        res.json(updatedCompany);
-    }
-    catch (error) {
-        next(error);
-    }
-});
-exports.updateCompany = updateCompany;
-// Deletar uma empresa
-const deleteCompany = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params;
-    try {
-        const deletedCompany = yield companyRepository_1.default.delete(id);
-        res.status(200).json({ message: "Empresa excluída com sucesso", company: deletedCompany });
-    }
-    catch (error) {
-        next(error);
-    }
-});
-exports.deleteCompany = deleteCompany;
+    })
+];
+// Atualizar uma empresa existente - Requires ADMIN role (or owner)
+exports.updateCompany = [
+    checkAdminRole, // Add authorization check middleware (simplest approach for now)
+    (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+        const { id } = req.params;
+        const _a = req.body, { address } = _a, companyData = __rest(_a, ["address"]);
+        try {
+            // TODO: Add check: if not ADMIN, verify req.user.id owns company with id `id`
+            // Ensure company exists before attempting update (optional, repo might handle)
+            const existingCompany = yield companyRepository_1.default.findById(id);
+            if (!existingCompany) {
+                return res.status(404).json({ message: "Empresa não encontrada para atualização." });
+            }
+            // Authorization check (placeholder for ownership)
+            // if (req.user?.role !== UserRole.ADMIN && existingCompany.ownerId !== req.user?.id) {
+            //     return res.status(403).json({ message: "Acesso negado." });
+            // }
+            if (companyData.categories && !Array.isArray(companyData.categories)) {
+                companyData.categories = [companyData.categories];
+            }
+            if (companyData.rating !== undefined)
+                companyData.rating = parseFloat(companyData.rating);
+            if (companyData.totalReviews !== undefined)
+                companyData.totalReviews = parseInt(companyData.totalReviews, 10);
+            const updatedCompany = yield companyRepository_1.default.update(id, companyData, address);
+            res.json(updatedCompany);
+        }
+        catch (error) {
+            // Handle Prisma P2025 specifically if repo doesn't
+            if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+                return res.status(404).json({ message: "Empresa não encontrada para atualização." });
+            }
+            next(error);
+        }
+    })
+];
+// Deletar uma empresa - Requires ADMIN role (or owner)
+exports.deleteCompany = [
+    checkAdminRole, // Add authorization check middleware (simplest approach for now)
+    (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+        const { id } = req.params;
+        try {
+            // TODO: Add check: if not ADMIN, verify req.user.id owns company with id `id`
+            // Ensure company exists before attempting delete (optional, repo might handle)
+            const existingCompany = yield companyRepository_1.default.findById(id);
+            if (!existingCompany) {
+                return res.status(404).json({ message: "Empresa não encontrada para exclusão." });
+            }
+            // Authorization check (placeholder for ownership)
+            // if (req.user?.role !== UserRole.ADMIN && existingCompany.ownerId !== req.user?.id) {
+            //     return res.status(403).json({ message: "Acesso negado." });
+            // }
+            const deletedCompany = yield companyRepository_1.default.delete(id);
+            // Repo delete might throw if not found, handle P2025 if needed
+            res.status(200).json({ message: "Empresa excluída com sucesso", company: deletedCompany });
+        }
+        catch (error) {
+            // Handle Prisma P2025 specifically if repo doesn't
+            if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+                return res.status(404).json({ message: "Empresa não encontrada para exclusão." });
+            }
+            next(error);
+        }
+    })
+];

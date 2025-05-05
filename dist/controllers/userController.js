@@ -23,11 +23,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateUserProfile = exports.getUserProfile = void 0;
+exports.getUserFeed = exports.updateUserProfile = exports.getUserProfile = void 0;
 const userRepository_1 = require("../repositories/userRepository");
 const client_1 = require("@prisma/client");
 const bcrypt_1 = __importDefault(require("bcrypt"));
-const prisma_1 = require("../lib/prisma");
+const prismaClient_1 = require("../utils/prismaClient"); // Corrected import path
+const activityLogService_1 = require("../services/activityLogService"); // Import activity feed service
+// Extend Request to include user property from authMiddleware
+// interface AuthRequest extends Request { // Removed, using global declaration
+//   user?: { id: string };
+// }
 // Get current user profile
 const getUserProfile = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
@@ -56,16 +61,16 @@ exports.getUserProfile = getUserProfile;
 const updateUserProfile = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
-    const { name, email, avatar, password } = req.body;
+    const { name, email, avatar, password, bio, phone } = req.body; // Added bio and phone
     if (!userId) {
         res.status(401).json({ message: "Usuário não autenticado." });
         return;
     }
     try {
         const updateData = {};
-        if (name)
+        if (name !== undefined)
             updateData.name = name;
-        if (email) {
+        if (email !== undefined) {
             // Check if email is already taken by another user
             const existingUser = yield userRepository_1.userRepository.findByEmail(email);
             if (existingUser && existingUser.id !== userId) {
@@ -74,14 +79,18 @@ const updateUserProfile = (req, res, next) => __awaiter(void 0, void 0, void 0, 
             }
             updateData.email = email;
         }
-        if (avatar)
+        if (avatar !== undefined)
             updateData.avatar = avatar;
+        if (bio !== undefined)
+            updateData.bio = bio; // Added bio update
+        if (phone !== undefined)
+            updateData.phone = phone; // Added phone update
         if (password) {
             // Hash the new password if provided
             const saltRounds = 10;
             updateData.password = yield bcrypt_1.default.hash(password, saltRounds);
         }
-        const updatedUser = yield prisma_1.prisma.user.update({
+        const updatedUser = yield prismaClient_1.prisma.user.update({
             where: { id: userId },
             data: updateData,
         });
@@ -99,3 +108,28 @@ const updateUserProfile = (req, res, next) => __awaiter(void 0, void 0, void 0, 
     }
 });
 exports.updateUserProfile = updateUserProfile;
+// Get current user's activity feed
+const getUserFeed = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    const { page = '1', pageSize = '10' } = req.query;
+    if (!userId) {
+        res.status(401).json({ message: "Usuário não autenticado." });
+        return;
+    }
+    const pageNum = parseInt(page, 10);
+    const pageSizeNum = parseInt(pageSize, 10);
+    if (isNaN(pageNum) || pageNum < 1 || isNaN(pageSizeNum) || pageSizeNum < 1) {
+        res.status(400).json({ message: "Parâmetros de paginação inválidos (page e pageSize devem ser números positivos)." });
+        return;
+    }
+    try {
+        const feedData = yield (0, activityLogService_1.getUserActivityFeed)(userId, pageNum, pageSizeNum);
+        res.json(feedData);
+    }
+    catch (error) {
+        console.error("Error fetching user activity feed:", error);
+        next(error); // Pass error to the central error handler
+    }
+});
+exports.getUserFeed = getUserFeed;

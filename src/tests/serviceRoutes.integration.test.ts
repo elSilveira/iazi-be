@@ -1,8 +1,8 @@
 import request from "supertest";
-import { app } from "../index"; // Assuming your Express app is exported from index.ts
+import { app } from "../index"; // Corrected path
 import { prisma } from "../utils/prismaClient"; // Corrected path
 import { Decimal } from "@prisma/client/runtime/library";
-import { UserRole } from "@prisma/client";
+import { UserRole, Category, Company } from "@prisma/client"; // Import necessary types
 import jwt from "jsonwebtoken";
 
 // --- Test Setup ---
@@ -10,8 +10,8 @@ let adminToken: string;
 let userToken: string;
 let testCompanyId1: string;
 let testCompanyId2: string;
-let testCategoryId1: string;
-let testCategoryId2: string;
+let testCategoryId1: number; // Changed to number
+let testCategoryId2: number; // Changed to number
 let testServiceId1: string;
 let testServiceId2: string;
 let testUserId: string;
@@ -26,20 +26,26 @@ const generateToken = (userId: string, role: UserRole): string => {
 // Helper to create test data
 const createTestData = async () => {
   // Create users (Admin and Regular)
-  const adminUser = await prisma.user.create({
-      data: {
+  const adminUser = await prisma.user.upsert({
+      where: { email: "admin.svc@test.com" },
+      update: { role: UserRole.ADMIN },
+      create: {
           name: "Test Admin Svc",
           email: "admin.svc@test.com",
           password: "hashedpassword", // Use a dummy hash for tests
           role: UserRole.ADMIN,
+          points: 0 // Add points
       }
   });
-  const regularUser = await prisma.user.create({
-      data: {
+  const regularUser = await prisma.user.upsert({
+      where: { email: "user.svc@test.com" },
+      update: { role: UserRole.USER },
+      create: {
           name: "Test User Svc",
           email: "user.svc@test.com",
           password: "hashedpassword",
           role: UserRole.USER,
+          points: 0 // Add points
       }
   });
   testAdminId = adminUser.id;
@@ -50,30 +56,38 @@ const createTestData = async () => {
   userToken = generateToken(regularUser.id, regularUser.role);
 
   // Create Categories
-  const category1 = await prisma.category.create({ data: { name: "Test Category Svc 1" } });
-  const category2 = await prisma.category.create({ data: { name: "Test Category Svc 2" } });
-  testCategoryId1 = category1.id;
-  testCategoryId2 = category2.id;
+  const category1: Category = await prisma.category.upsert({ 
+      where: { name: "Test Category Svc 1" },
+      update: {},
+      create: { name: "Test Category Svc 1" } 
+  });
+  const category2: Category = await prisma.category.upsert({ 
+      where: { name: "Test Category Svc 2" },
+      update: {},
+      create: { name: "Test Category Svc 2" } 
+  });
+  testCategoryId1 = category1.id; // Assign number ID
+  testCategoryId2 = category2.id; // Assign number ID
 
-  // Create Companies
-  const company1 = await prisma.company.create({
+  // Create Companies - Changed from upsert to create as name is not unique
+  const company1: Company = await prisma.company.create({
     data: {
       name: "Test Company Alpha Svc",
       description: "Description Alpha Svc",
       address: {
         create: {
-          street: "123 Main St Svc", city: "Testville Svc", state: "TS", zipCode: "12345",
+          street: "123 Main St Svc", city: "Testville Svc", state: "TS", zipCode: "12345", number: "1", neighborhood: "Downtown" // Added missing fields
         },
       },
     },
   });
-  const company2 = await prisma.company.create({
+  const company2: Company = await prisma.company.create({
     data: {
       name: "Test Company Beta Svc",
       description: "Description Beta Svc",
       address: {
         create: {
-          street: "456 Side St Svc", city: "AnotherCity Svc", state: "AC", zipCode: "67890",
+          street: "456 Side St Svc", city: "AnotherCity Svc", state: "AC", zipCode: "67890", number: "456", neighborhood: "Uptown" // Added missing fields
         },
       },
     },
@@ -88,7 +102,7 @@ const createTestData = async () => {
         description: "Basic service description Svc",
         price: new Decimal("50.00"),
         duration: "30min",
-        categoryId: category1.id,
+        categoryId: category1.id, // Use number ID
         companyId: company1.id,
       }
   });
@@ -98,7 +112,7 @@ const createTestData = async () => {
         description: "Premium offering Svc",
         price: new Decimal("150.50"),
         duration: "1h",
-        categoryId: category1.id,
+        categoryId: category1.id, // Use number ID
         companyId: company1.id,
       }
   });
@@ -112,7 +126,7 @@ const createTestData = async () => {
         description: "Standard package Svc",
         price: new Decimal("99.99"),
         duration: "45min",
-        categoryId: category2.id,
+        categoryId: category2.id, // Use number ID
         companyId: company2.id,
       },
        {
@@ -120,27 +134,28 @@ const createTestData = async () => {
         description: "Only at Alpha Svc",
         price: new Decimal("75.00"),
         duration: "1h",
-        categoryId: category2.id,
+        categoryId: category2.id, // Use number ID
         companyId: company1.id,
       },
     ],
+    skipDuplicates: true, // Add skipDuplicates
   });
 };
 
 // Clean up database before and after tests
 beforeAll(async () => {
   // Clean related tables first
-  await prisma.notification.deleteMany({});
   await prisma.activityLog.deleteMany({});
-  await prisma.badge.deleteMany({});
   await prisma.userBadge.deleteMany({});
-  await prisma.gamificationProgress.deleteMany({});
+  await prisma.badge.deleteMany({});
+  await prisma.gamificationEvent.deleteMany({}); // Added GamificationEvent
   await prisma.professionalService.deleteMany({});
   await prisma.appointment.deleteMany({});
   await prisma.review.deleteMany({});
   await prisma.service.deleteMany({});
   await prisma.professionalExperience.deleteMany({});
   await prisma.professionalEducation.deleteMany({});
+  await prisma.scheduleBlock.deleteMany({}); // Added ScheduleBlock
   await prisma.professional.deleteMany({});
   await prisma.companyAddress.deleteMany({});
   await prisma.company.deleteMany({});
@@ -153,17 +168,17 @@ beforeAll(async () => {
 
 afterAll(async () => {
   // Clean up again
-  await prisma.notification.deleteMany({});
   await prisma.activityLog.deleteMany({});
-  await prisma.badge.deleteMany({});
   await prisma.userBadge.deleteMany({});
-  await prisma.gamificationProgress.deleteMany({});
+  await prisma.badge.deleteMany({});
+  await prisma.gamificationEvent.deleteMany({}); // Added GamificationEvent
   await prisma.professionalService.deleteMany({});
   await prisma.appointment.deleteMany({});
   await prisma.review.deleteMany({});
   await prisma.service.deleteMany({});
   await prisma.professionalExperience.deleteMany({});
   await prisma.professionalEducation.deleteMany({});
+  await prisma.scheduleBlock.deleteMany({}); // Added ScheduleBlock
   await prisma.professional.deleteMany({});
   await prisma.companyAddress.deleteMany({});
   await prisma.company.deleteMany({});
@@ -183,7 +198,6 @@ describe("GET /api/services", () => {
     expect(res.body.pagination.totalItems).toBeGreaterThanOrEqual(4);
   });
 
-  // ... other GET filter/sort tests remain the same ...
   it("should filter services by companyId", async () => {
     const res = await request(app).get(`/api/services?companyId=${testCompanyId1}`);
     expect(res.statusCode).toEqual(200);
@@ -193,13 +207,13 @@ describe("GET /api/services", () => {
     });
   });
 
-  it("should filter services by category name", async () => {
-    const category = await prisma.category.findUnique({ where: { id: testCategoryId1 } });
-    const res = await request(app).get(`/api/services?category=${encodeURIComponent(category!.name)}`);
+  it("should filter services by category ID", async () => {
+    // Use the numeric category ID for filtering
+    const res = await request(app).get(`/api/services?category=${testCategoryId1}`);
     expect(res.statusCode).toEqual(200);
     expect(res.body.data.length).toBeGreaterThan(0);
     res.body.data.forEach((service: any) => {
-      expect(service.category.name).toContain(category!.name);
+      expect(service.categoryId).toEqual(testCategoryId1);
     });
   });
 
@@ -297,7 +311,7 @@ describe("GET /api/services/:id", () => {
   });
 
   it("should return 404 for a non-existent service ID", async () => {
-    const nonExistentId = "clxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx";
+    const nonExistentId = "clxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"; // Use a valid format but non-existent ID
     const res = await request(app).get(`/api/services/${nonExistentId}`);
     expect(res.statusCode).toEqual(404);
   });
@@ -316,7 +330,7 @@ describe("POST /api/services", () => {
     description: "A brand new service for testing",
     price: "199.99",
     duration: "2h",
-    categoryId: testCategoryId1,
+    categoryId: testCategoryId1, // Use number ID
     companyId: testCompanyId1,
   };
 
@@ -364,7 +378,7 @@ describe("POST /api/services", () => {
   });
 
   it("should return 400 Bad Request for non-existent categoryId", async () => {
-    const nonExistentId = "clxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx";
+    const nonExistentId = 999999; // Use a non-existent number ID
     const res = await request(app)
       .post("/api/services")
       .set("Authorization", `Bearer ${adminToken}`)
@@ -404,7 +418,7 @@ describe("PUT /api/services/:id", () => {
   });
 
   it("should return 404 Not Found for updating a non-existent service", async () => {
-    const nonExistentId = "clxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx";
+    const nonExistentId = "clxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"; // Use a valid format but non-existent ID
     const res = await request(app)
       .put(`/api/services/${nonExistentId}`)
       .set("Authorization", `Bearer ${adminToken}`)
@@ -433,7 +447,7 @@ describe("DELETE /api/services/:id", () => {
         description: "Delete me Svc",
         price: new Decimal("10.00"),
         duration: "10min",
-        categoryId: testCategoryId1,
+        categoryId: testCategoryId1, // Use number ID
         companyId: testCompanyId1,
       }
     });
@@ -453,36 +467,20 @@ describe("DELETE /api/services/:id", () => {
   });
 
   it("should FORBID a regular USER from deleting a service", async () => {
-     // Recreate the service for this test case
-     const service = await prisma.service.create({
-       data: {
-        name: "Service To Delete Again",
-        description: "Delete me again Svc",
-        price: new Decimal("11.00"),
-        duration: "11min",
-        categoryId: testCategoryId1,
-        companyId: testCompanyId1,
-      }
-     });
-     const tempId = service.id;
-
     const res = await request(app)
-      .delete(`/api/services/${tempId}`)
+      .delete(`/api/services/${testServiceId2}`) // Use another existing service
       .set("Authorization", `Bearer ${userToken}`);
     expect(res.statusCode).toEqual(403); // Forbidden
-
-    // Clean up the temp service
-    await prisma.service.delete({ where: { id: tempId } });
   });
 
   it("should return 401 Unauthorized if no token is provided", async () => {
     const res = await request(app)
-      .delete(`/api/services/${testServiceId1}`); // Use any existing ID
+      .delete(`/api/services/${testServiceId2}`);
     expect(res.statusCode).toEqual(401);
   });
 
   it("should return 404 Not Found for deleting a non-existent service", async () => {
-    const nonExistentId = "clxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx";
+    const nonExistentId = "clxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"; // Use a valid format but non-existent ID
     const res = await request(app)
       .delete(`/api/services/${nonExistentId}`)
       .set("Authorization", `Bearer ${adminToken}`);

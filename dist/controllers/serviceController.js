@@ -22,68 +22,104 @@ var __rest = (this && this.__rest) || function (s, e) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteService = exports.updateService = exports.createService = exports.getServiceById = exports.getAllServices = void 0;
 const serviceRepository_1 = require("../repositories/serviceRepository");
-// Obter todos os serviços (com filtros e paginação)
+const client_1 = require("@prisma/client"); // Added UserRole
+// Helper function for authorization check (Admin only for now)
+// TODO: Refactor into middleware and add Company Owner check
+const checkAdminRole = (req, res, next) => {
+    var _a;
+    if (((_a = req.user) === null || _a === void 0 ? void 0 : _a.role) !== client_1.UserRole.ADMIN) {
+        return res.status(403).json({ message: "Acesso negado. Somente administradores podem realizar esta ação." });
+    }
+    next();
+};
+// Helper function to check if user is Admin or owns the company associated with the service
+// TODO: Implement this properly when Company has an ownerId
+const checkAdminOrCompanyOwner = (req, res, next, companyId) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    if (((_a = req.user) === null || _a === void 0 ? void 0 : _a.role) === client_1.UserRole.ADMIN) {
+        return next(); // Admin can do anything
+    }
+    // Placeholder for owner check
+    // const company = await companyRepository.findById(companyId);
+    // if (company && company.ownerId === req.user?.id) {
+    //     return next();
+    // }
+    return res.status(403).json({ message: "Acesso negado. Permissão insuficiente." });
+});
+// Helper function to parse decimal strings
+const parseDecimal = (value) => {
+    if (value === null || value === undefined)
+        return undefined;
+    try {
+        // Ensure value is treated as string before passing to Decimal constructor if needed
+        return new client_1.Prisma.Decimal(String(value));
+    }
+    catch (e) {
+        return undefined; // Invalid decimal format
+    }
+};
+// Obter todos os serviços (com filtros e paginação) - Public
 const getAllServices = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    // Extrair filtros e paginação da query string
-    const { companyId, category, // Category name filter
-    q, // Search term
-    minPrice, maxPrice, 
-    // minRating, // Rating is not directly on Service model
-    sort, // e.g., "price_asc", "price_desc", "name_asc"
-    page = "1", // Default page 1
-    limit = "10" // Default 10 items per page
-     } = req.query;
-    // Validar e converter parâmetros de paginação
+    const { companyId, category, q, minPrice, maxPrice, sort, page = "1", limit = "10" } = req.query;
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
     if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1) {
-        // Corrected: Don't return void, just send response
         res.status(400).json({ message: "Parâmetros de paginação inválidos (page e limit devem ser números positivos)." });
         return;
     }
     const skip = (pageNum - 1) * limitNum;
     try {
-        // Construir objeto de filtros para Prisma
         const filters = {};
         if (companyId)
-            filters.companyId = companyId;
-        // Corrected: Filter by category name through relation
-        if (category)
-            filters.category = { name: { contains: category, mode: "insensitive" } };
+            filters.companyId = companyId; // Cast companyId to string
+        if (category) {
+            // Assuming category query param is the ID now
+            const categoryIdNum = parseInt(category, 10);
+            if (!isNaN(categoryIdNum)) {
+                filters.categoryId = categoryIdNum; // Use categoryId for filtering
+            }
+            else {
+                // Fallback to name search if needed, but ID is preferred
+                // filters.category = { name: { contains: category as string, mode: "insensitive" } }; // Removed category name filter for simplicity/consistency
+                console.warn("Invalid category ID provided, filtering by category name is not supported currently.");
+            }
+        }
         if (q) {
             const searchTerm = q;
             filters.OR = [
                 { name: { contains: searchTerm, mode: "insensitive" } },
                 { description: { contains: searchTerm, mode: "insensitive" } },
-                // Corrected: Search in category name through relation
-                { category: { name: { contains: searchTerm, mode: "insensitive" } } },
-                // Add search in company name if needed via relations
-                { company: { name: { contains: searchTerm, mode: "insensitive" } } },
+                // { category: { name: { contains: searchTerm, mode: "insensitive" } } }, // Filter by category name removed
+                // { company: { name: { contains: searchTerm, mode: "insensitive" } } }, // Filter by company name removed for simplicity
             ];
         }
-        // Add price filters (assuming price is stored as String, requires careful comparison or schema change)
-        // This is complex with string prices. For now, skipping price filtering.
-        // Consider changing schema `price` to Decimal or Float for proper filtering.
-        // if (minPrice) { /* Logic for string price comparison >= minPrice */ }
-        // if (maxPrice) { /* Logic for string price comparison <= maxPrice */ }
-        // Construir objeto de ordenação para Prisma
-        let orderBy = {};
+        const minPriceDecimal = parseDecimal(minPrice);
+        const maxPriceDecimal = parseDecimal(maxPrice);
+        if (minPriceDecimal !== undefined && maxPriceDecimal !== undefined) {
+            if (minPriceDecimal.greaterThan(maxPriceDecimal)) {
+                res.status(400).json({ message: "minPrice não pode ser maior que maxPrice." });
+                return;
+            }
+            filters.price = { gte: minPriceDecimal, lte: maxPriceDecimal };
+        }
+        else if (minPriceDecimal !== undefined) {
+            filters.price = { gte: minPriceDecimal };
+        }
+        else if (maxPriceDecimal !== undefined) {
+            filters.price = { lte: maxPriceDecimal };
+        }
+        let orderBy = { name: "asc" }; // Default sort
         switch (sort) {
-            // case "rating_desc": // Rating not on service
-            //   break;
             case "price_asc":
-                orderBy = { price: "asc" }; // Sorting string price might be lexicographical, not numerical
+                orderBy = { price: "asc" };
                 break;
             case "price_desc":
-                orderBy = { price: "desc" }; // Sorting string price might be lexicographical, not numerical
+                orderBy = { price: "desc" };
                 break;
             case "name_asc":
                 orderBy = { name: "asc" };
                 break;
-            default:
-                orderBy = { name: "asc" }; // Default sort
         }
-        // Assume repository methods exist
         const services = yield serviceRepository_1.serviceRepository.findMany(filters, orderBy, skip, limitNum);
         const totalServices = yield serviceRepository_1.serviceRepository.count(filters);
         res.json({
@@ -97,19 +133,25 @@ const getAllServices = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
         });
     }
     catch (error) {
-        next(error);
+        if (error instanceof client_1.Prisma.PrismaClientValidationError) {
+            console.error("Prisma Validation Error:", error.message);
+            res.status(400).json({ message: "Erro de validação nos dados fornecidos.", details: error.message });
+        }
+        else {
+            console.error("Error fetching services:", error);
+            next(error);
+        }
     }
 });
 exports.getAllServices = getAllServices;
-// Obter um serviço específico pelo ID
+// Obter um serviço específico pelo ID - Public
 const getServiceById = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     try {
         const service = yield serviceRepository_1.serviceRepository.findById(id);
         if (!service) {
-            const error = new Error("Serviço não encontrado");
-            error.statusCode = 404;
-            return next(error);
+            // Use return to stop execution after sending response
+            return res.status(404).json({ message: "Serviço não encontrado" });
         }
         res.json(service);
     }
@@ -118,58 +160,123 @@ const getServiceById = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
     }
 });
 exports.getServiceById = getServiceById;
-// Criar um novo serviço
-const createService = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    // Corrected: Use `duration` (String) as per schema, not durationMinutes
-    const { name, description, price, duration, image, categoryId, companyId } = req.body;
-    try {
-        // Validate categoryId exists if provided?
-        const dataToCreate = {
-            name,
-            description,
-            price, // String as per schema
-            duration, // String as per schema
-            image,
-            category: { connect: { id: parseInt(categoryId, 10) } }, // Connect by category ID (assuming it's Int)
-            company: { connect: { id: companyId } },
-        };
-        const newService = yield serviceRepository_1.serviceRepository.create(dataToCreate);
-        res.status(201).json(newService);
-    }
-    catch (error) {
-        next(error);
-    }
-});
-exports.createService = createService;
-// Atualizar um serviço existente
-const updateService = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params;
-    // Corrected: Use `duration` (String), handle categoryId update
-    const _a = req.body, { companyId, categoryId } = _a, dataToUpdate = __rest(_a, ["companyId", "categoryId"]);
-    try {
-        // Prepare update data, connect category if categoryId is provided
-        const updatePayload = Object.assign({}, dataToUpdate);
-        if (categoryId !== undefined) {
-            updatePayload.category = { connect: { id: parseInt(categoryId, 10) } };
+// Criar um novo serviço - Requires ADMIN (or Company Owner)
+exports.createService = [
+    checkAdminRole,
+    (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+        var _a;
+        const { name, description, price, duration, image, categoryId, companyId } = req.body;
+        const priceDecimal = parseDecimal(price);
+        if (priceDecimal === undefined) {
+            // Use return
+            return res.status(400).json({ message: "Formato de preço inválido. Use um número decimal." });
         }
-        // Price and duration are strings, no conversion needed unless schema changes
-        const updatedService = yield serviceRepository_1.serviceRepository.update(id, updatePayload);
-        res.json(updatedService);
-    }
-    catch (error) {
-        next(error);
-    }
-});
-exports.updateService = updateService;
-// Deletar um serviço
-const deleteService = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params;
-    try {
-        const deletedService = yield serviceRepository_1.serviceRepository.delete(id);
-        res.status(200).json({ message: "Serviço excluído com sucesso", service: deletedService });
-    }
-    catch (error) {
-        next(error);
-    }
-});
-exports.deleteService = deleteService;
+        // Validate categoryId is a number
+        const categoryIdNum = parseInt(categoryId, 10);
+        if (isNaN(categoryIdNum)) {
+            // Use return
+            return res.status(400).json({ message: "categoryId inválido. Deve ser um número." });
+        }
+        try {
+            // Authorization check (handled by middleware)
+            const dataToCreate = {
+                name,
+                description,
+                price: priceDecimal,
+                duration,
+                image,
+                category: { connect: { id: categoryIdNum } }, // Use parsed number
+                company: { connect: { id: companyId } },
+            };
+            const newService = yield serviceRepository_1.serviceRepository.create(dataToCreate);
+            res.status(201).json(newService);
+        }
+        catch (error) {
+            if (error instanceof client_1.Prisma.PrismaClientKnownRequestError) {
+                // Access meta property safely
+                const cause = (_a = error.meta) === null || _a === void 0 ? void 0 : _a.cause;
+                if (error.code === 'P2025') {
+                    // Use return
+                    return res.status(400).json({ message: `Erro ao conectar: ${cause || 'Registro relacionado não encontrado (Empresa ou Categoria)'}` });
+                }
+            }
+            next(error);
+        }
+    })
+];
+// Atualizar um serviço existente - Requires ADMIN (or Company Owner)
+exports.updateService = [
+    checkAdminRole,
+    (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+        var _a;
+        const { id } = req.params;
+        const _b = req.body, { companyId, categoryId, price } = _b, dataToUpdate = __rest(_b, ["companyId", "categoryId", "price"]);
+        try {
+            const existingService = yield serviceRepository_1.serviceRepository.findById(id);
+            if (!existingService) {
+                // Use return
+                return res.status(404).json({ message: `Serviço com ID ${id} não encontrado.` });
+            }
+            // Authorization check (handled by middleware)
+            const updatePayload = Object.assign({}, dataToUpdate);
+            if (price !== undefined) {
+                const priceDecimal = parseDecimal(price);
+                if (priceDecimal === undefined) {
+                    // Use return
+                    return res.status(400).json({ message: "Formato de preço inválido. Use um número decimal." });
+                }
+                updatePayload.price = priceDecimal;
+            }
+            if (categoryId !== undefined) {
+                // Validate categoryId is a number
+                const categoryIdNum = parseInt(categoryId, 10);
+                if (isNaN(categoryIdNum)) {
+                    // Use return
+                    return res.status(400).json({ message: "categoryId inválido. Deve ser um número." });
+                }
+                updatePayload.category = { connect: { id: categoryIdNum } }; // Use parsed number
+            }
+            if (companyId !== undefined && companyId !== existingService.companyId) {
+                // Use return
+                return res.status(400).json({ message: "Não é permitido alterar a empresa de um serviço existente." });
+            }
+            const updatedService = yield serviceRepository_1.serviceRepository.update(id, updatePayload);
+            res.json(updatedService);
+        }
+        catch (error) {
+            if (error instanceof client_1.Prisma.PrismaClientKnownRequestError) {
+                // Access meta property safely
+                const cause = (_a = error.meta) === null || _a === void 0 ? void 0 : _a.cause;
+                if (error.code === 'P2025') {
+                    // Use return
+                    return res.status(404).json({ message: `Erro ao atualizar: ${cause || 'Registro relacionado não encontrado (Categoria)'}` });
+                }
+            }
+            next(error);
+        }
+    })
+];
+// Deletar um serviço - Requires ADMIN (or Company Owner)
+exports.deleteService = [
+    checkAdminRole,
+    (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+        const { id } = req.params;
+        try {
+            const existingService = yield serviceRepository_1.serviceRepository.findById(id);
+            if (!existingService) {
+                // Use return
+                return res.status(404).json({ message: `Serviço com ID ${id} não encontrado.` });
+            }
+            // Authorization check (handled by middleware)
+            const deletedService = yield serviceRepository_1.serviceRepository.delete(id);
+            res.status(200).json({ message: "Serviço excluído com sucesso", service: deletedService });
+        }
+        catch (error) {
+            if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+                // Use return
+                return res.status(404).json({ message: `Serviço com ID ${id} não encontrado.` });
+            }
+            next(error);
+        }
+    })
+];

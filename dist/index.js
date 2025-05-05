@@ -42,22 +42,54 @@ dotenv.config(); // Carrega as variáveis de ambiente do arquivo .env
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet")); // Importa o Helmet
+const express_rate_limit_1 = __importDefault(require("express-rate-limit")); // Importa express-rate-limit
 const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
 const serviceRoutes_1 = __importDefault(require("./routes/serviceRoutes"));
 const companyRoutes_1 = __importDefault(require("./routes/companyRoutes"));
-const professionalRoutes_1 = __importDefault(require("./routes/professionalRoutes")); // Descomentado
-const appointmentRoutes_1 = __importDefault(require("./routes/appointmentRoutes")); // Descomentado
-const reviewRoutes_1 = __importDefault(require("./routes/reviewRoutes")); // Descomentado
-const userRoutes_1 = __importDefault(require("./routes/userRoutes")); // Added for user profile
-const categoryRoutes_1 = __importDefault(require("./routes/categoryRoutes")); // Added for categories
+const professionalRoutes_1 = __importDefault(require("./routes/professionalRoutes"));
+const appointmentRoutes_1 = __importDefault(require("./routes/appointmentRoutes"));
+const reviewRoutes_1 = __importDefault(require("./routes/reviewRoutes"));
+const userRoutes_1 = __importDefault(require("./routes/userRoutes"));
+const categoryRoutes_1 = __importDefault(require("./routes/categoryRoutes"));
+const notificationRoutes_1 = __importDefault(require("./routes/notificationRoutes")); // Added notification routes
+const gamificationRoutes_1 = __importDefault(require("./routes/gamificationRoutes")); // Added gamification routes
 const swagger_1 = require("./swagger");
 const app = (0, express_1.default)();
 exports.app = app;
 const port = process.env.PORT || 3002;
+// --- Rate Limiting Configuration ---
+const authLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // Limit each IP to 10 login/register requests per windowMs
+    message: 'Muitas tentativas de autenticação a partir deste IP, tente novamente após 15 minutos',
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+const appointmentLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 50, // Limit each IP to 50 appointment creation requests per windowMs
+    message: 'Muitas tentativas de criação de agendamento a partir deste IP, tente novamente após 1 hora',
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+// --- End Rate Limiting ---
 // Middlewares de Segurança e Configuração
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)());
-app.use(express_1.default.json());
+// Apply rate limiting before JSON parsing if possible, or early in middleware chain
+// Apply authLimiter specifically to auth routes
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+// Apply appointmentLimiter specifically to the POST /api/appointments route
+// Note: Applying middleware directly to a specific method on a router is cleaner
+// but requires modifying the router file. Applying here targets the path.
+// This might affect GET requests too if not handled carefully in the router.
+// A better approach is to apply it within the appointmentRoutes.ts file if possible.
+// For now, applying broadly to the path for demonstration.
+// app.use('/api/appointments', appointmentLimiter); // Consider applying more granularly
+// *** Aumentar limite do payload para JSON e URL-encoded ***
+app.use(express_1.default.json({ limit: '10mb' }));
+app.use(express_1.default.urlencoded({ limit: '10mb', extended: true }));
 // Configuração do Swagger
 (0, swagger_1.setupSwagger)(app);
 // Rota de teste inicial
@@ -68,11 +100,13 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes_1.default);
 app.use('/api/services', serviceRoutes_1.default);
 app.use('/api/companies', companyRoutes_1.default);
-app.use('/api/professionals', professionalRoutes_1.default); // Descomentado
-app.use('/api/appointments', appointmentRoutes_1.default); // Descomentado
-app.use('/api/reviews', reviewRoutes_1.default); // Descomentado
-app.use('/api/users', userRoutes_1.default); // Added for user profile
-app.use('/api/categories', categoryRoutes_1.default); // Added for categories// TODO: Implementar um middleware de tratamento de erros global
+app.use('/api/professionals', professionalRoutes_1.default);
+app.use('/api/appointments', appointmentRoutes_1.default); // Appointment limiter might be better applied inside this router
+app.use('/api/reviews', reviewRoutes_1.default);
+app.use('/api/users', userRoutes_1.default);
+app.use('/api/categories', categoryRoutes_1.default);
+app.use('/api/notifications', notificationRoutes_1.default); // Added notification routes
+app.use('/api/gamification', gamificationRoutes_1.default); // Added gamification routes
 // Iniciar o servidor apenas se não estiver em ambiente de teste
 if (process.env.NODE_ENV !== 'test') {
     app.listen(Number(port), '0.0.0.0', () => {

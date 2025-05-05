@@ -32,6 +32,7 @@ const createTestData = async () => {
           email: "admin.prof@test.com",
           password: "hashedpassword", // Use a dummy hash for tests
           role: UserRole.ADMIN,
+          points: 0 // Added points
       }
   });
   const regularUser = await prisma.user.create({
@@ -40,6 +41,7 @@ const createTestData = async () => {
           email: "user.prof@test.com",
           password: "hashedpassword",
           role: UserRole.USER,
+          points: 0 // Added points
       }
   });
   testAdminId = adminUser.id;
@@ -58,7 +60,7 @@ const createTestData = async () => {
       data: {
           name: "Test Company Prof Alpha",
           description: "Description Alpha Prof",
-          address: { create: { street: "123 Prof St", city: "TestvilleProf", state: "TP", zipCode: "12345" } },
+          address: { create: { street: "123 Prof St", number: "100", neighborhood: "Downtown Prof", city: "TestvilleProf", state: "TP", zipCode: "12345" } }, // Added number and neighborhood
       },
       include: { address: true },
   });
@@ -66,7 +68,7 @@ const createTestData = async () => {
       data: {
           name: "Test Company Prof Beta",
           description: "Description Beta Prof",
-          address: { create: { street: "456 Prof St", city: "AnotherCityProf", state: "AP", zipCode: "67890" } },
+          address: { create: { street: "456 Prof St", number: "200", neighborhood: "Uptown Prof", city: "AnotherCityProf", state: "AP", zipCode: "67890" } }, // Added number and neighborhood
       },
       include: { address: true },
   });
@@ -136,17 +138,18 @@ const createTestData = async () => {
 // Clean up database before and after tests
 beforeAll(async () => {
   // Clean related tables first
-  await prisma.notification.deleteMany({});
   await prisma.activityLog.deleteMany({});
-  await prisma.badge.deleteMany({});
   await prisma.userBadge.deleteMany({});
-  await prisma.gamificationProgress.deleteMany({});
+  await prisma.badge.deleteMany({});
+  await prisma.gamificationEvent.deleteMany({}); // Added GamificationEvent
+  // await prisma.gamificationProgress.deleteMany({}); // Removed reference
   await prisma.professionalService.deleteMany({});
   await prisma.appointment.deleteMany({});
   await prisma.review.deleteMany({});
   await prisma.service.deleteMany({});
   await prisma.professionalExperience.deleteMany({});
   await prisma.professionalEducation.deleteMany({});
+  await prisma.scheduleBlock.deleteMany({}); // Added ScheduleBlock
   await prisma.professional.deleteMany({});
   await prisma.companyAddress.deleteMany({});
   await prisma.company.deleteMany({});
@@ -158,17 +161,18 @@ beforeAll(async () => {
 
 afterAll(async () => {
   // Clean up again
-  await prisma.notification.deleteMany({});
   await prisma.activityLog.deleteMany({});
-  await prisma.badge.deleteMany({});
   await prisma.userBadge.deleteMany({});
-  await prisma.gamificationProgress.deleteMany({});
+  await prisma.badge.deleteMany({});
+  await prisma.gamificationEvent.deleteMany({}); // Added GamificationEvent
+  // await prisma.gamificationProgress.deleteMany({}); // Removed reference
   await prisma.professionalService.deleteMany({});
   await prisma.appointment.deleteMany({});
   await prisma.review.deleteMany({});
   await prisma.service.deleteMany({});
   await prisma.professionalExperience.deleteMany({});
   await prisma.professionalEducation.deleteMany({});
+  await prisma.scheduleBlock.deleteMany({}); // Added ScheduleBlock
   await prisma.professional.deleteMany({});
   await prisma.companyAddress.deleteMany({});
   await prisma.company.deleteMany({});
@@ -424,13 +428,13 @@ describe("DELETE /api/professionals/:id", () => {
       .set("Authorization", `Bearer ${userToken}`);
     expect(res.statusCode).toEqual(403); // Forbidden
 
-    // Clean up the temp professional
+    // Clean up the recreated professional
     await prisma.professional.delete({ where: { id: tempId } });
   });
 
   it("should return 401 Unauthorized if no token is provided", async () => {
     const res = await request(app)
-      .delete(`/api/professionals/${testProfessionalId1}`); // Use any existing ID
+      .delete(`/api/professionals/${testProfessionalId2}`); // Use another existing one
     expect(res.statusCode).toEqual(401);
   });
 

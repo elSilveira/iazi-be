@@ -4,6 +4,21 @@ import { companyRepository } from "../repositories/companyRepository"; // Import
 import { Prisma, UserRole } from "@prisma/client"; // Added UserRole
 import { Decimal } from "@prisma/client/runtime/library"; // Import Decimal
 
+// Define a type for the authenticated user on the request object
+interface AuthenticatedUser {
+    id: string;
+    role: UserRole;
+}
+
+// Extend the Express Request interface
+declare global {
+    namespace Express {
+        interface Request {
+            user?: AuthenticatedUser;
+        }
+    }
+}
+
 // Helper function for authorization check (Admin only for now)
 // TODO: Refactor into middleware and add Company Owner check
 const checkAdminRole = (req: Request, res: Response, next: NextFunction) => {
@@ -32,7 +47,8 @@ const checkAdminOrCompanyOwner = async (req: Request, res: Response, next: NextF
 const parseDecimal = (value: any): Decimal | undefined => {
   if (value === null || value === undefined) return undefined;
   try {
-    return new Prisma.Decimal(value);
+    // Ensure value is treated as string before passing to Decimal constructor if needed
+    return new Prisma.Decimal(String(value)); 
   } catch (e) {
     return undefined; // Invalid decimal format
   }
@@ -40,7 +56,6 @@ const parseDecimal = (value: any): Decimal | undefined => {
 
 // Obter todos os serviços (com filtros e paginação) - Public
 export const getAllServices = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  // ... (existing filtering and pagination code) ...
   const { 
     companyId, category, q, minPrice, maxPrice, sort, page = "1", limit = "10"
   } = req.query;
@@ -57,15 +72,26 @@ export const getAllServices = async (req: Request, res: Response, next: NextFunc
 
   try {
     const filters: Prisma.ServiceWhereInput = {};
-    if (companyId) filters.companyId = companyId as string;
-    if (category) filters.category = { name: { contains: category as string, mode: "insensitive" } }; 
+    if (companyId) filters.companyId = companyId as string; // Cast companyId to string
+    
+    if (category) {
+        // Assuming category query param is the ID now
+        const categoryIdNum = parseInt(category as string, 10);
+        if (!isNaN(categoryIdNum)) {
+            filters.categoryId = categoryIdNum; // Use categoryId for filtering
+        } else {
+            // Fallback to name search if needed, but ID is preferred
+            // filters.category = { name: { contains: category as string, mode: "insensitive" } }; // Removed category name filter for simplicity/consistency
+             console.warn("Invalid category ID provided, filtering by category name is not supported currently.");
+        }
+    }
     if (q) {
       const searchTerm = q as string;
       filters.OR = [
         { name: { contains: searchTerm, mode: "insensitive" } },
         { description: { contains: searchTerm, mode: "insensitive" } },
-        { category: { name: { contains: searchTerm, mode: "insensitive" } } },
-        { company: { name: { contains: searchTerm, mode: "insensitive" } } },
+        // { category: { name: { contains: searchTerm, mode: "insensitive" } } }, // Filter by category name removed
+        // { company: { name: { contains: searchTerm, mode: "insensitive" } } }, // Filter by company name removed for simplicity
       ];
     }
     
@@ -126,7 +152,7 @@ export const getServiceById = async (req: Request, res: Response, next: NextFunc
   try {
     const service = await serviceRepository.findById(id);
     if (!service) {
-      // Use status 404 directly
+      // Use return to stop execution after sending response
       return res.status(404).json({ message: "Serviço não encontrado" });
     }
     res.json(service);
@@ -137,36 +163,33 @@ export const getServiceById = async (req: Request, res: Response, next: NextFunc
 
 // Criar um novo serviço - Requires ADMIN (or Company Owner)
 export const createService = [
-  // Apply admin check for now
   checkAdminRole,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { name, description, price, duration, image, categoryId, companyId } = req.body; 
 
-    // --- Validate Price --- 
     const priceDecimal = parseDecimal(price);
     if (priceDecimal === undefined) {
+        // Use return
         return res.status(400).json({ message: "Formato de preço inválido. Use um número decimal." });
     }
-    // --- End Price Validation ---
+
+    // Validate categoryId is a number
+    const categoryIdNum = parseInt(categoryId, 10);
+    if (isNaN(categoryIdNum)) {
+        // Use return
+        return res.status(400).json({ message: "categoryId inválido. Deve ser um número." });
+    }
 
     try {
-      // Authorization: Check if user can add service to this companyId
-      // await checkAdminOrCompanyOwner(req, res, next, companyId); // Call helper when implemented
-      // For now, checkAdminRole middleware handles it
-
-      // Validate categoryId exists if provided?
-      const categoryIdNum = parseInt(categoryId, 10);
-      if (isNaN(categoryIdNum)) {
-          return res.status(400).json({ message: "categoryId inválido." });
-      }
+      // Authorization check (handled by middleware)
 
       const dataToCreate: Prisma.ServiceCreateInput = {
         name,
         description,
-        price: priceDecimal, // Use validated Decimal
-        duration, // String as per schema
+        price: priceDecimal,
+        duration,
         image,
-        category: { connect: { id: categoryIdNum } }, 
+        category: { connect: { id: categoryIdNum } }, // Use parsed number
         company: { connect: { id: companyId } },
       };
 
@@ -174,9 +197,11 @@ export const createService = [
       res.status(201).json(newService);
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        // Handle foreign key constraint errors (e.g., companyId or categoryId not found)
+        // Access meta property safely
+        const cause = (error.meta as { cause?: string })?.cause;
         if (error.code === 'P2025') {
-          return res.status(400).json({ message: `Erro ao conectar: ${error.meta?.cause || 'Registro relacionado não encontrado (Empresa ou Categoria)'}` });
+          // Use return
+          return res.status(400).json({ message: `Erro ao conectar: ${cause || 'Registro relacionado não encontrado (Empresa ou Categoria)'}` });
         }
       }
       next(error);
@@ -186,45 +211,43 @@ export const createService = [
 
 // Atualizar um serviço existente - Requires ADMIN (or Company Owner)
 export const updateService = [
-  // Apply admin check for now
   checkAdminRole,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { id } = req.params;
     const { companyId, categoryId, price, ...dataToUpdate } = req.body;
 
     try {
-      // 1. Find the service to get its companyId for authorization
       const existingService = await serviceRepository.findById(id);
       if (!existingService) {
+          // Use return
           return res.status(404).json({ message: `Serviço com ID ${id} não encontrado.` });
       }
 
-      // 2. Authorization check
-      // await checkAdminOrCompanyOwner(req, res, next, existingService.companyId);
-      // For now, checkAdminRole middleware handles it
+      // Authorization check (handled by middleware)
 
       const updatePayload: Prisma.ServiceUpdateInput = { ...dataToUpdate };
 
-      // --- Validate and Update Price --- 
       if (price !== undefined) {
           const priceDecimal = parseDecimal(price);
           if (priceDecimal === undefined) {
+              // Use return
               return res.status(400).json({ message: "Formato de preço inválido. Use um número decimal." });
           }
           updatePayload.price = priceDecimal;
       }
-      // --- End Price Validation ---
 
       if (categoryId !== undefined) {
+        // Validate categoryId is a number
         const categoryIdNum = parseInt(categoryId, 10);
         if (isNaN(categoryIdNum)) {
-            return res.status(400).json({ message: "categoryId inválido." });
+            // Use return
+            return res.status(400).json({ message: "categoryId inválido. Deve ser um número." });
         }
-        updatePayload.category = { connect: { id: categoryIdNum } };
+        updatePayload.category = { connect: { id: categoryIdNum } }; // Use parsed number
       }
       
-      // Prevent changing the companyId via this endpoint (should be rare)
       if (companyId !== undefined && companyId !== existingService.companyId) {
+          // Use return
           return res.status(400).json({ message: "Não é permitido alterar a empresa de um serviço existente." });
       }
 
@@ -232,10 +255,11 @@ export const updateService = [
       res.json(updatedService);
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        // Handle record not found or other Prisma errors
+         // Access meta property safely
+        const cause = (error.meta as { cause?: string })?.cause;
         if (error.code === 'P2025') {
-          // This might be triggered by connect if categoryId is invalid
-          return res.status(404).json({ message: `Erro ao atualizar: ${error.meta?.cause || 'Registro relacionado não encontrado (Categoria)'}` });
+          // Use return
+          return res.status(404).json({ message: `Erro ao atualizar: ${cause || 'Registro relacionado não encontrado (Categoria)'}` });
         }
       }
       next(error);
@@ -245,26 +269,23 @@ export const updateService = [
 
 // Deletar um serviço - Requires ADMIN (or Company Owner)
 export const deleteService = [
-  // Apply admin check for now
   checkAdminRole,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { id } = req.params;
     try {
-      // 1. Find the service to get its companyId for authorization
       const existingService = await serviceRepository.findById(id);
       if (!existingService) {
+          // Use return
           return res.status(404).json({ message: `Serviço com ID ${id} não encontrado.` });
       }
 
-      // 2. Authorization check
-      // await checkAdminOrCompanyOwner(req, res, next, existingService.companyId);
-      // For now, checkAdminRole middleware handles it
+      // Authorization check (handled by middleware)
 
       const deletedService = await serviceRepository.delete(id);
       res.status(200).json({ message: "Serviço excluído com sucesso", service: deletedService });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-          // This error shouldn't happen here if findById worked, but keep for safety
+          // Use return
           return res.status(404).json({ message: `Serviço com ID ${id} não encontrado.` });
       }
       next(error);

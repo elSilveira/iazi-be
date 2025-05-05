@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { professionalRepository } from "../repositories/professionalRepository";
-import { companyRepository } from "../repositories/companyRepository"; // Import company repo for ownership check
+import companyRepository from "../repositories/companyRepository"; // Import company repo for ownership check
 import { Prisma, UserRole } from "@prisma/client"; // Added UserRole
 
 // --- Authorization Helpers (Consider moving to middleware) ---
@@ -186,8 +186,8 @@ export const createProfessional = [
         role: professionalRole,
         image: image,
         ...(companyId && isValidUUID(companyId) && { company: { connect: { id: companyId } } }),
-        // bio: bio, // Add if schema supports
-        // phone: phone, // Add if schema supports
+        // bio: bio, // Removed: Not in schema
+        // phone: phone, // Removed: Not in schema
       };
 
       const newProfessional = await professionalRepository.create(dataToCreate, serviceIds as string[] | undefined);

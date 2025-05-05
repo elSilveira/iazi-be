@@ -1,18 +1,13 @@
-import { Router } from "express";
-import {
-    getUserNotifications,
-    markAsRead,
-    markAllAsRead
-} from "../controllers/notificationController";
-import { authMiddleware } from "../middlewares/authMiddleware";
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const notificationController_1 = require("../controllers/notificationController");
+const authMiddleware_1 = require("../middlewares/authMiddleware");
 // import { validateRequest } from "../middlewares/validationMiddleware"; // No specific validators needed for now
 // import { notificationIdValidator } from "../validators/notificationValidators"; // Validator could be added later
-
-const router = Router();
-
+const router = (0, express_1.Router)();
 // Apply auth middleware to all notification routes
-router.use(authMiddleware);
-
+router.use(authMiddleware_1.authMiddleware);
 /**
  * @swagger
  * /api/notifications:
@@ -64,8 +59,7 @@ router.use(authMiddleware);
  *       500:
  *         description: Erro interno do servidor.
  */
-router.get("/", getUserNotifications);
-
+router.get("/", notificationController_1.getUserNotifications);
 /**
  * @swagger
  * /api/notifications/read-all:
@@ -93,8 +87,7 @@ router.get("/", getUserNotifications);
  *       500:
  *         description: Erro interno do servidor.
  */
-router.patch("/read-all", markAllAsRead);
-
+router.patch("/read-all", notificationController_1.markAllAsRead);
 /**
  * @swagger
  * /api/notifications/{id}/read:
@@ -129,8 +122,5 @@ router.patch("/read-all", markAllAsRead);
  *       500:
  *         description: Erro interno do servidor.
  */
-router.patch("/:id/read", /* notificationIdValidator, validateRequest, */ markAsRead);
-
-
-export default router;
-
+router.patch("/:id/read", /* notificationIdValidator, validateRequest, */ notificationController_1.markAsRead);
+exports.default = router;

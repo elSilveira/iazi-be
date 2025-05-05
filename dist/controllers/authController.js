@@ -27,6 +27,7 @@ exports.refreshToken = exports.register = exports.login = void 0;
 const userRepository_1 = require("../repositories/userRepository");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken")); // Import Secret and SignOptions types
+const gamificationService_1 = require("../services/gamificationService"); // Import gamification service and event types
 // Carregar segredos e configurações de forma segura das variáveis de ambiente
 const JWT_SECRET = process.env.JWT_SECRET;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET;
@@ -97,6 +98,12 @@ const register = (req, res, next) => __awaiter(void 0, void 0, void 0, function*
             avatar,
         };
         const newUser = yield userRepository_1.userRepository.create(userData);
+        // --- GAMIFICATION INTEGRATION START ---
+        // Trigger USER_REGISTERED event after successful creation
+        // Run this asynchronously, don't block the registration response
+        gamificationService_1.gamificationService.triggerEvent(newUser.id, gamificationService_1.GamificationEventType.USER_REGISTERED)
+            .catch(err => console.error("Gamification event trigger failed for USER_REGISTERED:", err));
+        // --- GAMIFICATION INTEGRATION END ---
         const { password: _ } = newUser, userWithoutPassword = __rest(newUser, ["password"]);
         // Definir opções de assinatura explicitamente (usando 'as any' para contornar o erro de tipo)
         const accessTokenOptions = { expiresIn: ACCESS_TOKEN_EXPIRATION };

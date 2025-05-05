@@ -1,12 +1,11 @@
-import { Router } from "express";
-import { getGamificationProfile, getLeaderboard } from "../controllers/gamificationController";
-import { authMiddleware } from "../middlewares/authMiddleware"; // Corrected import path assuming it's in middlewares
-
-const router = Router();
-
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const gamificationController_1 = require("../controllers/gamificationController");
+const authMiddleware_1 = require("../middlewares/authMiddleware"); // Corrected import path assuming it's in middlewares
+const router = (0, express_1.Router)();
 // Apply authentication middleware to all gamification routes
-router.use(authMiddleware);
-
+router.use(authMiddleware_1.authMiddleware);
 /**
  * @swagger
  * /api/gamification/profile/me:
@@ -34,8 +33,7 @@ router.use(authMiddleware);
  *       500:
  *         description: Erro interno do servidor.
  */
-router.get("/profile/me", getGamificationProfile); // Controller needs to get userId from req.user
-
+router.get("/profile/me", gamificationController_1.getGamificationProfile); // Controller needs to get userId from req.user
 /**
  * @swagger
  * /api/gamification/profile/{userId}:
@@ -75,8 +73,7 @@ router.get("/profile/me", getGamificationProfile); // Controller needs to get us
  *       500:
  *         description: Erro interno do servidor.
  */
-router.get("/profile/:userId", getGamificationProfile); // Controller handles userId from params
-
+router.get("/profile/:userId", gamificationController_1.getGamificationProfile); // Controller handles userId from params
 /**
  * @swagger
  * /api/gamification/leaderboard:
@@ -112,7 +109,5 @@ router.get("/profile/:userId", getGamificationProfile); // Controller handles us
  *       500:
  *         description: Erro interno do servidor.
  */
-router.get("/leaderboard", getLeaderboard);
-
-export default router; // Changed to default export
-
+router.get("/leaderboard", gamificationController_1.getLeaderboard);
+exports.default = router; // Changed to default export

@@ -45,7 +45,7 @@ const router = Router();
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/Service'
+ *                 $ref: "#/components/schemas/Service"
  *       500:
  *         description: Erro interno do servidor.
  */
@@ -73,7 +73,7 @@ router.get("/", getAllServices); // Validação de query param pode ser adiciona
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Service'
+ *               $ref: "#/components/schemas/Service"
  *       400:
  *         description: ID inválido fornecido.
  *       404:
@@ -102,31 +102,34 @@ router.get("/:id", serviceIdValidator, validateRequest, getServiceById);
  *               - description
  *               - price
  *               - duration
- *               - category
+ *               - categoryId
  *               - companyId
  *             properties:
- *               name: { type: string, description: 'Nome do serviço' }
- *               description: { type: string, description: 'Descrição do serviço' }
- *               price: { type: string, description: 'Preço do serviço' }
- *               duration: { type: string, description: 'Duração do serviço (ex: "45min")' }
- *               category: { type: string, description: 'Categoria do serviço' }
- *               image: { type: string, format: url, nullable: true, description: 'URL da imagem do serviço' }
- *               companyId: { type: string, format: uuid, description: 'ID da empresa que oferece o serviço' }
+ *               name: { type: string, description: "Nome do serviço" }
+ *               description: { type: string, description: "Descrição do serviço" }
+ *               price: { type: string, description: "Preço do serviço (ex: \"50.00\")" }
+ *               duration: { type: string, description: "Duração do serviço (ex: \"45min\")" }
+ *               categoryId: { type: string, format: uuid, description: "ID da categoria do serviço" }
+ *               image: { type: string, format: url, nullable: true, description: "URL da imagem do serviço" }
+ *               companyId: { type: string, format: uuid, description: "ID da empresa que oferece o serviço" }
  *     responses:
  *       201:
  *         description: Serviço criado com sucesso.
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Service'
+ *               $ref: "#/components/schemas/Service"
  *       400:
- *         description: "Erro de validação nos dados fornecidos (ex: companyId inválido)."
+ *         description: "Erro de validação nos dados fornecidos (ex: companyId inválido, formato de preço incorreto)."
  *       401:
  *         description: Não autorizado.
+ *       403:
+ *         description: Acesso negado (permissão insuficiente).
  *       500:
  *         description: Erro interno do servidor.
  */
-router.post("/", createServiceValidator, validateRequest, createService);
+// Use spread operator (...) to pass the array elements as individual arguments
+router.post("/", createServiceValidator, validateRequest, ...createService);
 
 /**
  * @swagger
@@ -155,7 +158,7 @@ router.post("/", createServiceValidator, validateRequest, createService);
  *               description: { type: string }
  *               price: { type: string }
  *               duration: { type: string }
- *               category: { type: string }
+ *               categoryId: { type: string, format: uuid }
  *               image: { type: string, format: url, nullable: true }
  *               # companyId geralmente não é atualizado aqui
  *     responses:
@@ -164,17 +167,20 @@ router.post("/", createServiceValidator, validateRequest, createService);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Service'
+ *               $ref: "#/components/schemas/Service"
  *       400:
  *         description: Erro de validação ou ID inválido.
  *       401:
  *         description: Não autorizado.
+ *       403:
+ *         description: Acesso negado (permissão insuficiente).
  *       404:
  *         description: Serviço não encontrado.
  *       500:
  *         description: Erro interno do servidor.
  */
-router.put("/:id", updateServiceValidator, validateRequest, updateService);
+// Use spread operator (...) to pass the array elements as individual arguments
+router.put("/:id", updateServiceValidator, validateRequest, ...updateService);
 
 /**
  * @swagger
@@ -193,18 +199,28 @@ router.put("/:id", updateServiceValidator, validateRequest, updateService);
  *           format: uuid
  *         description: ID do serviço a ser deletado
  *     responses:
- *       204:
- *         description: Serviço deletado com sucesso (sem conteúdo).
+ *       200:
+ *         description: Serviço deletado com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 service: { $ref: "#/components/schemas/Service" }
  *       400:
  *         description: ID inválido fornecido.
  *       401:
  *         description: Não autorizado.
+ *       403:
+ *         description: Acesso negado (permissão insuficiente).
  *       404:
  *         description: Serviço não encontrado.
  *       500:
  *         description: Erro interno do servidor.
  */
-router.delete("/:id", serviceIdValidator, validateRequest, deleteService);
+// Use spread operator (...) to pass the array elements as individual arguments
+router.delete("/:id", serviceIdValidator, validateRequest, ...deleteService);
 
 export default router;
 
