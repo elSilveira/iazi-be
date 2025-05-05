@@ -1,0 +1,107 @@
+src/controllers/appointmentController.ts(98,73): error TS2551: Property 'company' does not exist on type '{ name: string; id: string; role: string; createdAt: Date; updatedAt: Date; rating: number; companyId: string; image: string | null; totalReviews: number; workingHours: JsonValue; }'. Did you mean 'companyId'?
+src/controllers/appointmentController.ts(98,96): error TS2551: Property 'company' does not exist on type '{ name: string; id: string; role: string; createdAt: Date; updatedAt: Date; rating: number; companyId: string; image: string | null; totalReviews: number; workingHours: JsonValue; }'. Did you mean 'companyId'?
+src/controllers/appointmentController.ts(133,9): error TS2353: Object literal may only specify known properties, and 'professionalId' does not exist in type 'ScheduleBlockFindManyArgs<DefaultArgs>'.
+src/controllers/appointmentController.ts(216,69): error TS2554: Expected 4 arguments, but got 3.
+src/controllers/appointmentController.ts(266,33): error TS2339: Property 'user' does not exist on type '{ id: string; createdAt: Date; updatedAt: Date; userId: string; date: Date; status: AppointmentStatus; serviceId: string; professionalId: string | null; notes: string | null; }'.
+src/controllers/appointmentController.ts(270,48): error TS2551: Property 'professional' does not exist on type '{ id: string; createdAt: Date; updatedAt: Date; userId: string; date: Date; status: AppointmentStatus; serviceId: string; professionalId: string | null; notes: string | null; }'. Did you mean 'professionalId'?
+src/controllers/appointmentController.ts(374,54): error TS2345: Argument of type '{ message: string; relatedEntityId: string; relatedEntityType: string; }' is not assignable to parameter of type 'string'.
+src/controllers/appointmentController.ts(420,53): error TS2339: Property 'findByIdWithService' does not exist on type '{ findMany(filters: AppointmentWhereInput): Promise<{ id: string; createdAt: Date; updatedAt: Date; userId: string; date: Date; status: AppointmentStatus; serviceId: string; professionalId: string | null; notes: string | null; }[]>; ... 5 more ...; delete(id: string): Promise<...>; }'.
+src/controllers/appointmentController.ts(474,30): error TS2339: Property 'NO_SHOW' does not exist on type '{ PENDING: "PENDING"; CONFIRMED: "CONFIRMED"; COMPLETED: "COMPLETED"; CANCELLED: "CANCELLED"; }'.
+src/controllers/appointmentController.ts(498,60): error TS2339: Property 'update' does not exist on type '{ findMany(filters: AppointmentWhereInput): Promise<{ id: string; createdAt: Date; updatedAt: Date; userId: string; date: Date; status: AppointmentStatus; serviceId: string; professionalId: string | null; notes: string | null; }[]>; ... 5 more ...; delete(id: string): Promise<...>; }'.
+src/controllers/appointmentController.ts(503,65): error TS2345: Argument of type '{ message: string; relatedEntityId: string; relatedEntityType: string; }' is not assignable to parameter of type 'string'.
+src/controllers/appointmentController.ts(620,17): error TS2353: Object literal may only specify known properties, and 'professionalId' does not exist in type 'ScheduleBlockFindManyArgs<DefaultArgs>'.
+src/controllers/companyController.ts(92,7): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/companyController.ts(130,11): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/companyController.ts(149,11): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/companyController.ts(167,11): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/companyController.ts(181,11): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/gamificationController.ts(36,38): error TS2339: Property 'gamificationProfile' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/controllers/gamificationController.ts(91,42): error TS2339: Property 'gamificationProfile' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/controllers/professionalController.ts(150,5): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/professionalController.ts(155,7): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/professionalController.ts(179,7): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/professionalController.ts(199,11): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/professionalController.ts(245,11): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/professionalController.ts(279,11): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/reviewController.ts(129,31): error TS2552: Cannot find name 'prisma'. Did you mean 'Prisma'?
+src/controllers/reviewController.ts(132,36): error TS2552: Cannot find name 'prisma'. Did you mean 'Prisma'?
+src/controllers/reviewController.ts(135,31): error TS2552: Cannot find name 'prisma'. Did you mean 'Prisma'?
+src/controllers/serviceController.ts(3,10): error TS2614: Module '"../repositories/companyRepository"' has no exported member 'companyRepository'. Did you mean to use 'import companyRepository from "../repositories/companyRepository"' instead?
+src/controllers/serviceController.ts(156,7): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/serviceController.ts(173,9): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/serviceController.ts(180,9): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/serviceController.ts(204,11): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/serviceController.ts(223,11): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/serviceController.ts(234,15): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/serviceController.ts(244,13): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/serviceController.ts(251,11): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/serviceController.ts(262,11): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/serviceController.ts(279,11): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/controllers/serviceController.ts(289,11): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/index.ts(19,32): error TS2307: Cannot find module './routes/notificationRoutes' or its corresponding type declarations.
+src/middlewares/authMiddleware.ts(31,5): error TS2741: Property 'role' is missing in type '{ id: string; }' but required in type 'AuthenticatedUser'.
+src/routes/appointmentRoutes.ts(7,3): error TS2724: '"../controllers/appointmentController"' has no exported member named 'cancelAppointment'. Did you mean 'createAppointment'?
+src/routes/appointmentRoutes.ts(8,3): error TS2724: '"../controllers/appointmentController"' has no exported member named 'deleteAppointment'. Did you mean 'createAppointment'?
+src/routes/appointmentRoutes.ts(9,3): error TS2305: Module '"../controllers/appointmentController"' has no exported member 'getAppointmentAvailability'.
+src/routes/companyRoutes.ts(113,59): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(((req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>, next: NextFunction) => Response<...> | undefined) | ((req: Request<...>, res: Response<...>, next: NextFunction) => Promise<...>))[]' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(((req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>, next: NextFunction) => Response<...> | undefined) | ((req: Request<...>, res: Response<...>, next: NextFunction) => Promise<...>))[]' is not assignable to type '(ErrorRequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>> | RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<...>>)[]'.
+        Type '((req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>, next: NextFunction) => Response<...> | undefined) | ((req: Request<...>, res: Response<...>, next: NextFunction) => Promise<...>)' is not assignable to type 'ErrorRequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>> | RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<...>>'.
+          Type '(req: Request, res: Response, next: NextFunction) => Response<any, Record<string, any>> | undefined' is not assignable to type 'ErrorRequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>> | RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<...>>'.
+            Type '(req: Request, res: Response, next: NextFunction) => Response<any, Record<string, any>> | undefined' is not assignable to type 'ErrorRequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+              Types of parameters 'res' and 'req' are incompatible.
+                Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is missing the following properties from type 'Response<any, Record<string, any>>': status, sendStatus, links, send, and 57 more.
+src/routes/companyRoutes.ts(163,61): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(((req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>, next: NextFunction) => Response<...> | undefined) | ((req: Request<...>, res: Response<...>, next: NextFunction) => Promise<...>))[]' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(((req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>, next: NextFunction) => Response<...> | undefined) | ((req: Request<...>, res: Response<...>, next: NextFunction) => Promise<...>))[]' is not assignable to type '(ErrorRequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>> | RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<...>>)[]'.
+        Type '((req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>, next: NextFunction) => Response<...> | undefined) | ((req: Request<...>, res: Response<...>, next: NextFunction) => Promise<...>)' is not assignable to type 'ErrorRequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>> | RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<...>>'.
+          Type '(req: Request, res: Response, next: NextFunction) => Response<any, Record<string, any>> | undefined' is not assignable to type 'ErrorRequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>> | RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<...>>'.
+            Type '(req: Request, res: Response, next: NextFunction) => Response<any, Record<string, any>> | undefined' is not assignable to type 'ErrorRequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+              Types of parameters 'res' and 'req' are incompatible.
+                Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is missing the following properties from type 'Response<any, Record<string, any>>': status, sendStatus, links, send, and 57 more.
+src/routes/companyRoutes.ts(193,60): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(((req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>, next: NextFunction) => Response<...> | undefined) | ((req: Request<...>, res: Response<...>, next: NextFunction) => Promise<...>))[]' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(((req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>, next: NextFunction) => Response<...> | undefined) | ((req: Request<...>, res: Response<...>, next: NextFunction) => Promise<...>))[]' is not assignable to type '(ErrorRequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>> | RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<...>>)[]'.
+        Type '((req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>, next: NextFunction) => Response<...> | undefined) | ((req: Request<...>, res: Response<...>, next: NextFunction) => Promise<...>)' is not assignable to type 'ErrorRequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>> | RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<...>>'.
+          Type '(req: Request, res: Response, next: NextFunction) => Response<any, Record<string, any>> | undefined' is not assignable to type 'ErrorRequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>> | RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<...>>'.
+            Type '(req: Request, res: Response, next: NextFunction) => Response<any, Record<string, any>> | undefined' is not assignable to type 'ErrorRequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+              Types of parameters 'res' and 'req' are incompatible.
+                Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is missing the following properties from type 'Response<any, Record<string, any>>': status, sendStatus, links, send, and 57 more.
+src/routes/professionalRoutes.ts(167,66): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(((req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>, next: NextFunction) => Promise<...>) | ((req: Request<...>, res: Response<...>, next: NextFunction) => Promise<...>))[]' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(((req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>, next: NextFunction) => Promise<...>) | ((req: Request<...>, res: Response<...>, next: NextFunction) => Promise<...>))[]' is not assignable to type '(ErrorRequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>> | RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<...>>)[]'.
+        Type '((req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>, next: NextFunction) => Promise<...>) | ((req: Request<...>, res: Response<...>, next: NextFunction) => Promise<...>)' is not assignable to type 'ErrorRequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>> | RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<...>>'.
+          Type '(req: Request, res: Response, next: NextFunction) => Promise<Response<any, Record<string, any>> | undefined>' is not assignable to type 'ErrorRequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>> | RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<...>>'.
+            Type '(req: Request, res: Response, next: NextFunction) => Promise<Response<any, Record<string, any>> | undefined>' is not assignable to type 'ErrorRequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+              Types of parameters 'res' and 'req' are incompatible.
+                Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is missing the following properties from type 'Response<any, Record<string, any>>': status, sendStatus, links, send, and 57 more.
+src/routes/serviceRoutes.ts(132,59): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '((req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>, next: NextFunction) => Response<...> | undefined) | ((req: Request<...>, res: Response<...>, next: NextFunction) => Promise<...>)' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: Request, res: Response, next: NextFunction) => Response<any, Record<string, any>> | undefined' is not assignable to type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Type '(req: Request, res: Response, next: NextFunction) => Response<any, Record<string, any>> | undefined' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+          Type 'Response<any, Record<string, any>> | undefined' is not assignable to type 'void | Promise<void>'.
+            Type 'Response<any, Record<string, any>>' is not assignable to type 'void | Promise<void>'.
+src/routes/serviceRoutes.ts(183,61): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '((req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>, next: NextFunction) => Response<...> | undefined) | ((req: Request<...>, res: Response<...>, next: NextFunction) => Promise<...>)' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: Request, res: Response, next: NextFunction) => Response<any, Record<string, any>> | undefined' is not assignable to type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Type '(req: Request, res: Response, next: NextFunction) => Response<any, Record<string, any>> | undefined' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+          Type 'Response<any, Record<string, any>> | undefined' is not assignable to type 'void | Promise<void>'.
+            Type 'Response<any, Record<string, any>>' is not assignable to type 'void | Promise<void>'.
+src/routes/serviceRoutes.ts(223,60): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '((req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>, next: NextFunction) => Response<...> | undefined) | ((req: Request<...>, res: Response<...>, next: NextFunction) => Promise<...>)' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: Request, res: Response, next: NextFunction) => Response<any, Record<string, any>> | undefined' is not assignable to type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Type '(req: Request, res: Response, next: NextFunction) => Response<any, Record<string, any>> | undefined' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+          Type 'Response<any, Record<string, any>> | undefined' is not assignable to type 'void | Promise<void>'.
+            Type 'Response<any, Record<string, any>>' is not assignable to type 'void | Promise<void>'.
+src/tests/activityFeedRoutes.integration.test.ts(2,21): error TS2307: Cannot find module '../src/app' or its corresponding type declarations.
+src/tests/appointmentRoutes.integration.test.ts(2,21): error TS2307: Cannot find module '../src/app' or its corresponding type declarations.
+src/tests/appointmentRoutes.integration.test.ts(6,31): error TS2307: Cannot find module '../src/utils/jwt' or its corresponding type declarations.
+src/tests/appointmentRoutes.integration.test.ts(113,13): error TS2353: Object literal may only specify known properties, and 'userId' does not exist in type '(Without<ProfessionalCreateInput, ProfessionalUncheckedCreateInput> & ProfessionalUncheckedCreateInput) | (Without<...> & ProfessionalCreateInput)'.
+src/tests/gamificationRoutes.integration.test.ts(85,13): error TS2353: Object literal may only specify known properties, and 'user' does not exist in type 'Without<ProfessionalCreateInput, ProfessionalUncheckedCreateInput> & ProfessionalUncheckedCreateInput'.

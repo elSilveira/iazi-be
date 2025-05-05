@@ -1,4 +1,4 @@
-import prisma from '../utils/prismaClient';
+import { prisma } from '../lib/prisma';
 
 interface RelatedEntity {
   id: string;

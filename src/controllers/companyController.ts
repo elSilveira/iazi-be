@@ -3,7 +3,7 @@ import companyRepository from "../repositories/companyRepository"; // Corrected:
 import { Prisma, UserRole } from "@prisma/client"; // Added UserRole
 
 // Helper function for authorization check (can be moved to middleware later)
-const checkAdminRole = (req: Request, res: Response, next: NextFunction) => {
+const checkAdminRole = (req: Request, res: Response, next: NextFunction): Response | void => { // Added return type
     if (req.user?.role !== UserRole.ADMIN) {
         return res.status(403).json({ message: "Acesso negado. Somente administradores podem realizar esta ação." });
     }
@@ -11,8 +11,7 @@ const checkAdminRole = (req: Request, res: Response, next: NextFunction) => {
 };
 
 // Obter todas as empresas (com filtros e paginação) - Public or requires different auth?
-export const getAllCompanies = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  // ... (existing code for filtering and pagination) ...
+export const getAllCompanies = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
   const { 
     q, category, city, state, minRating, sort, page = "1", limit = "10"
   } = req.query;
@@ -21,8 +20,8 @@ export const getAllCompanies = async (req: Request, res: Response, next: NextFun
   const limitNum = parseInt(limit as string, 10);
 
   if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1) {
-    res.status(400).json({ message: "Parâmetros de paginação inválidos (page e limit devem ser números positivos)." });
-    return;
+    // Return the response directly
+    return res.status(400).json({ message: "Parâmetros de paginação inválidos (page e limit devem ser números positivos)." });
   }
 
   const skip = (pageNum - 1) * limitNum;
@@ -68,7 +67,8 @@ export const getAllCompanies = async (req: Request, res: Response, next: NextFun
     const companies = await companyRepository.findMany(filters, orderBy, skip, limitNum);
     const totalCompanies = await companyRepository.count(filters);
 
-    res.json({
+    // Return the response
+    return res.json({
       data: companies,
       pagination: {
         currentPage: pageNum,
@@ -83,15 +83,16 @@ export const getAllCompanies = async (req: Request, res: Response, next: NextFun
 };
 
 // Obter uma empresa específica pelo ID - Public or requires different auth?
-export const getCompanyById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getCompanyById = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
   const { id } = req.params;
   try {
     const company = await companyRepository.findById(id);
     if (!company) {
-      // Use status 404 directly instead of custom error property
+      // Return the response directly
       return res.status(404).json({ message: "Empresa não encontrada" });
     }
-    res.json(company);
+    // Return the response
+    return res.json(company);
   } catch (error) {
     next(error);
   }
@@ -100,15 +101,16 @@ export const getCompanyById = async (req: Request, res: Response, next: NextFunc
 // Criar uma nova empresa - Requires ADMIN role
 export const createCompany = [
   checkAdminRole, // Add authorization check middleware
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const { address, ...companyData } = req.body;
+  async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => { 
+    const { address, ...companyData } = req.body; // Destructure address and company data
     try {
       if (companyData.categories && !Array.isArray(companyData.categories)) {
           companyData.categories = [companyData.categories];
       }
       // TODO: Add ownerId based on req.user.id if schema changes
       const newCompany = await companyRepository.create(companyData, address);
-      res.status(201).json(newCompany);
+      // Return the response
+      return res.status(201).json(newCompany);
     } catch (error) {
       next(error);
     }
@@ -118,15 +120,16 @@ export const createCompany = [
 // Atualizar uma empresa existente - Requires ADMIN role (or owner)
 export const updateCompany = [
   checkAdminRole, // Add authorization check middleware (simplest approach for now)
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => { 
     const { id } = req.params;
-    const { address, ...companyData } = req.body;
+    const { address, ...companyData } = req.body; // Destructure address and company data
     try {
       // TODO: Add check: if not ADMIN, verify req.user.id owns company with id `id`
       
       // Ensure company exists before attempting update (optional, repo might handle)
       const existingCompany = await companyRepository.findById(id);
       if (!existingCompany) {
+          // Return the response directly
           return res.status(404).json({ message: "Empresa não encontrada para atualização." });
       }
       
@@ -138,14 +141,17 @@ export const updateCompany = [
       if (companyData.categories && !Array.isArray(companyData.categories)) {
           companyData.categories = [companyData.categories];
       }
+      // Ensure rating and totalReviews are numbers if provided
       if (companyData.rating !== undefined) companyData.rating = parseFloat(companyData.rating);
       if (companyData.totalReviews !== undefined) companyData.totalReviews = parseInt(companyData.totalReviews, 10);
 
       const updatedCompany = await companyRepository.update(id, companyData, address);
-      res.json(updatedCompany);
+      // Return the response
+      return res.json(updatedCompany);
     } catch (error) {
       // Handle Prisma P2025 specifically if repo doesn't
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+          // Return the response directly
           return res.status(404).json({ message: "Empresa não encontrada para atualização." });
       }
       next(error);
@@ -156,7 +162,7 @@ export const updateCompany = [
 // Deletar uma empresa - Requires ADMIN role (or owner)
 export const deleteCompany = [
   checkAdminRole, // Add authorization check middleware (simplest approach for now)
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => { 
     const { id } = req.params;
     try {
       // TODO: Add check: if not ADMIN, verify req.user.id owns company with id `id`
@@ -164,6 +170,7 @@ export const deleteCompany = [
       // Ensure company exists before attempting delete (optional, repo might handle)
       const existingCompany = await companyRepository.findById(id);
       if (!existingCompany) {
+          // Return the response directly
           return res.status(404).json({ message: "Empresa não encontrada para exclusão." });
       }
       
@@ -174,10 +181,12 @@ export const deleteCompany = [
 
       const deletedCompany = await companyRepository.delete(id);
       // Repo delete might throw if not found, handle P2025 if needed
-      res.status(200).json({ message: "Empresa excluída com sucesso", company: deletedCompany });
+      // Return the response
+      return res.status(200).json({ message: "Empresa excluída com sucesso", company: deletedCompany });
     } catch (error) {
        // Handle Prisma P2025 specifically if repo doesn't
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+          // Return the response directly
           return res.status(404).json({ message: "Empresa não encontrada para exclusão." });
       }
       next(error);

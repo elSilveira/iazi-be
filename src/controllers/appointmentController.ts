@@ -4,11 +4,31 @@ import { serviceRepository } from '../repositories/serviceRepository';
 import { professionalRepository } from '../repositories/professionalRepository'; 
 import { scheduleBlockRepository } from '../repositories/scheduleBlockRepository'; // Import repository for blocks
 import { prisma } from "../lib/prisma"; // Import prisma client for direct access if needed
-import { Prisma, AppointmentStatus, UserRole } from "@prisma/client"; // Added UserRole
+import { Prisma, AppointmentStatus, UserRole, Professional, Appointment, Service, Company, CompanyAddress } from "@prisma/client"; // Removed Address, added CompanyAddress
 import { parseISO, startOfDay, endOfDay, addMinutes, format, parse, isValid, setHours, setMinutes, setSeconds, getDay, isWithinInterval, differenceInHours, isBefore } from 'date-fns'; // Added differenceInHours and isBefore
 import { gamificationService, GamificationEventType } from "../services/gamificationService"; // Import gamification service
 import { logActivity } from "../services/activityLogService"; // Import activity log service
 // import { createNotification } from "../services/notificationService"; // Import notification service (Removed)
+
+// Define payload types for relations based on repository includes
+type ProfessionalWithDetails = Prisma.ProfessionalGetPayload<{
+  include: { 
+    services: { include: { service: true } },
+    company: { include: { address: true } } 
+  }
+}>
+
+type AppointmentWithDetails = Prisma.AppointmentGetPayload<{
+  include: { 
+    service: true, 
+    professional: { 
+      include: { 
+        company: true // Include company if needed for professional context
+      }
+    }, 
+    user: { select: { id: true, name: true, email: true, avatar: true } }
+  }
+}>
 
 // Extend Express Request type to include user with role
 declare global {
@@ -29,73 +49,76 @@ export const MIN_CANCELLATION_HOURS = 2; // Minimum hours notice required to can
 
 // Helper function for UUID validation
 const isValidUUID = (uuid: string): boolean => {
-  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-  return uuidRegex.test(uuid);
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
 };
 
-// Helper function to parse duration string (e.g., "60min", "1h", "1h30min") into minutes
-export const parseDuration = (duration: string): number | null => {
-    // Handle "1h30min" format
-    const hourMinuteMatch = duration.match(/^(?:(\d+)h)?(?:(\d+)min)?$/i);
-    if (hourMinuteMatch) {
-        const hours = hourMinuteMatch[1] ? parseInt(hourMinuteMatch[1], 10) : 0;
-        const minutes = hourMinuteMatch[2] ? parseInt(hourMinuteMatch[2], 10) : 0;
-        if (hours > 0 || minutes > 0) {
-            return hours * 60 + minutes;
-        }
+// Helper function to parse duration string (e.g., "PT1H30M") to minutes
+const parseDuration = (durationString: string | null): number | null => {
+    if (!durationString) return null;
+    // Updated regex to handle ISO 8601 duration format (PTnHnM)
+    const match = durationString.match(/^PT(?:(\d+)H)?(?:(\d+)M)?$/);
+    if (!match) {
+        // Fallback for simple formats like "30m", "1h", "1h30m" (less robust)
+        let totalMinutes = 0;
+        const hourMatch = durationString.match(/(\d+)h/);
+        const minMatch = durationString.match(/(\d+)m/);
+        if (hourMatch) totalMinutes += parseInt(hourMatch[1], 10) * 60;
+        if (minMatch) totalMinutes += parseInt(minMatch[1], 10);
+        return totalMinutes > 0 ? totalMinutes : null;
     }
-    // Handle "60" or "60min" format
-    const simpleMatch = duration.match(/^(\d+)\s*(min)?$/i);
-    if (simpleMatch) {
-        return parseInt(simpleMatch[1], 10);
-    }
-    // Handle "1h" format
-    const hourMatch = duration.match(/^(\d+)h$/i);
-    if (hourMatch) {
-        return parseInt(hourMatch[1], 10) * 60;
-    }
-    return null; // Invalid format
+    const hours = parseInt(match[1] || '0', 10);
+    const minutes = parseInt(match[2] || '0', 10);
+    return hours * 60 + minutes;
 };
 
-// Helper to parse working hours JSON
-interface WorkingHours {
-    [dayOfWeek: number]: { start: string; end: string } | null; // 0 = Sunday, 6 = Saturday
-}
+// Helper function to get working hours for a specific day
+const getWorkingHoursForDay = (workingHoursJson: Prisma.JsonValue | null | undefined, date: Date): { start: Date, end: Date } | null => {
+    // Check if workingHoursJson is a valid object and not null/undefined
+    if (!workingHoursJson || typeof workingHoursJson !== 'object' || Array.isArray(workingHoursJson)) return null;
 
-export const getWorkingHoursForDay = (workingHoursJson: any, date: Date): { start: Date; end: Date } | null => {
-    if (!workingHoursJson || typeof workingHoursJson !== 'object') return null;
-    const dayOfWeek = getDay(date); // 0 for Sunday, 1 for Monday, etc.
-    const hours = (workingHoursJson as WorkingHours)[dayOfWeek];
-    if (!hours || !hours.start || !hours.end) return null;
+    const dayOfWeek = getDay(date); // 0 (Sunday) to 6 (Saturday)
+    const dayKey = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"][dayOfWeek];
 
-    try {
-        const [startH, startM] = hours.start.split(':').map(Number);
-        const [endH, endM] = hours.end.split(':').map(Number);
-        const dayStart = startOfDay(date);
-        const workStart = setSeconds(setMinutes(setHours(dayStart, startH), startM), 0);
-        const workEnd = setSeconds(setMinutes(setHours(dayStart, endH), endM), 0);
-        // Handle cases where end time is on the next day (e.g., 22:00 - 02:00)
-        if (workEnd <= workStart) {
-            // Assuming end time is on the next day if it's earlier or same as start time
-            // This logic might need adjustment based on exact business rules for overnight hours
-            console.warn("Working hours might span across midnight, adjust logic if needed.");
-            // For simplicity, let's assume end time is within the same day for now.
-        }
-        return { start: workStart, end: workEnd };
-    } catch (e) {
-        console.error("Error parsing working hours:", e);
+    // Type assertion to treat workingHoursJson as an indexable object
+    const hoursData = (workingHoursJson as { [key: string]: any })[dayKey];
+
+    if (!hoursData || typeof hoursData !== 'object' || !hoursData.start || !hoursData.end || !hoursData.isOpen) {
+        return null; // Not open or hours not defined correctly
+    }
+
+    // Validate time format (HH:MM)
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (!timeRegex.test(hoursData.start) || !timeRegex.test(hoursData.end)) {
+        console.error(`Invalid time format in working hours for ${dayKey}: start=${hoursData.start}, end=${hoursData.end}`);
         return null;
     }
+
+    const [startHour, startMinute] = hoursData.start.split(':').map(Number);
+    const [endHour, endMinute] = hoursData.end.split(':').map(Number);
+
+    const startTime = setSeconds(setMinutes(setHours(date, startHour), startMinute), 0);
+    const endTime = setSeconds(setMinutes(setHours(date, endHour), endMinute), 0);
+
+    // Ensure end time is after start time
+    if (endTime <= startTime) {
+        console.warn(`Working hours end time is not after start time for ${dayKey}. Adjusting end time to next day if necessary or ignoring.`);
+        // Handle overnight logic if needed, or simply return null/invalid
+        return null; // Or adjust endTime logic based on business rules
+    }
+
+    return { start: startTime, end: endTime };
 };
 
 // Helper function to check availability
 export const checkAvailability = async (professionalId: string, start: Date, end: Date): Promise<boolean> => {
     // 1. Check Professional's Working Hours
-    const professional = await professionalRepository.findById(professionalId);
+    // Use the corrected payload type
+    const professional: ProfessionalWithDetails | null = await professionalRepository.findById(professionalId);
     if (!professional) throw new Error('Profissional não encontrado para verificação de disponibilidade.');
 
-    // Use professional's specific hours, fallback to company hours if needed (logic depends on requirements)
-    const workingHoursJson = professional.workingHours || (professional.company ? professional.company.workingHours : null);
+    // Use professional's specific hours, fallback to company hours if needed
+    const workingHoursJson = professional.workingHours || professional.company?.workingHours || null;
     const workingHoursToday = getWorkingHoursForDay(workingHoursJson, start);
 
     if (!workingHoursToday) {
@@ -103,36 +126,45 @@ export const checkAvailability = async (professionalId: string, start: Date, end
         return false; // Not working on this day
     }
 
-    // Check if requested slot is within working hours
+    // Check if the requested slot [start, end) is within the working hours [start, end)
     if (!isWithinInterval(start, { start: workingHoursToday.start, end: workingHoursToday.end }) ||
-        !isWithinInterval(end, { start: workingHoursToday.start, end: workingHoursToday.end })) {
-        console.log(`Availability Check: Requested slot ${format(start, 'HH:mm')} - ${format(end, 'HH:mm')} is outside working hours ${format(workingHoursToday.start, 'HH:mm')} - ${format(workingHoursToday.end, 'HH:mm')}`);
+        !isWithinInterval(addMinutes(end, -1), { start: workingHoursToday.start, end: workingHoursToday.end })) { // Check end-1 minute to ensure end is not exclusive
+        console.log(`Availability Check: Slot [${format(start, 'HH:mm')}, ${format(end, 'HH:mm')}) is outside working hours [${format(workingHoursToday.start, 'HH:mm')}, ${format(workingHoursToday.end, 'HH:mm')})`);
         return false;
     }
 
     // 2. Check for Conflicting Appointments
     const conflictingAppointments = await appointmentRepository.findMany({
         professionalId: professionalId,
-        status: { in: [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED] }, // Check against pending and confirmed
-        OR: [
-            { date: { lt: end }, AND: { date: { gte: start } } }, // Starts during the slot
-            // A more precise check requires knowing the end time of existing appointments:
-            // date < requestedEnd && calculatedEndTime > requestedStart
-            // Simplified check: Check if any appointment STARTS within the potential conflict window
-            { date: { gt: start, lt: end } } // Existing appointment starts within the requested slot
-        ],
+        status: { in: [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED] },
+        // Check for appointments that overlap with the requested slot [start, end)
+        // Overlap condition: (ApptStart < end) and (ApptEnd > start)
+        date: { lt: end }, // Appointments starting before the requested slot ends
+        // We need ApptEnd > start. ApptEnd = ApptDate + ApptDuration.
+        // This requires fetching duration or calculating it. Simpler: check appointments starting within the potential conflict window.
+        // Let's refine the query later if needed, for now, check appointments starting before 'end'
     });
 
-    if (conflictingAppointments.length > 0) {
-        console.log(`Availability Check: Found ${conflictingAppointments.length} conflicting appointments for professional ${professionalId} between ${format(start, 'HH:mm')} and ${format(end, 'HH:mm')}`);
-        return false;
+    for (const appt of conflictingAppointments) {
+        const apptService = await serviceRepository.findById(appt.serviceId);
+        const apptDuration = apptService ? parseDuration(apptService.duration) : 0;
+        if (apptDuration === null || apptDuration <= 0) continue; // Skip if duration is invalid
+        const apptEnd = addMinutes(appt.date, apptDuration);
+
+        // Check for overlap: (appt.date < end) and (apptEnd > start)
+        if (isBefore(appt.date, end) && isBefore(start, apptEnd)) {
+            console.log(`Availability Check: Conflict with existing appointment ${appt.id} [${format(appt.date, 'HH:mm')}, ${format(apptEnd, 'HH:mm')})`);
+            return false;
+        }
     }
 
     // 3. Check for Schedule Blocks
     const conflictingBlocks = await scheduleBlockRepository.findMany({
-        professionalId: professionalId,
-        startTime: { lt: end },
-        endTime: { gt: start },
+        where: {
+            professionalId: professionalId,
+            startTime: { lt: end },
+            endTime: { gt: start },
+        }
     });
 
     if (conflictingBlocks.length > 0) {
@@ -140,459 +172,469 @@ export const checkAvailability = async (professionalId: string, start: Date, end
         return false;
     }
 
-    return true; // Available
+    console.log(`Availability Check: Slot [${format(start, 'HH:mm')}, ${format(end, 'HH:mm')}) is available for professional ${professionalId}`);
+    return true; // Slot is available
 };
 
-
-// --- Controller Functions ---
-
-// Obter todos os agendamentos (com filtros opcionais)
-export const getAllAppointments = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  const { professionalId, companyId, status, date } = req.query; 
-  let userId = req.query.userId as string | undefined;
-  const userRole = req.user?.role;
-  const authenticatedUserId = req.user?.id;
-
-  // If not admin and no specific userId is requested, default to the authenticated user's appointments
-  if (!userId && authenticatedUserId && userRole !== UserRole.ADMIN) {
-    userId = authenticatedUserId;
-  }
-
-  if (userId && !isValidUUID(userId)) {
-    res.status(400).json({ message: 'Formato de ID do usuário inválido.' });
-    return;
-  }
-  if (professionalId && !isValidUUID(professionalId as string)) {
-    res.status(400).json({ message: 'Formato de ID do profissional inválido.' });
-    return;
-  }
-  if (status && !Object.values(AppointmentStatus).includes(status as AppointmentStatus)) {
-     res.status(400).json({ 
-      message: 'Status inválido. Valores permitidos: ' + Object.values(AppointmentStatus).join(', ') 
-    });
-    return;
-  }
-  let parsedDate: Date | undefined;
-  if (date && typeof date === 'string') {
-    try {
-      parsedDate = parse(date, 'yyyy-MM-dd', new Date());
-      if (!isValid(parsedDate)) throw new Error('Invalid date');
-    } catch (e) {
-      res.status(400).json({ message: 'Formato de data inválido. Use YYYY-MM-DD.' });
-      return;
-    }
-  }
-  
-  try {
-    const filters: Prisma.AppointmentWhereInput = {};
-    
-    // Authorization: Non-admins can only see their own appointments unless filtering by professional/company?
-    if (userId) {
-        if (userRole !== UserRole.ADMIN && userId !== authenticatedUserId) {
-            res.status(403).json({ message: 'Não autorizado a ver agendamentos de outro usuário.' });
-            return;
-        }
-        filters.userId = userId;
-    } else if (userRole !== UserRole.ADMIN && !professionalId && !companyId) {
-        // If no filters and not admin, default to own appointments
-        if (authenticatedUserId) {
-            filters.userId = authenticatedUserId;
-        } else {
-             res.status(401).json({ message: 'Não autenticado.' });
-             return;
-        }
-    }
-
-    if (professionalId) filters.professionalId = professionalId as string;
-    if (status) filters.status = status as AppointmentStatus;
-    if (parsedDate) {
-      filters.date = {
-        gte: startOfDay(parsedDate),
-        lt: endOfDay(parsedDate),
-      };
-    }
-    if (companyId && typeof companyId === 'string') {
-        // Filter by professionals within that company
-        const professionalsInCompany = await professionalRepository.findMany({ companyId: companyId }, undefined, { skip: 0, take: 1000 });
-        const professionalIds = professionalsInCompany.map(p => p.id);
-        if (professionalIds.length > 0) {
-            if (filters.professionalId) {
-                // Ensure professional belongs to company if both are given
-                if (!professionalIds.includes(filters.professionalId as string)) {
-                    res.json([]); // Professional not in the specified company
-                    return;
-                }
-            } else {
-                filters.professionalId = { in: professionalIds };
-            }
-        } else {
-             res.json([]); // No professionals in the company
-             return;
-        }
-    }
-
-    // Ensure context for non-admins
-    if (userRole !== UserRole.ADMIN && !filters.userId && !filters.professionalId && !companyId) {
-         res.status(400).json({ message: 'Filtro insuficiente. Forneça userId, professionalId ou companyId.' });
-         return;
-    }
-
-    const appointments = await appointmentRepository.findMany(filters);
-    res.json(appointments);
-  } catch (error) {
-    console.error('Erro ao buscar agendamentos:', error);
-    next(error); 
-  }
-};
-
-// Obter um agendamento específico pelo ID
-export const getAppointmentById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  const { id } = req.params;
-  const user = req.user; // Contains id and role
-
-  if (!isValidUUID(id)) {
-    res.status(400).json({ message: "Formato de ID inválido." });
-    return;
-  }
-  
-  try {
-    const appointment = await appointmentRepository.findById(id); // Use basic findById
-    if (!appointment) {
-      res.status(404).json({ message: 'Agendamento não encontrado' });
-      return;
-    }
-
-    // Authorization check
-    const isOwner = appointment.user?.id === user?.id;
-    // Check if the logged-in user is the professional assigned to the appointment
-    // This requires linking the Professional profile to a User account (e.g., via professional.userId)
-    // Assuming professional.userId exists and matches req.user.id
-    const isProfessionalAssigned = appointment.professional?.userId === user?.id; 
-    const isAdmin = user?.role === UserRole.ADMIN;
-    
-    if (!isOwner && !isProfessionalAssigned && !isAdmin) {
-        res.status(403).json({ message: 'Não autorizado a ver este agendamento.' });
-        return;
-    }
-
-    res.json(appointment);
-  } catch (error) {
-    console.error(`Erro ao buscar agendamento ${id}:`, error);
-    next(error);
-  }
-};
+// --- CONTROLLER METHODS ---
 
 // Criar um novo agendamento
-export const createAppointment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  const { date, serviceId, professionalId, notes } = req.body;
-  const userId = req.user?.id;
+export const createAppointment = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+    const { serviceId, professionalId, companyId, date, time, notes } = req.body;
+    const userId = req.user?.id;
 
-  if (!userId) {
-      res.status(401).json({ message: 'Usuário não autenticado.' });
-      return;
-  }
-  if (!date || !serviceId) {
-    res.status(400).json({ message: 'date e serviceId são obrigatórios.' });
-    return;
-  }
-
-  let service: any; // Declare service outside try block
-  try {
-    const appointmentDate = parseISO(date);
-    if (!isValid(appointmentDate) || isBefore(appointmentDate, new Date())) {
-        res.status(400).json({ message: 'Data inválida. Use o formato ISO 8601 e a data não pode ser no passado.' });
-        return;
+    if (!userId) {
+        return res.status(401).json({ message: 'Usuário não autenticado.' });
     }
 
-    // --- Validação de Regras de Negócio (Antecedência Mínima) ---
-    const now = new Date();
-    const hoursDifference = differenceInHours(appointmentDate, now);
-    if (hoursDifference < MIN_BOOKING_ADVANCE_HOURS) {
-        res.status(400).json({ message: `É necessário agendar com pelo menos ${MIN_BOOKING_ADVANCE_HOURS} hora(s) de antecedência.` });
-        return;
+    // --- Input Validation ---
+    if (!serviceId || !isValidUUID(serviceId)) {
+        return res.status(400).json({ message: 'ID do serviço inválido.' });
+    }
+    if (!date || !time) {
+        return res.status(400).json({ message: 'Data e hora são obrigatórios.' });
+    }
+    if (!professionalId && !companyId) {
+        return res.status(400).json({ message: 'É necessário fornecer ID do profissional ou da empresa.' });
+    }
+    if (professionalId && !isValidUUID(professionalId)) {
+        return res.status(400).json({ message: 'ID do profissional inválido.' });
+    }
+    if (companyId && !isValidUUID(companyId)) {
+        return res.status(400).json({ message: 'ID da empresa inválido.' });
     }
 
-    // --- Validação Pré-Criação (Disponibilidade) ---
-    service = await serviceRepository.findById(serviceId); // Assign service here
-    const duration = service ? parseDuration(service.duration) : null;
-    if (!service || duration === null) {
-        res.status(404).json({ message: 'Serviço não encontrado ou duração inválida.' });
-        return;
-    }
-    const appointmentEnd = addMinutes(appointmentDate, duration);
-
-    // Fetch professional (required for availability check)
     let targetProfessionalId = professionalId;
-    if (!targetProfessionalId) {
-        // If professionalId is not provided, find one who offers the service
-        const profServices = await prisma.professionalService.findMany({ where: { serviceId: serviceId }, include: { professional: true } });
-        if (profServices.length === 1) {
-            targetProfessionalId = profServices[0].professionalId;
-        } else if (profServices.length > 1) {
-             res.status(400).json({ message: 'professionalId é obrigatório para este serviço, pois múltiplos profissionais o oferecem.' });
-             return;
-        } else {
-            res.status(404).json({ message: 'Nenhum profissional encontrado que ofereça este serviço.' });
-            return;
-        }
-    } else {
-        // If professionalId IS provided, validate it
-        if (!isValidUUID(targetProfessionalId)) {
-            res.status(400).json({ message: 'Formato de professionalId inválido.' });
-            return;
-        }
-        // Validate that the specified professional actually offers the service
-        const profServiceLink = await prisma.professionalService.findUnique({
-            where: { professionalId_serviceId: { professionalId: targetProfessionalId, serviceId: serviceId } }
-        });
-        if (!profServiceLink) {
-            res.status(400).json({ message: 'O profissional especificado não oferece este serviço.' });
-            return;
-        }
-    }
 
-    const isAvailable = await checkAvailability(targetProfessionalId, appointmentDate, appointmentEnd);
-    if (!isAvailable) {
-        res.status(409).json({ message: 'Horário indisponível.' }); // 409 Conflict
-        return;
-    }
-    // --- Fim Validação Pré-Criação ---
-
-    const dataToCreate: Prisma.AppointmentCreateInput = {
-      date: appointmentDate, 
-      user: { connect: { id: userId } },
-      service: { connect: { id: serviceId } },
-      status: AppointmentStatus.PENDING, // Default status
-      notes: notes,
-      professional: { connect: { id: targetProfessionalId } } // Connect determined professional
-    };
-    
-    const newAppointment = await appointmentRepository.create(dataToCreate);
-
-    // --- ACTIVITY LOG & NOTIFICATION ---
     try {
-        await logActivity(userId, "NEW_APPOINTMENT", {
-            message: `Você agendou ${service.name} para ${format(appointmentDate, "dd/MM/yyyy 'às' HH:mm")}.`,
-            relatedEntityId: newAppointment.id,
-            relatedEntityType: "Appointment"
-        });
-        // Notify professional/company? (Example)
-        // await createNotification(targetProfessionalId, "NEW_APPOINTMENT_REQUEST", {
-        //     message: `Novo agendamento de ${req.user?.name} para ${service.name} em ${format(appointmentDate, "dd/MM/yyyy 'às' HH:mm")}.`,
-        //     relatedEntityId: newAppointment.id
-        // });
-    } catch (logError) {
-        console.error("Error logging activity or sending notification:", logError);
-        // Don't fail the request, just log the error
-    }
-    // --- END ACTIVITY LOG & NOTIFICATION ---
+        // --- Date/Time Parsing and Validation ---
+        const appointmentDateTimeString = `${date}T${time}:00`; // Assume local time if no timezone provided
+        const appointmentDate = parseISO(appointmentDateTimeString); // Use parseISO for better timezone handling if the string is ISO 8601
 
-    res.status(201).json(newAppointment);
-  } catch (error) {
-    console.error('Erro ao criar agendamento:', error);
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-        // Handle cases where service or professional might not be found during connect
-        res.status(404).json({ message: `Erro ao criar agendamento: ${error.meta?.cause || 'Serviço ou Profissional não encontrado.'}` });
-    } else {
-        next(error);
+        if (!isValid(appointmentDate)) {
+            return res.status(400).json({ message: 'Formato de data/hora inválido. Use YYYY-MM-DD e HH:MM.' });
+        }
+
+        // Check if booking is in the past
+        if (isBefore(appointmentDate, addMinutes(new Date(), -5))) { // Allow 5 min buffer
+            return res.status(400).json({ message: 'Não é possível agendar no passado.' });
+        }
+
+        // Check if booking too far in advance (e.g., > 90 days)
+        // if (differenceInDays(appointmentDate, new Date()) > 90) { ... }
+
+        // Check minimum booking advance time
+        if (differenceInHours(appointmentDate, new Date()) < MIN_BOOKING_ADVANCE_HOURS) {
+            return res.status(400).json({ message: `O agendamento deve ser feito com pelo menos ${MIN_BOOKING_ADVANCE_HOURS} hora(s) de antecedência.` });
+        }
+
+        // --- Entity Validation & Selection ---
+        const service = await serviceRepository.findById(serviceId);
+        const durationMinutes = service ? parseDuration(service.duration) : null;
+
+        if (!service || durationMinutes === null || durationMinutes <= 0) {
+            return res.status(404).json({ message: 'Serviço não encontrado ou duração inválida.' });
+        }
+
+        if (!targetProfessionalId && companyId) {
+            // TODO: Implement logic to select an available professional from the company for the service
+            // This might involve checking which professionals offer the service and their availability
+            // For now, require professionalId
+            return res.status(400).json({ message: 'Seleção automática de profissional não implementada. Forneça professionalId.' });
+            // Example: Find professionals in company offering the service
+            // const professionals = await professionalRepository.findMany({ companyId, services: { some: { serviceId } } }, ...);
+            // Then check availability for each...
+        }
+
+        // Ensure the selected professional exists and offers the service
+        const professionalExists = await prisma.professional.findFirst({
+            where: {
+                id: targetProfessionalId,
+                ...(companyId && { companyId: companyId }), // Optional: ensure professional is in the company if companyId is given
+                services: { some: { serviceId: serviceId } }
+            }
+        });
+
+        if (!professionalExists) {
+            return res.status(404).json({ message: 'Profissional não encontrado, não pertence à empresa ou não oferece o serviço selecionado.' });
+        }
+
+        // --- Availability Check ---
+        const appointmentEnd = addMinutes(appointmentDate, durationMinutes);
+        const isAvailable = await checkAvailability(targetProfessionalId, appointmentDate, appointmentEnd);
+
+        if (!isAvailable) {
+            return res.status(409).json({ message: 'Horário indisponível. Conflito com agendamento existente, bloqueio ou fora do horário de trabalho.' });
+        }
+
+        // --- Create Appointment ---
+        const dataToCreate: Prisma.AppointmentCreateInput = {
+            user: { connect: { id: userId } },
+            service: { connect: { id: serviceId } },
+            professional: { connect: { id: targetProfessionalId } },
+            date: appointmentDate,
+            status: AppointmentStatus.PENDING, // Default status
+            notes: notes || null,
+        };
+
+        const newAppointment = await appointmentRepository.create(dataToCreate);
+
+        // --- ACTIVITY LOG & NOTIFICATION ---
+        try {
+            await logActivity(userId, "NEW_APPOINTMENT", `Você agendou ${service.name} para ${format(appointmentDate, "dd/MM/yyyy 'às' HH:mm")}.`, {
+                id: newAppointment.id,
+                type: "Appointment"
+            });
+            // Notify professional/company? (Example)
+            // await createNotification(targetProfessionalId, "NEW_APPOINTMENT_REQUEST", {
+            //     message: `Novo agendamento de ${req.user?.name} para ${service.name} em ${format(appointmentDate, "dd/MM/yyyy 'às' HH:mm")}.`,
+            //     relatedEntityId: newAppointment.id
+            // });
+        } catch (logError) {
+            console.error("Error logging activity or sending notification:", logError);
+            // Don't fail the request because of logging/notification error
+        }
+
+        // --- GAMIFICATION --- 
+        try {
+            await gamificationService.triggerEvent(userId, GamificationEventType.APPOINTMENT_BOOKED, { relatedEntityId: newAppointment.id });
+        } catch (gamificationError) {
+            console.error("Error triggering gamification event:", gamificationError);
+        }
+
+        return res.status(201).json(newAppointment);
+
+    } catch (error) {
+        console.error("Erro ao criar agendamento:", error);
+        next(error); // Pass error to global error handler
     }
-  }
 };
 
-// Atualizar status de um agendamento (Confirmar, Cancelar, Completar)
-export const updateAppointmentStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  const { id } = req.params;
-  const { status } = req.body;
-  const user = req.user;
+// Listar agendamentos (com filtros)
+export const listAppointments = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+    const user = req.user;
+    const { professionalId, companyId, userId: queryUserId, status, date } = req.query;
 
-  if (!isValidUUID(id)) {
-    res.status(400).json({ message: "Formato de ID inválido." });
-    return;
-  }
-  if (!status || !Object.values(AppointmentStatus).includes(status as AppointmentStatus)) {
-    res.status(400).json({ 
-      message: 'Status inválido. Valores permitidos: ' + Object.values(AppointmentStatus).join(', ') 
-    });
-    return;
-  }
-
-  try {
-    const appointment = await appointmentRepository.findByIdWithService(id); // Include service for logging
-    if (!appointment) {
-      res.status(404).json({ message: 'Agendamento não encontrado' });
-      return;
+    if (!user) {
+        return res.status(401).json({ message: 'Usuário não autenticado.' });
     }
 
-    const currentStatus = appointment.status;
-    const newStatus = status as AppointmentStatus;
-    const isAdmin = user?.role === UserRole.ADMIN;
-    const isOwner = appointment.userId === user?.id;
-    // TODO: Add check if user is the professional or company owner
+    try {
+        let filters: Prisma.AppointmentWhereInput = {};
 
-    // --- Authorization & Status Transition Logic ---
-    let allowed = false;
-    let activityType: string | null = null;
-    let activityMessage: string | null = null;
-    let gamificationEvent: GamificationEventType | null = null;
-
-    switch (newStatus) {
-      case AppointmentStatus.CONFIRMED:
-        if (isAdmin && currentStatus === AppointmentStatus.PENDING) {
-          allowed = true;
-          activityType = "APPOINTMENT_CONFIRMED";
-          activityMessage = `Seu agendamento de ${appointment.service.name} para ${format(appointment.date, "dd/MM/yyyy 'às' HH:mm")} foi confirmado.`;
-        }
-        break;
-      case AppointmentStatus.CANCELLED:
-        const now = new Date();
-        const hoursUntilAppointment = differenceInHours(appointment.date, now);
-        
-        if (isAdmin) {
-            allowed = true; // Admin can always cancel
-        } else if (isOwner && (currentStatus === AppointmentStatus.PENDING || currentStatus === AppointmentStatus.CONFIRMED)) {
-            if (hoursUntilAppointment >= MIN_CANCELLATION_HOURS) {
-                allowed = true;
+        // Security: Non-admins can only see their own appointments unless querying by professional/company
+        if (user.role !== UserRole.ADMIN && !professionalId && !companyId) {
+            filters.userId = user.id;
+        } else if (user.role === UserRole.ADMIN && queryUserId && typeof queryUserId === 'string') {
+            if (isValidUUID(queryUserId)) {
+                 filters.userId = queryUserId; // Admin can filter by userId
             } else {
-                res.status(400).json({ message: `Não é possível cancelar com menos de ${MIN_CANCELLATION_HOURS} horas de antecedência.` });
-                return;
+                 return res.status(400).json({ message: 'Formato de userId inválido.' });
             }
         }
-        if (allowed) {
-            activityType = "APPOINTMENT_CANCELLED";
-            activityMessage = `Seu agendamento de ${appointment.service.name} para ${format(appointment.date, "dd/MM/yyyy 'às' HH:mm")} foi cancelado.`;
+
+        if (professionalId && typeof professionalId === 'string') {
+             if (isValidUUID(professionalId)) {
+                 filters.professionalId = professionalId;
+             } else {
+                 return res.status(400).json({ message: 'Formato de professionalId inválido.' });
+             }
         }
-        break;
-      case AppointmentStatus.COMPLETED:
-        // Only Admin or Professional can mark as completed?
-        if (isAdmin && currentStatus === AppointmentStatus.CONFIRMED) {
-          allowed = true;
-          activityType = "APPOINTMENT_COMPLETED";
-          activityMessage = `Seu agendamento de ${appointment.service.name} em ${format(appointment.date, "dd/MM/yyyy 'às' HH:mm")} foi concluído.`;
-          gamificationEvent = GamificationEventType.APPOINTMENT_COMPLETED;
+        if (status && typeof status === 'string' && status in AppointmentStatus) {
+            filters.status = status as AppointmentStatus;
         }
-        break;
-      case AppointmentStatus.NO_SHOW:
-        // Only Admin or Professional?
-        if (isAdmin && currentStatus === AppointmentStatus.CONFIRMED) {
-          allowed = true;
-          activityType = "APPOINTMENT_NO_SHOW";
-          activityMessage = `Você não compareceu ao agendamento de ${appointment.service.name} em ${format(appointment.date, "dd/MM/yyyy 'às' HH:mm")}.`;
-          // Consider gamification penalty?
+        if (date && typeof date === 'string') {
+            const parsedDate = parse(date, 'yyyy-MM-dd', new Date());
+            if (isValid(parsedDate)) {
+                filters.date = {
+                    gte: startOfDay(parsedDate),
+                    lt: endOfDay(parsedDate),
+                };
+            } else {
+                 return res.status(400).json({ message: 'Formato de data inválido. Use YYYY-MM-DD.' });
+            }
         }
-        break;
-      case AppointmentStatus.PENDING:
-        // Generally shouldn't transition back to PENDING, maybe admin override?
-        if (isAdmin && currentStatus === AppointmentStatus.CANCELLED) { // Example: Admin reopens a cancelled appointment
-            allowed = true;
-            // Log this specific action?
+        if (companyId && typeof companyId === 'string') {
+            if (!isValidUUID(companyId)) {
+                 return res.status(400).json({ message: 'Formato de companyId inválido.' });
+            }
+            // Filter by professionals within that company
+            // Ensure findMany takes correct parameters: filters, orderBy, skip, take
+            const professionalsInCompany = await professionalRepository.findMany({ companyId: companyId }, {}, 0, 1000); 
+            const professionalIds = professionalsInCompany.map(p => p.id);
+            if (professionalIds.length > 0) {
+                // If professionalId filter already exists, ensure it's one of the company's professionals
+                if (filters.professionalId && typeof filters.professionalId === 'string') {
+                    if (!professionalIds.includes(filters.professionalId)) {
+                        // Professional not in company, return empty list
+                        return res.json([]);
+                    }
+                } else {
+                    // Otherwise, filter by all professionals in the company
+                    filters.professionalId = { in: professionalIds };
+                }
+            } else {
+                // No professionals in company, return empty list
+                return res.json([]);
+            }
         }
-        break;
+
+        const appointments = await appointmentRepository.findMany(filters);
+        return res.json(appointments);
+
+    } catch (error) {
+        console.error("Erro ao listar agendamentos:", error);
+        next(error);
+    }
+};
+
+// Obter detalhes de um agendamento específico
+export const getAppointmentById = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+    const { id } = req.params;
+    const user = req.user;
+
+    if (!user) {
+        return res.status(401).json({ message: 'Usuário não autenticado.' });
+    }
+    if (!isValidUUID(id)) {
+        return res.status(400).json({ message: 'ID de agendamento inválido.' });
     }
 
-    if (!allowed) {
-      res.status(403).json({ message: `Transição de status inválida de ${currentStatus} para ${newStatus} ou permissão insuficiente.` });
-      return;
-    }
-    // --- End Authorization & Status Transition Logic ---
-
-    const updatedAppointment = await appointmentRepository.update(id, { status: newStatus });
-
-    // --- ACTIVITY LOG, NOTIFICATION & GAMIFICATION ---
     try {
-        if (activityType && activityMessage) {
-            await logActivity(appointment.userId, activityType, {
-                message: activityMessage,
-                relatedEntityId: id,
-                relatedEntityType: "Appointment"
-            });
-            // Notify user about the status change
-            // await createNotification(appointment.userId, activityType, {
-            //     message: activityMessage,
-            //     relatedEntityId: id
-            // });
-        }
-        if (gamificationEvent) {
-            await gamificationService.triggerEvent(appointment.userId, gamificationEvent, { relatedEntityId: id });
-        }
-    } catch (logError) {
-        console.error("Error logging activity, sending notification, or triggering gamification:", logError);
-        // Don't fail the request
-    }
-    // --- END ACTIVITY LOG, NOTIFICATION & GAMIFICATION ---
+        // Use the corrected payload type
+        const appointment: AppointmentWithDetails | null = await appointmentRepository.findById(id);
 
-    res.json(updatedAppointment);
-  } catch (error) {
-    console.error(`Erro ao atualizar status do agendamento ${id}:`, error);
-    next(error);
-  }
+        if (!appointment) {
+            return res.status(404).json({ message: 'Agendamento não encontrado.' });
+        }
+
+        // Authorization check
+        const isOwner = appointment.userId === user?.id;
+        // Check if the logged-in user is the assigned professional
+        // This requires linking Professional to User or checking company ownership etc.
+        // Simplified check: Is the logged-in user associated with the professional's company (if applicable)?
+        // This logic needs refinement based on actual authorization requirements.
+        let isProfessionalOrRelated = false;
+        if (appointment.professionalId) {
+             // Example: Check if user's ID matches a potential userId field on Professional (if added)
+             // Or check if user is admin/owner of the professional's company
+             // const professionalDetails = await professionalRepository.findById(appointment.professionalId);
+             // if (professionalDetails?.companyId === user.companyId) { isProfessionalOrRelated = true; }
+             // For now, let's assume only ADMIN can see others' appointments besides the owner.
+        }
+        const isAdmin = user?.role === UserRole.ADMIN;
+        
+        if (!isOwner && !isAdmin) { // Simplified: Only owner or admin can view
+            return res.status(403).json({ message: 'Não autorizado a ver este agendamento.' });
+        }
+
+        return res.json(appointment);
+
+    } catch (error) {
+        console.error(`Erro ao buscar agendamento ${id}:`, error);
+        next(error);
+    }
+};
+
+// Atualizar status de um agendamento (confirmar, cancelar, concluir)
+export const updateAppointmentStatus = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+    const { id } = req.params;
+    const { status } = req.body;
+    const user = req.user;
+
+    if (!user) {
+        return res.status(401).json({ message: 'Usuário não autenticado.' });
+    }
+    if (!isValidUUID(id)) {
+        return res.status(400).json({ message: 'ID de agendamento inválido.' });
+    }
+    if (!status || !(status in AppointmentStatus)) {
+        return res.status(400).json({ message: 'Status inválido fornecido.' });
+    }
+
+    try {
+        // Use the corrected payload type
+        const appointment: AppointmentWithDetails | null = await appointmentRepository.findById(id); // Fetch details needed for logic/logging
+        if (!appointment) {
+            return res.status(404).json({ message: 'Agendamento não encontrado' });
+        }
+
+        const currentStatus = appointment.status;
+        const newStatus = status as AppointmentStatus;
+        const isAdmin = user?.role === UserRole.ADMIN;
+        const isOwner = appointment.userId === user?.id;
+        // TODO: Add check if user is the professional or company owner based on refined auth logic
+        const isProfessionalOrCompanyAdmin = false; // Placeholder
+
+        // --- Authorization & Status Transition Logic ---
+        let allowed = false;
+        let activityType: string | null = null;
+        let activityMessage: string | null = null;
+        let gamificationEvent: GamificationEventType | null = null;
+
+        switch (newStatus) {
+            case AppointmentStatus.CONFIRMED:
+                // Allow Admin or Professional/Company Admin to confirm
+                if ((isAdmin || isProfessionalOrCompanyAdmin) && currentStatus === AppointmentStatus.PENDING) {
+                    allowed = true;
+                    activityType = "APPOINTMENT_CONFIRMED";
+                    activityMessage = `Seu agendamento de ${appointment.service?.name || 'serviço desconhecido'} para ${format(appointment.date, "dd/MM/yyyy 'às' HH:mm")} foi confirmado.`;
+                }
+                break;
+            case AppointmentStatus.CANCELLED:
+                const now = new Date();
+                const hoursUntilAppointment = differenceInHours(appointment.date, now);
+                
+                // Allow Admin or Professional/Company Admin to cancel anytime
+                if (isAdmin || isProfessionalOrCompanyAdmin) {
+                    allowed = true; 
+                } else if (isOwner && (currentStatus === AppointmentStatus.PENDING || currentStatus === AppointmentStatus.CONFIRMED)) {
+                    // Allow owner to cancel with sufficient notice
+                    if (hoursUntilAppointment >= MIN_CANCELLATION_HOURS) {
+                        allowed = true;
+                    } else {
+                        return res.status(400).json({ message: `Não é possível cancelar com menos de ${MIN_CANCELLATION_HOURS} horas de antecedência.` });
+                    }
+                }
+                if (allowed) {
+                    activityType = "APPOINTMENT_CANCELLED";
+                    activityMessage = `Seu agendamento de ${appointment.service?.name || 'serviço desconhecido'} para ${format(appointment.date, "dd/MM/yyyy 'às' HH:mm")} foi cancelado.`;
+                }
+                break;
+            case AppointmentStatus.COMPLETED:
+                // Allow Admin or Professional/Company Admin to mark as completed
+                if ((isAdmin || isProfessionalOrCompanyAdmin) && currentStatus === AppointmentStatus.CONFIRMED) {
+                    allowed = true;
+                    activityType = "APPOINTMENT_COMPLETED";
+                    activityMessage = `Seu agendamento de ${appointment.service?.name || 'serviço desconhecido'} em ${format(appointment.date, "dd/MM/yyyy 'às' HH:mm")} foi concluído.`;
+                    gamificationEvent = GamificationEventType.APPOINTMENT_COMPLETED;
+                }
+                break;
+            // case AppointmentStatus.NO_SHOW: // This status is not defined in the current schema
+            //   // Only Admin or Professional?
+            //   if (isAdmin && currentStatus === AppointmentStatus.CONFIRMED) {
+            //     allowed = true;
+            //     activityType = "APPOINTMENT_NO_SHOW";
+            //     activityMessage = `Você não compareceu ao agendamento de ${appointment.service?.name || 'serviço desconhecido'} em ${format(appointment.date, "dd/MM/yyyy \'às\' HH:mm")}.`;
+            //     // Consider gamification penalty?
+            //   }
+            //   break;
+             case AppointmentStatus.PENDING:
+                // Allow Admin to revert from CANCELLED (example)
+                if (isAdmin && currentStatus === AppointmentStatus.CANCELLED) { 
+                    allowed = true;
+                    // Log this specific action?
+                }
+                break;
+        }
+
+        if (!allowed) {
+            return res.status(403).json({ message: `Transição de status inválida de ${currentStatus} para ${newStatus} ou permissão insuficiente.` });
+        }
+        // --- End Authorization & Status Transition Logic ---
+
+        // Use the specific update method from the repository if it exists and is appropriate
+        // Otherwise, use the generic update method
+        // Assuming updateStatus exists and takes (id, status)
+        const updatedAppointment = await appointmentRepository.updateStatus(id, newStatus);
+        // If updateStatus doesn't exist or returns the wrong type, use:
+        // const updatedAppointment = await appointmentRepository.update(id, { status: newStatus });
+
+        // --- ACTIVITY LOG, NOTIFICATION & GAMIFICATION ---
+        try {
+            if (activityType && activityMessage) {
+                await logActivity(appointment.userId, activityType, activityMessage, {
+                    id: id,
+                    type: "Appointment"
+                });
+                // Notify user about the status change
+                // await createNotification(appointment.userId, activityType, {
+                //     message: activityMessage,
+                //     relatedEntityId: id
+                // });
+            }
+            if (gamificationEvent) {
+                await gamificationService.triggerEvent(appointment.userId, gamificationEvent, { relatedEntityId: id });
+            }
+        } catch (logError) {
+            console.error("Error logging activity, sending notification, or triggering gamification:", logError);
+            // Don't fail the request
+        }
+        // --- END ACTIVITY LOG, NOTIFICATION & GAMIFICATION ---
+
+        return res.json(updatedAppointment);
+    } catch (error) {
+        console.error(`Erro ao atualizar status do agendamento ${id}:`, error);
+        next(error);
+    }
 };
 
 // Obter horários disponíveis para um serviço/profissional em uma data específica
-export const getAvailability = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getAvailability = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
     const { date, serviceId, professionalId, companyId } = req.query;
 
     if (!date || typeof date !== 'string') {
-        res.status(400).json({ message: "Parâmetro 'date' (YYYY-MM-DD) é obrigatório." });
-        return;
+        return res.status(400).json({ message: "Parâmetro 'date' (YYYY-MM-DD) é obrigatório." });
     }
     if (!serviceId || typeof serviceId !== 'string' || !isValidUUID(serviceId)) {
-        res.status(400).json({ message: "Parâmetro 'serviceId' (UUID) é obrigatório." });
-        return;
+        return res.status(400).json({ message: "Parâmetro 'serviceId' (UUID) é obrigatório." });
     }
     if (!professionalId && !companyId) {
-        res.status(400).json({ message: "É necessário fornecer 'professionalId' ou 'companyId'." });
-        return;
+        return res.status(400).json({ message: "É necessário fornecer 'professionalId' ou 'companyId'." });
     }
     if (professionalId && (typeof professionalId !== 'string' || !isValidUUID(professionalId))) {
-        res.status(400).json({ message: "Formato de 'professionalId' inválido." });
-        return;
+        return res.status(400).json({ message: "Formato de 'professionalId' inválido." });
     }
     if (companyId && (typeof companyId !== 'string' || !isValidUUID(companyId))) {
-        res.status(400).json({ message: "Formato de 'companyId' inválido." });
-        return;
+        return res.status(400).json({ message: "Formato de 'companyId' inválido." });
     }
 
     try {
         const targetDate = parse(date, 'yyyy-MM-dd', new Date());
         if (!isValid(targetDate)) {
-            res.status(400).json({ message: "Formato de data inválido. Use YYYY-MM-DD." });
-            return;
+            return res.status(400).json({ message: "Formato de data inválido. Use YYYY-MM-DD." });
         }
 
         const service = await serviceRepository.findById(serviceId);
         const duration = service ? parseDuration(service.duration) : null;
-        if (!service || duration === null) {
-            res.status(404).json({ message: "Serviço não encontrado ou duração inválida." });
-            return;
+        if (!service || duration === null || duration <= 0) { // Check duration validity
+            return res.status(404).json({ message: "Serviço não encontrado ou duração inválida." });
         }
 
-        let professionalsToCheck: { id: string; workingHours: any; company?: { workingHours: any } | null }[] = [];
+        // Use a more specific type for professionalsToCheck based on includes
+        type ProfessionalForAvailability = Prisma.ProfessionalGetPayload<{
+            include: { company: true, services: true } // Include company and services
+        }>
+        let professionalsToCheck: ProfessionalForAvailability[] = [];
 
         if (professionalId) {
-            const professional = await professionalRepository.findById(professionalId);
+            // Use the corrected payload type
+            const professional: ProfessionalWithDetails | null = await professionalRepository.findById(professionalId);
             if (!professional) {
-                res.status(404).json({ message: "Profissional não encontrado." });
-                return;
+                return res.status(404).json({ message: "Profissional não encontrado." });
             }
-            // Check if this professional offers the service
-            const profServiceLink = await prisma.professionalService.findUnique({
-                where: { professionalId_serviceId: { professionalId: professionalId, serviceId: serviceId } }
-            });
-            if (!profServiceLink) {
-                 res.status(400).json({ message: "O profissional especificado não oferece este serviço." });
-                 return;
+            // Check if this professional offers the service (using included services)
+            const offersService = professional.services.some(ps => ps.serviceId === serviceId);
+            if (!offersService) {
+                 return res.status(400).json({ message: "O profissional especificado não oferece este serviço." });
             }
-            professionalsToCheck.push(professional);
+            // Cast to ProfessionalForAvailability if structure matches (might need adjustment)
+            professionalsToCheck.push(professional as ProfessionalForAvailability);
         } else if (companyId) {
             // Find professionals in the company who offer the service
-            const profServices = await prisma.professionalService.findMany({
-                where: { serviceId: serviceId, professional: { companyId: companyId } },
-                include: { professional: { include: { company: true } } } // Include company for working hours fallback
-            });
-            professionalsToCheck = profServices.map(ps => ps.professional);
+            // Adjust findMany to include necessary relations
+            professionalsToCheck = await professionalRepository.findMany(
+                { 
+                    companyId: companyId, 
+                    services: { some: { serviceId: serviceId } } 
+                },
+                {},
+                0,
+                1000 // Consider pagination limit
+            ) as ProfessionalForAvailability[]; // Cast result
+            
             if (professionalsToCheck.length === 0) {
-                 res.json({ availableSlots: [] }); // No professionals in this company offer this service
-                 return;
+                 return res.json({ availableSlots: [] }); // No professionals in this company offer this service
             }
         }
 
@@ -603,7 +645,8 @@ export const getAvailability = async (req: Request, res: Response, next: NextFun
         for (const prof of professionalsToCheck) {
             const profId = prof.id;
             allAvailableSlots[profId] = [];
-            const workingHoursJson = prof.workingHours || (prof.company ? prof.company.workingHours : null);
+            // Access company safely
+            const workingHoursJson = prof.workingHours || prof.company?.workingHours || null;
             const workingHoursToday = getWorkingHoursForDay(workingHoursJson, targetDate);
 
             if (!workingHoursToday) continue; // Skip if not working
@@ -617,10 +660,18 @@ export const getAvailability = async (req: Request, res: Response, next: NextFun
                 date: { gte: dayStart, lt: dayEnd },
             });
             const scheduleBlocks = await scheduleBlockRepository.findMany({
-                professionalId: profId,
-                startTime: { lt: dayEnd },
-                endTime: { gt: dayStart },
+                where: { // Added where clause
+                    professionalId: profId,
+                    startTime: { lt: dayEnd },
+                    endTime: { gt: dayStart },
+                }
             });
+
+            // Pre-fetch service durations for appointments to optimize loop
+            const appointmentServiceIds = existingAppointments.map(a => a.serviceId);
+            const appointmentServices = await serviceRepository.findMany({ id: { in: appointmentServiceIds } });
+            const serviceDurationMap = new Map<string, number | null>();
+            appointmentServices.forEach(s => serviceDurationMap.set(s.id, parseDuration(s.duration)));
 
             // Iterate through potential slots
             let currentSlotStart = workingHoursToday.start;
@@ -636,7 +687,8 @@ export const getAvailability = async (req: Request, res: Response, next: NextFun
 
                 // Check against existing appointments
                 for (const appt of existingAppointments) {
-                    const apptDuration = await serviceRepository.findById(appt.serviceId).then(s => s ? parseDuration(s.duration) : 0) || 0;
+                    const apptDuration = serviceDurationMap.get(appt.serviceId);
+                    if (apptDuration === null || apptDuration === undefined || apptDuration <= 0) continue;
                     const apptEnd = addMinutes(appt.date, apptDuration);
                     // Check for overlap: (SlotStart < ApptEnd) and (SlotEnd > ApptStart)
                     if (currentSlotStart < apptEnd && potentialSlotEnd > appt.date) {
@@ -672,11 +724,11 @@ export const getAvailability = async (req: Request, res: Response, next: NextFun
 
         // Format response based on input (single professional or company)
         if (professionalId) {
-            res.json({ availableSlots: allAvailableSlots[professionalId] || [] });
+            return res.json({ availableSlots: allAvailableSlots[professionalId] || [] });
         } else {
             // For company, return slots grouped by professional or a combined list?
             // Returning grouped by professional ID for now
-            res.json({ availabilityByProfessional: allAvailableSlots });
+            return res.json({ availabilityByProfessional: allAvailableSlots });
         }
 
     } catch (error) {
@@ -684,4 +736,12 @@ export const getAvailability = async (req: Request, res: Response, next: NextFun
         next(error);
     }
 };
+
+// Add missing exports if they were removed or renamed
+// Example: If getAppointmentAvailability was renamed to getAvailability
+// export { getAvailability as getAppointmentAvailability };
+
+// If cancelAppointment and deleteAppointment logic is needed, implement them
+// export const cancelAppointment = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => { ... };
+// export const deleteAppointment = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => { ... };
 

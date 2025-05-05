@@ -1,9 +1,10 @@
-import { prisma } from "../utils/prismaClient";
+import { prisma } from "../lib/prisma";
 import { Prisma, User, Badge, UserBadge, GamificationEvent } from "@prisma/client";
 
 // Define Gamification Event Types
 export enum GamificationEventType {
     USER_REGISTERED = "USER_REGISTERED",
+    APPOINTMENT_BOOKED = "APPOINTMENT_BOOKED", // Added event for booking
     APPOINTMENT_COMPLETED = "APPOINTMENT_COMPLETED",
     REVIEW_CREATED = "REVIEW_CREATED",
     // Add more event types as needed
