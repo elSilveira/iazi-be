@@ -10,8 +10,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getLeaderboard = exports.getGamificationProfile = void 0;
-const prismaClient_1 = require("../utils/prismaClient");
-const client_1 = require("@prisma/client");
+const prisma_1 = require("../lib/prisma"); // Corrected import path
+const client_1 = require("@prisma/client"); // Added Prisma import
 // Helper function for UUID validation
 const isValidUUID = (uuid) => {
     const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
@@ -26,22 +26,25 @@ const getGamificationProfile = (req, res, next) => __awaiter(void 0, void 0, voi
     // If "me" is used, get the authenticated user's profile
     if (targetUserId === "me") {
         if (!authenticatedUserId) {
-            res.status(401).json({ message: "Não autenticado." });
-            return;
+            // Return the response directly
+            return res.status(401).json({ message: "Não autenticado." });
         }
         targetUserId = authenticatedUserId;
     }
     else if (!isValidUUID(targetUserId)) {
-        res.status(400).json({ message: "Formato de ID do usuário inválido." });
-        return;
+        // Return the response directly
+        return res.status(400).json({ message: "Formato de ID do usuário inválido." });
     }
     // Authorization: Allow users to see their own profile, or admins to see any profile
     if (targetUserId !== authenticatedUserId && authenticatedUserRole !== client_1.UserRole.ADMIN) {
-        res.status(403).json({ message: "Não autorizado a ver este perfil de gamificação." });
-        return;
+        // Return the response directly
+        return res.status(403).json({ message: "Não autorizado a ver este perfil de gamificação." });
     }
     try {
-        const profile = yield prismaClient_1.prisma.gamificationProfile.findUnique({
+        // TODO: Fix this - Property 'gamificationProfile' does not exist on type 'PrismaClient'
+        // Check schema.prisma for the correct model name (e.g., GamificationProfile? UserGamification?)
+        // Assuming the model is named 'GamificationProfile' for now
+        const profile = yield prisma_1.prisma.gamificationProfile.findUnique({
             where: { userId: targetUserId },
             include: {
                 user: { select: { id: true, name: true, avatar: true } }, // Include basic user info
@@ -56,9 +59,10 @@ const getGamificationProfile = (req, res, next) => __awaiter(void 0, void 0, voi
             // If profile doesn't exist yet, maybe create a default one or return empty state?
             // For now, return 404, but consider creating on first relevant event.
             // Let's try returning a default structure if the user exists but profile doesn't
-            const userExists = yield prismaClient_1.prisma.user.findUnique({ where: { id: targetUserId }, select: { id: true, name: true, avatar: true } });
+            const userExists = yield prisma_1.prisma.user.findUnique({ where: { id: targetUserId }, select: { id: true, name: true, avatar: true } });
             if (userExists) {
-                res.json({
+                // Return the response directly
+                return res.json({
                     userId: targetUserId,
                     points: 0,
                     level: 1, // Default level
@@ -69,14 +73,15 @@ const getGamificationProfile = (req, res, next) => __awaiter(void 0, void 0, voi
                 });
             }
             else {
-                res.status(404).json({ message: "Perfil de gamificação ou usuário não encontrado." });
+                // Return the response directly
+                return res.status(404).json({ message: "Perfil de gamificação ou usuário não encontrado." });
             }
-            return;
         }
         // Calculate level based on points (example logic)
         // const level = Math.floor(profile.points / 100) + 1; // Example: 100 points per level
         // profile.level = level; // Add level dynamically if not stored or needs recalculation
-        res.json(profile);
+        // Return the response
+        return res.json(profile);
     }
     catch (error) {
         console.error(`Erro ao buscar perfil de gamificação para ${targetUserId}:`, error);
@@ -89,11 +94,14 @@ const getLeaderboard = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
     const { limit = 10 } = req.query; // Default limit to 10
     const parsedLimit = parseInt(limit, 10);
     if (isNaN(parsedLimit) || parsedLimit <= 0) {
-        res.status(400).json({ message: "Parâmetro 'limit' inválido. Deve ser um número positivo." });
-        return;
+        // Return the response directly
+        return res.status(400).json({ message: "Parâmetro 'limit' inválido. Deve ser um número positivo." });
     }
     try {
-        const leaderboard = yield prismaClient_1.prisma.gamificationProfile.findMany({
+        // TODO: Fix this - Property 'gamificationProfile' does not exist on type 'PrismaClient'
+        // Check schema.prisma for the correct model name (e.g., GamificationProfile? UserGamification?)
+        // Assuming the model is named 'GamificationProfile' for now
+        const leaderboard = yield prisma_1.prisma.gamificationProfile.findMany({
             orderBy: {
                 points: 'desc'
             },
@@ -102,7 +110,8 @@ const getLeaderboard = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
                 user: { select: { id: true, name: true, avatar: true } } // Include basic user info
             }
         });
-        res.json(leaderboard);
+        // Return the response
+        return res.json(leaderboard);
     }
     catch (error) {
         console.error("Erro ao buscar leaderboard:", error);

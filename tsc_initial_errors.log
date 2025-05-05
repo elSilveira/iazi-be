@@ -2,6 +2,8 @@
 > serviconnect-backend@1.0.0 build
 > tsc
 
+src/controllers/appointmentController.ts(672,65): error TS2554: Expected 4 arguments, but got 1.
+src/middlewares/authMiddleware.ts(31,5): error TS2741: Property 'role' is missing in type '{ id: string; }' but required in type 'AuthenticatedUser'.
 src/routes/appointmentRoutes.ts(3,3): error TS2305: Module '"../controllers/appointmentController"' has no exported member 'getAllAppointments'.
 src/routes/appointmentRoutes.ts(7,3): error TS2724: '"../controllers/appointmentController"' has no exported member named 'cancelAppointment'. Did you mean 'createAppointment'?
 src/routes/appointmentRoutes.ts(8,3): error TS2724: '"../controllers/appointmentController"' has no exported member named 'deleteAppointment'. Did you mean 'createAppointment'?

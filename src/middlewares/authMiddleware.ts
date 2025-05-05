@@ -1,18 +1,13 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { userRepository } from "../repositories/userRepository"; // Importar o repositório de usuário
 
-// Estender a interface Request do Express para incluir a propriedade user
-// interface AuthRequest extends Request { // Removed, using global declaration
-//   user?: { id: string };
-// }
-
-export const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+export const authMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Tornar a função async
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    // Usar res.status().json() e retornar explicitamente para evitar chamar next()
     res.status(401).json({ message: "Token de autenticação não fornecido ou inválido." });
-    return; 
+    return;
   }
 
   const token = authHeader.split(" ")[1];
@@ -20,29 +15,34 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction):
 
   if (!jwtSecret) {
     console.error("Erro crítico: JWT_SECRET não definido no ambiente.");
-    // Usar res.status().json() e retornar explicitamente
     res.status(500).json({ message: "Erro interno do servidor." });
     return;
   }
 
   try {
     const decoded = jwt.verify(token, jwtSecret) as { userId: string };
-    // Anexar o ID do usuário decodificado ao objeto req para uso posterior
-    req.user = { id: decoded.userId }; 
-    next(); // Chamar next() apenas se o token for válido
+    
+    // Buscar o usuário no banco de dados para obter o role
+    const user = await userRepository.findById(decoded.userId);
+
+    if (!user) {
+      res.status(401).json({ message: "Usuário associado ao token não encontrado." });
+      return;
+    }
+
+    // Anexar o ID e o role do usuário ao objeto req
+    req.user = { id: user.id, role: user.role }; 
+    next(); // Chamar next() apenas se o token for válido e o usuário encontrado
   } catch (error) {
-    // Tratar erros específicos do JWT
     if (error instanceof jwt.TokenExpiredError) {
         res.status(401).json({ message: "Token expirado." });
     } else if (error instanceof jwt.JsonWebTokenError) {
         res.status(401).json({ message: "Token inválido." });
     } else {
-        // Tratar outros erros inesperados
-        console.error("Erro ao verificar token:", error);
+        console.error("Erro ao verificar token ou buscar usuário:", error);
         res.status(500).json({ message: "Erro interno ao processar token." });
     }
-    // Não chamar next() em caso de erro
-    return; 
+    return;
   }
 };
 

@@ -12,15 +12,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.professionalRepository = void 0;
 const prisma_1 = require("../lib/prisma");
 exports.professionalRepository = {
+    // Define the include object for consistency
+    includeDetails: {
+        services: { include: { service: true } },
+        company: { include: { address: true } },
+    },
     // Método antigo, pode ser removido ou mantido
     getAll(companyId) {
         return __awaiter(this, void 0, void 0, function* () {
             return prisma_1.prisma.professional.findMany({
                 where: companyId ? { companyId } : {},
-                include: {
-                    services: { include: { service: true } },
-                    company: { include: { address: true } } // Incluir empresa e endereço
-                },
+                include: this.includeDetails,
             });
         });
     },
@@ -32,10 +34,7 @@ exports.professionalRepository = {
                 orderBy: orderBy,
                 skip: skip,
                 take: take,
-                include: {
-                    services: { include: { service: true } }, // Incluir serviços associados
-                    company: { include: { address: true } } // Incluir empresa e endereço
-                }
+                include: this.includeDetails,
             });
         });
     },
@@ -51,10 +50,7 @@ exports.professionalRepository = {
         return __awaiter(this, void 0, void 0, function* () {
             return prisma_1.prisma.professional.findUnique({
                 where: { id },
-                include: {
-                    services: { include: { service: true } }, // Incluir serviços associados
-                    company: { include: { address: true } } // Incluir empresa e endereço
-                },
+                include: this.includeDetails,
             });
         });
     },
@@ -74,9 +70,10 @@ exports.professionalRepository = {
                         skipDuplicates: true,
                     });
                 }
+                // Re-fetch with includes
                 return tx.professional.findUniqueOrThrow({
                     where: { id: newProfessional.id },
-                    include: { services: { include: { service: true } } },
+                    include: this.includeDetails,
                 });
             }));
         });
@@ -88,6 +85,8 @@ exports.professionalRepository = {
                 const updatedProfessional = yield tx.professional.update({
                     where: { id },
                     data,
+                    // Include details directly in update if possible, otherwise re-fetch
+                    // include: this.includeDetails, // Include might not work directly with serviceIds logic
                 });
                 if (serviceIds !== undefined) {
                     yield tx.professionalService.deleteMany({
@@ -104,9 +103,10 @@ exports.professionalRepository = {
                         });
                     }
                 }
+                // Re-fetch with includes
                 return tx.professional.findUniqueOrThrow({
                     where: { id: updatedProfessional.id },
-                    include: { services: { include: { service: true } } },
+                    include: this.includeDetails,
                 });
             }));
         });
@@ -115,6 +115,12 @@ exports.professionalRepository = {
         return __awaiter(this, void 0, void 0, function* () {
             // Prisma delete throws P2025 if record not found
             return prisma_1.prisma.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
+                // Fetch before deleting to potentially return details (optional)
+                // const professionalToDelete = await tx.professional.findUnique({ 
+                //     where: { id }, 
+                //     include: this.includeDetails 
+                // });
+                // if (!professionalToDelete) throw new Prisma.PrismaClientKnownRequestError("Professional not found", { code: "P2025", clientVersion: "" });
                 yield tx.professionalService.deleteMany({ where: { professionalId: id } });
                 // onDelete: SetNull for appointments should be handled by schema
                 yield tx.review.updateMany({
@@ -124,7 +130,8 @@ exports.professionalRepository = {
                 const deletedProfessional = yield tx.professional.delete({
                     where: { id },
                 });
-                return deletedProfessional;
+                return deletedProfessional; // Return the basic deleted object
+                // return professionalToDelete; // Or return the object with details fetched before delete
             }));
         });
     },

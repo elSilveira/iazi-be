@@ -2,34 +2,6 @@
 > serviconnect-backend@1.0.0 build
 > tsc
 
-src/routes/appointmentRoutes.ts(3,3): error TS2305: Module '"../controllers/appointmentController"' has no exported member 'getAllAppointments'.
-src/routes/appointmentRoutes.ts(7,3): error TS2724: '"../controllers/appointmentController"' has no exported member named 'cancelAppointment'. Did you mean 'createAppointment'?
-src/routes/appointmentRoutes.ts(8,3): error TS2724: '"../controllers/appointmentController"' has no exported member named 'deleteAppointment'. Did you mean 'createAppointment'?
-src/routes/appointmentRoutes.ts(9,3): error TS2305: Module '"../controllers/appointmentController"' has no exported member 'getAppointmentAvailability'.
-src/routes/appointmentRoutes.ts(157,61): error TS2769: No overload matches this call.
-  The last overload gave the following error.
-    Argument of type '(req: Request, res: Response, next: NextFunction) => Promise<Response | void>' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
-      Type '(req: Request, res: Response, next: NextFunction) => Promise<Response | void>' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
-        Type 'Promise<void | Response<any, Record<string, any>>>' is not assignable to type 'void | Promise<void>'.
-          Type 'Promise<void | Response<any, Record<string, any>>>' is not assignable to type 'Promise<void>'.
-            Type 'void | Response<any, Record<string, any>>' is not assignable to type 'void'.
-              Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
-src/routes/appointmentRoutes.ts(200,63): error TS2769: No overload matches this call.
-  The last overload gave the following error.
-    Argument of type '(req: Request, res: Response, next: NextFunction) => Promise<Response | void>' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
-      Type '(req: Request, res: Response, next: NextFunction) => Promise<Response | void>' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
-        Type 'Promise<void | Response<any, Record<string, any>>>' is not assignable to type 'void | Promise<void>'.
-          Type 'Promise<void | Response<any, Record<string, any>>>' is not assignable to type 'Promise<void>'.
-            Type 'void | Response<any, Record<string, any>>' is not assignable to type 'void'.
-              Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
-src/routes/appointmentRoutes.ts(244,74): error TS2769: No overload matches this call.
-  The last overload gave the following error.
-    Argument of type '(req: Request, res: Response, next: NextFunction) => Promise<Response | void>' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
-      Type '(req: Request, res: Response, next: NextFunction) => Promise<Response | void>' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
-        Type 'Promise<void | Response<any, Record<string, any>>>' is not assignable to type 'void | Promise<void>'.
-          Type 'Promise<void | Response<any, Record<string, any>>>' is not assignable to type 'Promise<void>'.
-            Type 'void | Response<any, Record<string, any>>' is not assignable to type 'void'.
-              Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
 src/routes/companyRoutes.ts(51,17): error TS2769: No overload matches this call.
   The last overload gave the following error.
     Argument of type '(req: Request, res: Response, next: NextFunction) => Promise<Response | void>' is not assignable to parameter of type 'Application<Record<string, any>>'.

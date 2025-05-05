@@ -10,11 +10,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.gamificationService = exports.GamificationEventType = void 0;
-const prismaClient_1 = require("../utils/prismaClient");
+const prisma_1 = require("../lib/prisma");
 // Define Gamification Event Types
 var GamificationEventType;
 (function (GamificationEventType) {
     GamificationEventType["USER_REGISTERED"] = "USER_REGISTERED";
+    GamificationEventType["APPOINTMENT_BOOKED"] = "APPOINTMENT_BOOKED";
     GamificationEventType["APPOINTMENT_COMPLETED"] = "APPOINTMENT_COMPLETED";
     GamificationEventType["REVIEW_CREATED"] = "REVIEW_CREATED";
     // Add more event types as needed
@@ -194,7 +195,7 @@ class GamificationService {
             var _a;
             const pointsToAdd = (_a = EVENT_POINTS[eventType]) !== null && _a !== void 0 ? _a : 0;
             try {
-                yield prismaClient_1.prisma.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
+                yield prisma_1.prisma.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
                     let updatedUser = null;
                     // Ensure user exists before adding points
                     const userExists = yield tx.user.findUnique({ where: { id: userId } });
@@ -226,7 +227,7 @@ class GamificationService {
             let count = 0;
             for (const badgeDef of BADGE_DEFINITIONS) {
                 try {
-                    yield prismaClient_1.prisma.badge.upsert({
+                    yield prisma_1.prisma.badge.upsert({
                         where: { name: badgeDef.name }, // Use name as unique identifier
                         update: {
                             description: badgeDef.description,

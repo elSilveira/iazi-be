@@ -13,18 +13,25 @@ exports.appointmentRepository = void 0;
 const prisma_1 = require("../lib/prisma");
 const client_1 = require("@prisma/client");
 exports.appointmentRepository = {
+    // Define the include object for consistency
+    includeDetails: {
+        service: true,
+        professional: {
+            include: {
+                company: { include: { address: true } },
+                services: { include: { service: true } },
+            },
+        },
+        user: { select: { id: true, name: true, email: true, avatar: true } },
+    }, // Use 'as const' for stricter type checking
     // Encontrar múltiplos agendamentos com base em filtros
     findMany(filters) {
         return __awaiter(this, void 0, void 0, function* () {
             return prisma_1.prisma.appointment.findMany({
                 where: filters,
-                include: {
-                    service: true,
-                    professional: true,
-                    user: { select: { id: true, name: true, email: true, avatar: true } } // Incluir dados relevantes do usuário
-                },
+                include: this.includeDetails,
                 orderBy: {
-                    date: 'asc', // Ordenar por data
+                    date: "asc", // Ordenar por data
                 },
             });
         });
@@ -48,31 +55,37 @@ exports.appointmentRepository = {
         return __awaiter(this, void 0, void 0, function* () {
             return prisma_1.prisma.appointment.findUnique({
                 where: { id },
-                include: {
-                    service: true,
-                    professional: true,
-                    user: { select: { id: true, name: true, email: true, avatar: true } }
-                },
+                include: this.includeDetails,
             });
         });
     },
     create(data) {
         return __awaiter(this, void 0, void 0, function* () {
-            return prisma_1.prisma.appointment.create({
+            const newAppointment = yield prisma_1.prisma.appointment.create({
                 data,
+            });
+            // Re-fetch with includes to ensure the correct return type
+            return prisma_1.prisma.appointment.findUniqueOrThrow({
+                where: { id: newAppointment.id },
+                include: this.includeDetails,
             });
         });
     },
     updateStatus(id, status) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                return yield prisma_1.prisma.appointment.update({
+                const updatedAppointment = yield prisma_1.prisma.appointment.update({
                     where: { id },
                     data: { status },
                 });
+                // Re-fetch with includes
+                return prisma_1.prisma.appointment.findUnique({
+                    where: { id: updatedAppointment.id },
+                    include: this.includeDetails,
+                });
             }
             catch (error) {
-                if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+                if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
                     return null; // Agendamento não encontrado
                 }
                 throw error;
@@ -82,12 +95,20 @@ exports.appointmentRepository = {
     delete(id) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                return yield prisma_1.prisma.appointment.delete({
+                // Fetch before deleting to return the full object (optional, depends on need)
+                const appointmentToDelete = yield prisma_1.prisma.appointment.findUnique({
+                    where: { id },
+                    include: this.includeDetails,
+                });
+                if (!appointmentToDelete)
+                    return null; // Already gone
+                yield prisma_1.prisma.appointment.delete({
                     where: { id },
                 });
+                return appointmentToDelete; // Return the fetched object
             }
             catch (error) {
-                if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+                if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
                     return null; // Agendamento não encontrado
                 }
                 throw error;

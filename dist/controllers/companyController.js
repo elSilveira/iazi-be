@@ -36,13 +36,12 @@ const checkAdminRole = (req, res, next) => {
 };
 // Obter todas as empresas (com filtros e paginação) - Public or requires different auth?
 const getAllCompanies = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    // ... (existing code for filtering and pagination) ...
     const { q, category, city, state, minRating, sort, page = "1", limit = "10" } = req.query;
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
     if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1) {
-        res.status(400).json({ message: "Parâmetros de paginação inválidos (page e limit devem ser números positivos)." });
-        return;
+        // Return the response directly
+        return res.status(400).json({ message: "Parâmetros de paginação inválidos (page e limit devem ser números positivos)." });
     }
     const skip = (pageNum - 1) * limitNum;
     try {
@@ -84,7 +83,8 @@ const getAllCompanies = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
         }
         const companies = yield companyRepository_1.default.findMany(filters, orderBy, skip, limitNum);
         const totalCompanies = yield companyRepository_1.default.count(filters);
-        res.json({
+        // Return the response
+        return res.json({
             data: companies,
             pagination: {
                 currentPage: pageNum,
@@ -105,10 +105,11 @@ const getCompanyById = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
     try {
         const company = yield companyRepository_1.default.findById(id);
         if (!company) {
-            // Use status 404 directly instead of custom error property
+            // Return the response directly
             return res.status(404).json({ message: "Empresa não encontrada" });
         }
-        res.json(company);
+        // Return the response
+        return res.json(company);
     }
     catch (error) {
         next(error);
@@ -119,14 +120,15 @@ exports.getCompanyById = getCompanyById;
 exports.createCompany = [
     checkAdminRole, // Add authorization check middleware
     (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-        const _a = req.body, { address } = _a, companyData = __rest(_a, ["address"]);
+        const _a = req.body, { address } = _a, companyData = __rest(_a, ["address"]); // Destructure address and company data
         try {
             if (companyData.categories && !Array.isArray(companyData.categories)) {
                 companyData.categories = [companyData.categories];
             }
             // TODO: Add ownerId based on req.user.id if schema changes
             const newCompany = yield companyRepository_1.default.create(companyData, address);
-            res.status(201).json(newCompany);
+            // Return the response
+            return res.status(201).json(newCompany);
         }
         catch (error) {
             next(error);
@@ -138,12 +140,13 @@ exports.updateCompany = [
     checkAdminRole, // Add authorization check middleware (simplest approach for now)
     (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
         const { id } = req.params;
-        const _a = req.body, { address } = _a, companyData = __rest(_a, ["address"]);
+        const _a = req.body, { address } = _a, companyData = __rest(_a, ["address"]); // Destructure address and company data
         try {
             // TODO: Add check: if not ADMIN, verify req.user.id owns company with id `id`
             // Ensure company exists before attempting update (optional, repo might handle)
             const existingCompany = yield companyRepository_1.default.findById(id);
             if (!existingCompany) {
+                // Return the response directly
                 return res.status(404).json({ message: "Empresa não encontrada para atualização." });
             }
             // Authorization check (placeholder for ownership)
@@ -153,16 +156,19 @@ exports.updateCompany = [
             if (companyData.categories && !Array.isArray(companyData.categories)) {
                 companyData.categories = [companyData.categories];
             }
+            // Ensure rating and totalReviews are numbers if provided
             if (companyData.rating !== undefined)
                 companyData.rating = parseFloat(companyData.rating);
             if (companyData.totalReviews !== undefined)
                 companyData.totalReviews = parseInt(companyData.totalReviews, 10);
             const updatedCompany = yield companyRepository_1.default.update(id, companyData, address);
-            res.json(updatedCompany);
+            // Return the response
+            return res.json(updatedCompany);
         }
         catch (error) {
             // Handle Prisma P2025 specifically if repo doesn't
             if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+                // Return the response directly
                 return res.status(404).json({ message: "Empresa não encontrada para atualização." });
             }
             next(error);
@@ -179,6 +185,7 @@ exports.deleteCompany = [
             // Ensure company exists before attempting delete (optional, repo might handle)
             const existingCompany = yield companyRepository_1.default.findById(id);
             if (!existingCompany) {
+                // Return the response directly
                 return res.status(404).json({ message: "Empresa não encontrada para exclusão." });
             }
             // Authorization check (placeholder for ownership)
@@ -187,11 +194,13 @@ exports.deleteCompany = [
             // }
             const deletedCompany = yield companyRepository_1.default.delete(id);
             // Repo delete might throw if not found, handle P2025 if needed
-            res.status(200).json({ message: "Empresa excluída com sucesso", company: deletedCompany });
+            // Return the response
+            return res.status(200).json({ message: "Empresa excluída com sucesso", company: deletedCompany });
         }
         catch (error) {
             // Handle Prisma P2025 specifically if repo doesn't
             if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+                // Return the response directly
                 return res.status(404).json({ message: "Empresa não encontrada para exclusão." });
             }
             next(error);

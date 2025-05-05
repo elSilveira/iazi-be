@@ -8,12 +8,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getUserActivityFeed = exports.logActivity = void 0;
-const prismaClient_1 = __importDefault(require("../utils/prismaClient"));
+const prisma_1 = require("../lib/prisma");
 /**
  * Logs an activity for a specific user.
  *
@@ -24,7 +21,7 @@ const prismaClient_1 = __importDefault(require("../utils/prismaClient"));
  */
 const logActivity = (userId, type, message, relatedEntity) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        yield prismaClient_1.default.activityLog.create({
+        yield prisma_1.prisma.activityLog.create({
             data: {
                 userId,
                 type,
@@ -56,7 +53,7 @@ const getUserActivityFeed = (userId_1, ...args_1) => __awaiter(void 0, [userId_1
     const skip = (page - 1) * pageSize;
     const take = pageSize;
     try {
-        const activities = yield prismaClient_1.default.activityLog.findMany({
+        const activities = yield prisma_1.prisma.activityLog.findMany({
             where: {
                 // Initially, just fetch the user's own activities.
                 // TODO: Expand logic to include activities from followed entities if/when a follow system exists.
@@ -68,7 +65,7 @@ const getUserActivityFeed = (userId_1, ...args_1) => __awaiter(void 0, [userId_1
             skip,
             take,
         });
-        const totalActivities = yield prismaClient_1.default.activityLog.count({
+        const totalActivities = yield prisma_1.prisma.activityLog.count({
             where: {
                 userId: userId,
             },

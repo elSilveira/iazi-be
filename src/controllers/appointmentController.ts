@@ -669,7 +669,7 @@ export const getAvailability = async (req: Request, res: Response, next: NextFun
 
             // Pre-fetch service durations for appointments to optimize loop
             const appointmentServiceIds = existingAppointments.map(a => a.serviceId);
-            const appointmentServices = await serviceRepository.findMany({ id: { in: appointmentServiceIds } });
+            const appointmentServices = await serviceRepository.findMany({ id: { in: appointmentServiceIds } }, {}, 0, 9999); // Provide default args
             const serviceDurationMap = new Map<string, number | null>();
             appointmentServices.forEach(s => serviceDurationMap.set(s.id, parseDuration(s.duration)));
 

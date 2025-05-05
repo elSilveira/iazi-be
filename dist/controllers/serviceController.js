@@ -23,6 +23,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteService = exports.updateService = exports.createService = exports.getServiceById = exports.getAllServices = void 0;
 const serviceRepository_1 = require("../repositories/serviceRepository");
 const client_1 = require("@prisma/client"); // Added UserRole
+// Helper function for UUID validation
+const isValidUUID = (uuid) => {
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    return uuidRegex.test(uuid);
+};
 // Helper function for authorization check (Admin only for now)
 // TODO: Refactor into middleware and add Company Owner check
 const checkAdminRole = (req, res, next) => {
@@ -64,14 +69,14 @@ const getAllServices = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
     if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1) {
-        res.status(400).json({ message: "Parâmetros de paginação inválidos (page e limit devem ser números positivos)." });
-        return;
+        // Return the response directly
+        return res.status(400).json({ message: "Parâmetros de paginação inválidos (page e limit devem ser números positivos)." });
     }
     const skip = (pageNum - 1) * limitNum;
     try {
         const filters = {};
-        if (companyId)
-            filters.companyId = companyId; // Cast companyId to string
+        if (companyId && typeof companyId === 'string' && isValidUUID(companyId))
+            filters.companyId = companyId;
         if (category) {
             // Assuming category query param is the ID now
             const categoryIdNum = parseInt(category, 10);
@@ -79,9 +84,9 @@ const getAllServices = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
                 filters.categoryId = categoryIdNum; // Use categoryId for filtering
             }
             else {
-                // Fallback to name search if needed, but ID is preferred
-                // filters.category = { name: { contains: category as string, mode: "insensitive" } }; // Removed category name filter for simplicity/consistency
-                console.warn("Invalid category ID provided, filtering by category name is not supported currently.");
+                console.warn("Invalid category ID provided: ", category);
+                // Optionally return error or ignore filter
+                // return res.status(400).json({ message: "Formato de categoryId inválido." });
             }
         }
         if (q) {
@@ -89,16 +94,14 @@ const getAllServices = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
             filters.OR = [
                 { name: { contains: searchTerm, mode: "insensitive" } },
                 { description: { contains: searchTerm, mode: "insensitive" } },
-                // { category: { name: { contains: searchTerm, mode: "insensitive" } } }, // Filter by category name removed
-                // { company: { name: { contains: searchTerm, mode: "insensitive" } } }, // Filter by company name removed for simplicity
             ];
         }
         const minPriceDecimal = parseDecimal(minPrice);
         const maxPriceDecimal = parseDecimal(maxPrice);
         if (minPriceDecimal !== undefined && maxPriceDecimal !== undefined) {
             if (minPriceDecimal.greaterThan(maxPriceDecimal)) {
-                res.status(400).json({ message: "minPrice não pode ser maior que maxPrice." });
-                return;
+                // Return the response directly
+                return res.status(400).json({ message: "minPrice não pode ser maior que maxPrice." });
             }
             filters.price = { gte: minPriceDecimal, lte: maxPriceDecimal };
         }
@@ -122,7 +125,8 @@ const getAllServices = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
         }
         const services = yield serviceRepository_1.serviceRepository.findMany(filters, orderBy, skip, limitNum);
         const totalServices = yield serviceRepository_1.serviceRepository.count(filters);
-        res.json({
+        // Return the response
+        return res.json({
             data: services,
             pagination: {
                 currentPage: pageNum,
@@ -135,7 +139,8 @@ const getAllServices = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
     catch (error) {
         if (error instanceof client_1.Prisma.PrismaClientValidationError) {
             console.error("Prisma Validation Error:", error.message);
-            res.status(400).json({ message: "Erro de validação nos dados fornecidos.", details: error.message });
+            // Return the response directly
+            return res.status(400).json({ message: "Erro de validação nos dados fornecidos.", details: error.message });
         }
         else {
             console.error("Error fetching services:", error);
@@ -147,13 +152,17 @@ exports.getAllServices = getAllServices;
 // Obter um serviço específico pelo ID - Public
 const getServiceById = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+        return res.status(400).json({ message: "Formato de ID inválido." });
+    }
     try {
         const service = yield serviceRepository_1.serviceRepository.findById(id);
         if (!service) {
             // Use return to stop execution after sending response
             return res.status(404).json({ message: "Serviço não encontrado" });
         }
-        res.json(service);
+        // Return the response
+        return res.json(service);
     }
     catch (error) {
         next(error);
@@ -162,10 +171,18 @@ const getServiceById = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
 exports.getServiceById = getServiceById;
 // Criar um novo serviço - Requires ADMIN (or Company Owner)
 exports.createService = [
-    checkAdminRole,
+    checkAdminRole, // Apply admin check middleware first
     (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
         var _a;
+        // Extract data from request body
         const { name, description, price, duration, image, categoryId, companyId } = req.body;
+        // --- Input Validation ---
+        if (!name || !description || price === undefined || !duration || !categoryId || !companyId) {
+            return res.status(400).json({ message: "Campos obrigatórios ausentes (name, description, price, duration, categoryId, companyId)." });
+        }
+        if (!isValidUUID(companyId)) {
+            return res.status(400).json({ message: "Formato de companyId inválido." });
+        }
         const priceDecimal = parseDecimal(price);
         if (priceDecimal === undefined) {
             // Use return
@@ -177,8 +194,10 @@ exports.createService = [
             // Use return
             return res.status(400).json({ message: "categoryId inválido. Deve ser um número." });
         }
+        // --- End Input Validation ---
         try {
-            // Authorization check (handled by middleware)
+            // Authorization check (placeholder for company owner)
+            // await checkAdminOrCompanyOwner(req, res, next, companyId); // Call this if needed
             const dataToCreate = {
                 name,
                 description,
@@ -189,7 +208,8 @@ exports.createService = [
                 company: { connect: { id: companyId } },
             };
             const newService = yield serviceRepository_1.serviceRepository.create(dataToCreate);
-            res.status(201).json(newService);
+            // Return the response
+            return res.status(201).json(newService);
         }
         catch (error) {
             if (error instanceof client_1.Prisma.PrismaClientKnownRequestError) {
@@ -206,19 +226,47 @@ exports.createService = [
 ];
 // Atualizar um serviço existente - Requires ADMIN (or Company Owner)
 exports.updateService = [
-    checkAdminRole,
+    // Middleware to check Admin or Company Owner based on the service being updated
     (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a;
         const { id } = req.params;
-        const _b = req.body, { companyId, categoryId, price } = _b, dataToUpdate = __rest(_b, ["companyId", "categoryId", "price"]);
+        if (!isValidUUID(id)) {
+            return res.status(400).json({ message: "Formato de ID inválido." });
+        }
         try {
             const existingService = yield serviceRepository_1.serviceRepository.findById(id);
             if (!existingService) {
-                // Use return
                 return res.status(404).json({ message: `Serviço com ID ${id} não encontrado.` });
             }
-            // Authorization check (handled by middleware)
-            const updatePayload = Object.assign({}, dataToUpdate);
+            // Store service for later use in the main handler
+            req.existingService = existingService;
+            // Check authorization based on the service's company
+            yield checkAdminOrCompanyOwner(req, res, next, existingService.companyId);
+        }
+        catch (error) {
+            next(error);
+        }
+    }),
+    // Main handler
+    (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+        var _a;
+        const { id } = req.params;
+        // Extract data from request body
+        const _b = req.body, { name, description, price, duration, image, categoryId, companyId } = _b, otherData = __rest(_b, ["name", "description", "price", "duration", "image", "categoryId", "companyId"]);
+        // Retrieve existing service stored by middleware
+        const existingService = req.existingService;
+        try {
+            // Build the update payload selectively
+            const updatePayload = {};
+            if (name !== undefined)
+                updatePayload.name = name;
+            if (description !== undefined)
+                updatePayload.description = description;
+            if (duration !== undefined)
+                updatePayload.duration = duration;
+            if (image !== undefined)
+                updatePayload.image = image;
+            // Include any other valid fields from otherData if necessary
+            // Object.assign(updatePayload, otherData); // Be careful with this
             if (price !== undefined) {
                 const priceDecimal = parseDecimal(price);
                 if (priceDecimal === undefined) {
@@ -236,12 +284,18 @@ exports.updateService = [
                 }
                 updatePayload.category = { connect: { id: categoryIdNum } }; // Use parsed number
             }
+            // Prevent changing the company
             if (companyId !== undefined && companyId !== existingService.companyId) {
                 // Use return
                 return res.status(400).json({ message: "Não é permitido alterar a empresa de um serviço existente." });
             }
+            // Check if there's anything to update
+            if (Object.keys(updatePayload).length === 0) {
+                return res.status(400).json({ message: "Nenhum dado fornecido para atualização." });
+            }
             const updatedService = yield serviceRepository_1.serviceRepository.update(id, updatePayload);
-            res.json(updatedService);
+            // Return the response
+            return res.json(updatedService);
         }
         catch (error) {
             if (error instanceof client_1.Prisma.PrismaClientKnownRequestError) {
@@ -258,18 +312,32 @@ exports.updateService = [
 ];
 // Deletar um serviço - Requires ADMIN (or Company Owner)
 exports.deleteService = [
-    checkAdminRole,
+    // Middleware to check Admin or Company Owner based on the service being deleted
     (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
         const { id } = req.params;
+        if (!isValidUUID(id)) {
+            return res.status(400).json({ message: "Formato de ID inválido." });
+        }
         try {
             const existingService = yield serviceRepository_1.serviceRepository.findById(id);
             if (!existingService) {
-                // Use return
-                return res.status(404).json({ message: `Serviço com ID ${id} não encontrado.` });
+                // Allow delete attempt even if not found, repo handles P2025
+                // return res.status(404).json({ message: `Serviço com ID ${id} não encontrado.` });
             }
-            // Authorization check (handled by middleware)
+            // Check authorization based on the service's company (if it exists)
+            yield checkAdminOrCompanyOwner(req, res, next, (existingService === null || existingService === void 0 ? void 0 : existingService.companyId) || ''); // Pass empty string if no companyId
+        }
+        catch (error) {
+            next(error);
+        }
+    }),
+    // Main handler
+    (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+        const { id } = req.params;
+        try {
             const deletedService = yield serviceRepository_1.serviceRepository.delete(id);
-            res.status(200).json({ message: "Serviço excluído com sucesso", service: deletedService });
+            // Return the response
+            return res.status(200).json({ message: "Serviço excluído com sucesso", service: deletedService });
         }
         catch (error) {
             if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {

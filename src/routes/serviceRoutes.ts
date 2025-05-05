@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express"; // Import Request, Response, NextFunction
 import {
   getAllServices,
   getServiceById,
@@ -12,215 +12,21 @@ import {
   serviceIdValidator 
 } from "../validators/serviceValidators";
 import { validateRequest } from "../middlewares/validationMiddleware";
+import { asyncHandler } from "../utils/asyncHandler"; // Import asyncHandler
 // TODO: Adicionar middleware de autenticação/autorização para rotas protegidas (create, update, delete)
 
 const router = Router();
 
-/**
- * @swagger
- * /api/services:
- *   get:
- *     summary: Obtém uma lista de todos os serviços
- *     tags: [Services]
- *     # security:
- *     #   - bearerAuth: [] # Descomente se a autenticação for necessária
- *     parameters:
- *       - in: query
- *         name: companyId
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Filtra serviços por ID da empresa
- *       - in: query
- *         name: category
- *         schema:
- *           type: string
- *         description: Filtra serviços por categoria
- *       # Adicionar outros parâmetros de filtro/paginação se necessário
- *     responses:
- *       200:
- *         description: Lista de serviços retornada com sucesso.
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: "#/components/schemas/Service"
- *       500:
- *         description: Erro interno do servidor.
- */
-router.get("/", getAllServices); // Validação de query param pode ser adicionada se necessário
+// Aplicar asyncHandler e usar spread operator para arrays de validadores
+router.get("/", asyncHandler(getAllServices)); 
 
-/**
- * @swagger
- * /api/services/{id}:
- *   get:
- *     summary: Obtém detalhes de um serviço específico pelo ID
- *     tags: [Services]
- *     # security:
- *     #   - bearerAuth: [] # Descomente se a autenticação for necessária
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: ID do serviço a ser obtido
- *     responses:
- *       200:
- *         description: Detalhes do serviço retornados com sucesso.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/Service"
- *       400:
- *         description: ID inválido fornecido.
- *       404:
- *         description: Serviço não encontrado.
- *       500:
- *         description: Erro interno do servidor.
- */
-router.get("/:id", serviceIdValidator, validateRequest, getServiceById);
+router.get("/:id", ...serviceIdValidator, validateRequest, asyncHandler(getServiceById));
 
-/**
- * @swagger
- * /api/services:
- *   post:
- *     summary: Cria um novo serviço
- *     tags: [Services]
- *     # security:
- *     #   - bearerAuth: [] # Requer autenticação para criar serviço
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - name
- *               - description
- *               - price
- *               - duration
- *               - categoryId
- *               - companyId
- *             properties:
- *               name: { type: string, description: "Nome do serviço" }
- *               description: { type: string, description: "Descrição do serviço" }
- *               price: { type: string, description: "Preço do serviço (ex: \"50.00\")" }
- *               duration: { type: string, description: "Duração do serviço (ex: \"45min\")" }
- *               categoryId: { type: string, format: uuid, description: "ID da categoria do serviço" }
- *               image: { type: string, format: url, nullable: true, description: "URL da imagem do serviço" }
- *               companyId: { type: string, format: uuid, description: "ID da empresa que oferece o serviço" }
- *     responses:
- *       201:
- *         description: Serviço criado com sucesso.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/Service"
- *       400:
- *         description: "Erro de validação nos dados fornecidos (ex: companyId inválido, formato de preço incorreto)."
- *       401:
- *         description: Não autorizado.
- *       403:
- *         description: Acesso negado (permissão insuficiente).
- *       500:
- *         description: Erro interno do servidor.
- */
-// Use spread operator (...) to pass the array elements as individual arguments
-router.post("/", createServiceValidator, validateRequest, ...createService);
+router.post("/", ...createServiceValidator, validateRequest, asyncHandler(createService));
 
-/**
- * @swagger
- * /api/services/{id}:
- *   put:
- *     summary: Atualiza um serviço existente pelo ID
- *     tags: [Services]
- *     # security:
- *     #   - bearerAuth: [] # Requer autenticação para atualizar serviço
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: ID do serviço a ser atualizado
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name: { type: string }
- *               description: { type: string }
- *               price: { type: string }
- *               duration: { type: string }
- *               categoryId: { type: string, format: uuid }
- *               image: { type: string, format: url, nullable: true }
- *               # companyId geralmente não é atualizado aqui
- *     responses:
- *       200:
- *         description: Serviço atualizado com sucesso.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/Service"
- *       400:
- *         description: Erro de validação ou ID inválido.
- *       401:
- *         description: Não autorizado.
- *       403:
- *         description: Acesso negado (permissão insuficiente).
- *       404:
- *         description: Serviço não encontrado.
- *       500:
- *         description: Erro interno do servidor.
- */
-// Use spread operator (...) to pass the array elements as individual arguments
-router.put("/:id", updateServiceValidator, validateRequest, ...updateService);
+router.put("/:id", ...updateServiceValidator, validateRequest, asyncHandler(updateService));
 
-/**
- * @swagger
- * /api/services/{id}:
- *   delete:
- *     summary: Deleta um serviço existente pelo ID
- *     tags: [Services]
- *     # security:
- *     #   - bearerAuth: [] # Requer autenticação/autorização para deletar serviço
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: ID do serviço a ser deletado
- *     responses:
- *       200:
- *         description: Serviço deletado com sucesso.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message: { type: string }
- *                 service: { $ref: "#/components/schemas/Service" }
- *       400:
- *         description: ID inválido fornecido.
- *       401:
- *         description: Não autorizado.
- *       403:
- *         description: Acesso negado (permissão insuficiente).
- *       404:
- *         description: Serviço não encontrado.
- *       500:
- *         description: Erro interno do servidor.
- */
-// Use spread operator (...) to pass the array elements as individual arguments
-router.delete("/:id", serviceIdValidator, validateRequest, ...deleteService);
+router.delete("/:id", ...serviceIdValidator, validateRequest, asyncHandler(deleteService));
 
 export default router;
 
