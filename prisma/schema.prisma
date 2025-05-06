@@ -32,6 +32,7 @@ model User {
   posts     Post[]    // Postagens criadas pelo usuário
   comments  Comment[] // Comentários criados pelo usuário
   likes     Like[]    // Likes dados pelo usuário
+  professional  Professional? // Relation to Professional profile
 
   @@index([email]) // Index for login
   @@index([points]) // GAMIFICATION: Index for leaderboard
@@ -139,11 +140,15 @@ model Professional {
   name          String
   role          String
   image         String?
+  bio           String?   // Added bio field
+  phone         String?   // Added phone field
   rating        Float     @default(0)
   totalReviews  Int       @default(0) @map("total_reviews")
   workingHours  Json?     @map("working_hours") // Horário de trabalho específico do profissional (pode sobrescrever o da empresa)
-  company       Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade) // Made relation optional
-  companyId     String?   @map("company_id") // Made field optional
+  company       Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull) // onDelete: SetNull if professional can exist without company
+  companyId     String?   @map("company_id")
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String    @unique @map("user_id") // Each professional profile belongs to one user
   services      ProfessionalService[]
   experiences   ProfessionalExperience[] // Added relation
   education     ProfessionalEducation[]  // Added relation
@@ -157,6 +162,7 @@ model Professional {
   @@index([rating])    // Index for sorting and filtering
   @@index([companyId]) // Index for filtering
   @@index([role])      // Index for filtering and searching
+  @@index([userId])    // Index for querying by user
   @@map("professionals") // Map to lowercase table name
 }
 
@@ -355,84 +361,64 @@ model ActivityLog {
 
 // --- ENUMS ---
 
-// Enumeração para status de agendamento
-enum AppointmentStatus {
-  PENDING
-  CONFIRMED
-  COMPLETED
-  CANCELLED
-
-  @@map("appointment_status") // Map enum to lowercase name
-}
-
-// Enumeração para papel do usuário
 enum UserRole {
   USER
   ADMIN
-  PROFESSIONAL // Added professional role
-
-  @@map("user_role") // Map enum to lowercase name
+  PROFESSIONAL // Not used directly on User model, but Professional has a User
+  COMPANY_OWNER // Not used directly on User model, but Company might have an owner User
 }
 
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
 
-
-// --- SOCIAL FEATURES MODELS ---
-
-// Modelo de Postagem
+// Modelo de Post (para feed)
 model Post {
   id        String    @id @default(uuid())
-  content   String    // Conteúdo textual da postagem
-  imageUrl  String?   @map("image_url") // URL de imagem opcional
-  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  title     String
+  content   String
+  author    User      @relation(fields: [authorId], references: [id])
   authorId  String    @map("author_id")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
-  comments  Comment[] // Relação com comentários
-  likes     Like[]    // Relação com likes
+  comments  Comment[]
+  likes     Like[]
 
   @@index([authorId])
-  @@index([createdAt]) // Para ordenar o feed
   @@map("posts")
 }
 
-// Modelo de Comentário
+// Modelo de Comentário (para posts)
 model Comment {
-  id        String    @id @default(uuid())
-  content   String    // Conteúdo textual do comentário
-  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  authorId  String    @map("author_id")
-  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  postId    String    @map("post_id")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  likes     Like[]    // Relação com likes
-  // parentComment Comment? @relation("NestedComments", fields: [parentCommentId], references: [id], onDelete: Cascade)
-  // parentCommentId String? @map("parent_comment_id")
-  // replies Comment[] @relation("NestedComments")
+  id        String   @id @default(uuid())
+  content   String
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String   @map("author_id")
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    String   @map("post_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([authorId])
   @@index([postId])
-  @@index([createdAt])
   @@map("comments")
 }
 
-// Modelo de Like (Curtida)
+// Modelo de Like (para posts)
 model Like {
-  id        String    @id @default(uuid())
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String    @map("user_id")
-  post      Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  postId    String?   @map("post_id")
-  comment   Comment?  @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  commentId String?   @map("comment_id")
-  createdAt DateTime  @default(now()) @map("created_at")
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String   @map("user_id")
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    String   @map("post_id")
+  createdAt DateTime @default(now()) @map("created_at")
 
-  // Garante que um usuário só pode curtir um post ou comentário uma vez
   @@unique([userId, postId])
-  @@unique([userId, commentId])
-  // Índices para buscar likes por post ou comentário
   @@index([postId])
-  @@index([commentId])
   @@map("likes")
 }
 

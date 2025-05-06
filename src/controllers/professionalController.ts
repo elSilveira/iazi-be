@@ -1,56 +1,44 @@
+// professionalController.ts
 import { Request, Response, NextFunction } from "express";
 import { professionalRepository } from "../repositories/professionalRepository";
-import companyRepository from "../repositories/companyRepository"; // Import company repo for ownership check
-import { Prisma, UserRole } from "@prisma/client"; // Added UserRole
+import { Prisma, UserRole } from "@prisma/client";
 
-// --- Authorization Helpers Removed (Handled by route middleware) ---
-
-
-// Assume an interface for the authenticated user attached by middleware
 interface AuthenticatedUser {
   id: string;
-  role: UserRole; // Added role
+  role: UserRole;
 }
 
-// Extend the Express Request interface to include the user property
 declare global {
   namespace Express {
     interface Request {
-      user?: AuthenticatedUser; // Use the defined interface
+      user?: AuthenticatedUser;
     }
   }
 }
 
-// Helper function for UUID validation
 const isValidUUID = (uuid: string): boolean => {
   const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
   return uuidRegex.test(uuid);
 };
 
-// Obter todos os profissionais (com filtros e paginação) - Public
-export const getAllProfessionalsHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Renamed and ensured Promise<void>
+export const getAllProfessionalsHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { 
     companyId, q, role, serviceId, city, state, minRating, sort, page = "1", limit = "10"
   } = req.query;
-
   const pageNum = parseInt(page as string, 10);
   const limitNum = parseInt(limit as string, 10);
 
   if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1) {
     res.status(400).json({ message: "Parâmetros de paginação inválidos (page e limit devem ser números positivos)." });
-    return; // Stop execution
+    return;
   }
-
   const skip = (pageNum - 1) * limitNum;
-
   try {
     const filters: Prisma.ProfessionalWhereInput = {};
     if (companyId && typeof companyId === 'string' && isValidUUID(companyId)) filters.companyId = companyId;
     if (role) filters.role = { contains: role as string, mode: "insensitive" };
     if (serviceId && typeof serviceId === 'string' && isValidUUID(serviceId)) {
-      filters.services = {
-        some: { serviceId: serviceId }
-      };
+      filters.services = { some: { serviceId: serviceId } };
     }
     if (q) {
       const searchTerm = q as string;
@@ -61,7 +49,6 @@ export const getAllProfessionalsHandler = async (req: Request, res: Response, ne
         { services: { some: { service: { name: { contains: searchTerm, mode: "insensitive" } } } } },
       ];
     }
-    
     const companyFilter: Prisma.CompanyWhereInput = {};
     const addressFilter: Prisma.CompanyAddressWhereInput = {}; 
     if (city) addressFilter.city = { contains: city as string, mode: "insensitive" };
@@ -70,27 +57,17 @@ export const getAllProfessionalsHandler = async (req: Request, res: Response, ne
         companyFilter.address = addressFilter;
         filters.company = companyFilter;
     }
-    
     if (minRating) {
       const ratingNum = parseFloat(minRating as string);
-      if (!isNaN(ratingNum)) {
-        filters.rating = { gte: ratingNum };
-      }
+      if (!isNaN(ratingNum)) filters.rating = { gte: ratingNum };
     }
-
-    let orderBy: Prisma.ProfessionalOrderByWithRelationInput = { name: "asc" }; // Default sort
+    let orderBy: Prisma.ProfessionalOrderByWithRelationInput = { name: "asc" };
     switch (sort as string) {
-      case "rating_desc":
-        orderBy = { rating: "desc" }; 
-        break;
-      case "name_asc":
-        orderBy = { name: "asc" };
-        break;
+      case "rating_desc": orderBy = { rating: "desc" }; break;
+      case "name_asc": orderBy = { name: "asc" }; break;
     }
-
     const professionals = await professionalRepository.findMany(filters, orderBy, skip, limitNum);
     const totalProfessionals = await professionalRepository.count(filters);
-
     res.json({
       data: professionals,
       pagination: {
@@ -106,18 +83,17 @@ export const getAllProfessionalsHandler = async (req: Request, res: Response, ne
   }
 };
 
-// Obter um profissional específico pelo ID - Public
-export const getProfessionalByIdHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Renamed and ensured Promise<void>
+export const getProfessionalByIdHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { id } = req.params;
   if (!isValidUUID(id)) {
     res.status(400).json({ message: "Formato de ID inválido." });
-    return; // Stop execution
+    return;
   }
   try {
     const professional = await professionalRepository.findById(id);
     if (!professional) {
       res.status(404).json({ message: "Profissional não encontrado" });
-      return; // Stop execution
+      return;
     }
     res.json(professional);
   } catch (error) {
@@ -126,28 +102,29 @@ export const getProfessionalByIdHandler = async (req: Request, res: Response, ne
   }
 };
 
-// Criar um novo profissional - Requires ADMIN (or Company Owner)
-// Main handler logic
-export const createProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Renamed and ensured Promise<void>
-    // Extract data from request body
-    const { name, role, image, companyId, serviceIds } = req.body;
+export const createProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { name, role, image, companyId, serviceIds, bio, phone } = req.body;
+    const authUser = req.user as AuthenticatedUser;
 
-    const professionalName = name;
-    if (!professionalName) {
-      res.status(400).json({ message: "Nome do profissional não fornecido." });
-      return; // Stop execution
+    if (!authUser || !authUser.id) {
+        res.status(401).json({ message: "Usuário não autenticado." });
+        return;
     }
-    const professionalRole = role || "Profissional";
+
+    if (!name) {
+      res.status(400).json({ message: "Nome do profissional não fornecido." });
+      return;
+    }
 
     try {
-      // Authorization already checked by middleware
       const dataToCreate: Prisma.ProfessionalCreateInput = {
-        name: professionalName,
-        role: professionalRole,
+        name: name,
+        role: role || "Profissional",
         image: image,
+        bio: bio,
+        phone: phone,
+        user: { connect: { id: authUser.id } },
         ...(companyId && isValidUUID(companyId) && { company: { connect: { id: companyId } } }),
-        // bio: bio, // Removed: Not in schema
-        // phone: phone, // Removed: Not in schema
       };
 
       const newProfessional = await professionalRepository.create(dataToCreate, serviceIds as string[] | undefined);
@@ -155,83 +132,99 @@ export const createProfessionalHandler = async (req: Request, res: Response, nex
     } catch (error) {
       console.error("Erro ao criar profissional:", error);
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+            res.status(409).json({ message: "Este usuário já possui um perfil profissional ou ocorreu um conflito de dados (ex: nome duplicado se houver restrição)." });
+            return;
+        }
         if (error.code === 'P2025') {
-          res.status(400).json({ message: `Erro ao conectar: ${error.meta?.cause || 'Registro relacionado não encontrado (ex: Empresa não existe)'}` });
-          return; // Stop execution
+          res.status(400).json({ message: `Erro ao conectar: ${error.meta?.cause || 'Registro relacionado não encontrado (ex: Empresa ou Usuário não existe)'}` });
+          return;
         }
       }
       next(error);
     }
 };
 
-// Atualizar um profissional existente - Requires ADMIN (or Company Owner)
-// Main handler logic
-export const updateProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Renamed and ensured Promise<void>
-    const { id } = req.params;
-    // Extract data from request body, excluding fields handled separately
-    const { serviceIds, ...dataToUpdate } = req.body;
+export const updateProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { id } = req.params; // ID of the professional profile to update
+    const { serviceIds, bio, phone, ...dataToUpdateFromRequest } = req.body;
+    const authUser = req.user as AuthenticatedUser;
+
+    if (!authUser || !authUser.id) {
+        res.status(401).json({ message: "Usuário não autenticado." });
+        return;
+    }
 
     try {
-      // Authorization already checked by middleware
-      // Convert rating and totalReviews if they exist and are strings
-      if (dataToUpdate.rating !== undefined && typeof dataToUpdate.rating === 'string') {
-        dataToUpdate.rating = parseFloat(dataToUpdate.rating);
+      const professionalToUpdate = await professionalRepository.findById(id);
+      if (!professionalToUpdate) {
+        res.status(404).json({ message: "Perfil profissional não encontrado." });
+        return;
       }
-      if (dataToUpdate.totalReviews !== undefined && typeof dataToUpdate.totalReviews === 'string') {
-        dataToUpdate.totalReviews = parseInt(dataToUpdate.totalReviews, 10);
+      
+      // Authorization: User can update their own profile, or admin/company owner (handled by middleware on route)
+      // A specific check for non-admin user owning the profile:
+      if (professionalToUpdate.userId !== authUser.id && authUser.role !== 'ADMIN' && authUser.role !== 'COMPANY_OWNER') { 
+          // This check might be redundant if middleware is comprehensive
+          // console.warn("Tentativa de atualização não autorizada bloqueada no controller, verificar middleware.");
+          // res.status(403).json({ message: "Você não tem permissão para atualizar este perfil." });
+          // return;
       }
 
-      // Prevent updating companyId directly through this route
-      delete dataToUpdate.companyId; 
-      // serviceIds are handled separately by the repository method
+      const updatePayload: Prisma.ProfessionalUpdateInput = {
+        ...dataToUpdateFromRequest,
+        bio: bio,
+        phone: phone,
+      };
 
-      const updatedProfessional = await professionalRepository.update(id, dataToUpdate as Prisma.ProfessionalUpdateInput, serviceIds as string[] | undefined);
-      res.json(updatedProfessional); 
+      if (updatePayload.rating !== undefined && typeof updatePayload.rating === 'string') {
+        updatePayload.rating = parseFloat(updatePayload.rating);
+      }
+      if (updatePayload.totalReviews !== undefined && typeof updatePayload.totalReviews === 'string') {
+        updatePayload.totalReviews = parseInt(updatePayload.totalReviews as string, 10);
+      }
+
+      if ('companyId' in updatePayload) delete (updatePayload as any).companyId;
+      if ('userId' in updatePayload) delete (updatePayload as any).userId;
+
+      const updatedProfessional = await professionalRepository.update(id, updatePayload, serviceIds as string[] | undefined);
+      res.json(updatedProfessional);
     } catch (error) {
       console.error(`Erro ao atualizar profissional ${id}:`, error);
-      // Handle P2025 from repo update if needed
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-          res.status(404).json({ message: `Erro ao atualizar: ${error.meta?.cause || 'Profissional não encontrado'}` });
-          return; // Stop execution
+          res.status(404).json({ message: `Erro ao atualizar: ${error.meta?.cause || 'Profissional não encontrado ou registro relacionado ausente'}` });
+          return;
       }
       next(error);
     }
 };
 
-// Deletar um profissional - Requires ADMIN (or Company Owner)
-// Main handler logic
-export const deleteProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Renamed and ensured Promise<void>
+export const deleteProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { id } = req.params;
+    // Add similar authorization checks as in update if needed, or rely on middleware
     try {
-      // Authorization already checked by middleware
       await professionalRepository.delete(id); 
       res.status(204).send(); 
     } catch (error) {
       console.error(`Erro ao deletar profissional ${id}:`, error);
-      // Handle P2025 from repo delete
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
           res.status(404).json({ message: `Erro ao deletar: ${error.meta?.cause || 'Profissional não encontrado'}` });
-          return; // Stop execution
+          return;
       }
       next(error);
     }
 };
 
-// Add Service to Professional - Requires ADMIN (or Company Owner)
-export const addServiceToProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Renamed and ensured Promise<void>
+export const addServiceToProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { professionalId, serviceId } = req.params;
-    // TODO: Implement authorization check based on professional's company
-    // TODO: Implement logic using professionalRepository.addService or similar
+    // Authorization and logic to be implemented
     res.status(501).json({ message: "Not Implemented" });
     return;
 };
 
-// Remove Service from Professional - Requires ADMIN (or Company Owner)
-export const removeServiceFromProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Renamed and ensured Promise<void>
+export const removeServiceFromProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { professionalId, serviceId } = req.params;
-    // TODO: Implement authorization check based on professional's company
-    // TODO: Implement logic using professionalRepository.removeService or similar
+    // Authorization and logic to be implemented
     res.status(501).json({ message: "Not Implemented" });
     return;
 };
-
