@@ -44,7 +44,15 @@ const appointmentLimiter = rateLimit({
 
 // Middlewares de Segurança e Configuração
 app.use(helmet());
-app.use(cors());
+
+// Configuração CORS mais restrita para produção
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' ? process.env.FRONTEND_URL || '*' : '*', // Permite origem específica em produção ou qualquer em dev/test
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  credentials: true, // Se precisar enviar cookies/authorization headers
+  optionsSuccessStatus: 204
+};
+app.use(cors(corsOptions));
 
 // Apply rate limiting before JSON parsing if possible, or early in middleware chain
 // Apply authLimiter specifically to auth routes
@@ -83,8 +91,8 @@ app.use('/api/categories', categoryRouter);
 app.use('/api/notifications', notificationRouter); // Added notification routes
 app.use('/api/gamification', gamificationRouter); // Added gamification routes
 
-// TODO: Implementar um middleware de tratamento de erros global
-// app.use(globalErrorHandler);
+import { errorMiddleware } from './middlewares/errorMiddleware'; // Importar o middleware de erro
+app.use(errorMiddleware); // Usar o middleware de erro global
 
 // Exportar o app para uso em testes de integração
 export { app };

@@ -75,7 +75,14 @@ const appointmentLimiter = (0, express_rate_limit_1.default)({
 // --- End Rate Limiting ---
 // Middlewares de Segurança e Configuração
 app.use((0, helmet_1.default)());
-app.use((0, cors_1.default)());
+// Configuração CORS mais restrita para produção
+const corsOptions = {
+    origin: process.env.NODE_ENV === 'production' ? process.env.FRONTEND_URL || '*' : '*', // Permite origem específica em produção ou qualquer em dev/test
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+    credentials: true, // Se precisar enviar cookies/authorization headers
+    optionsSuccessStatus: 204
+};
+app.use((0, cors_1.default)(corsOptions));
 // Apply rate limiting before JSON parsing if possible, or early in middleware chain
 // Apply authLimiter specifically to auth routes
 app.use('/api/auth/login', authLimiter);
@@ -107,6 +114,8 @@ app.use('/api/users', userRoutes_1.default);
 app.use('/api/categories', categoryRoutes_1.default);
 app.use('/api/notifications', notificationRoutes_1.default); // Added notification routes
 app.use('/api/gamification', gamificationRoutes_1.default); // Added gamification routes
+const errorMiddleware_1 = require("./middlewares/errorMiddleware"); // Importar o middleware de erro
+app.use(errorMiddleware_1.errorMiddleware); // Usar o middleware de erro global
 // Iniciar o servidor apenas se não estiver em ambiente de teste
 if (process.env.NODE_ENV !== 'test') {
     app.listen(Number(port), '0.0.0.0', () => {
