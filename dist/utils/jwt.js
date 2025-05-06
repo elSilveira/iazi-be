@@ -8,7 +8,7 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 // Placeholder for JWT secret - should be in environment variables
 const JWT_SECRET = process.env.JWT_SECRET || 'your-default-secret'; // Use Secret type
 // Placeholder function to satisfy imports in tests
-const generateToken = (payload, expiresIn = '1h') => {
+const generateToken = (payload, expiresIn = '6h') => {
     console.log(`Generating token for payload: ${JSON.stringify(payload)} with secret (placeholder)`);
     // Create SignOptions object. expiresIn type is now more restricted.
     const options = { expiresIn };

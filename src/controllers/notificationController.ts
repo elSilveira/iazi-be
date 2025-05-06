@@ -1,8 +1,8 @@
 // src/controllers/notificationController.ts
 import { Request, Response } from "express";
 import asyncHandler from "../utils/asyncHandler";
-import prisma from "../lib/prisma";
-import { AuthenticatedRequest } from "../middlewares/authMiddleware"; // Assuming auth middleware adds user to req
+import { prisma } from "../lib/prisma";
+import { AuthenticatedRequest } from "../types/express";
 
 // Get notifications (Activity Logs) for the authenticated user
 export const getNotifications = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
