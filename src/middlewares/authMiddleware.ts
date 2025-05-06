@@ -14,7 +14,7 @@ interface JwtPayload {
 
 // No need for AuthenticatedRequest interface, rely on global augmentation in src/types/express/index.d.ts
 
-export const protect = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const authMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   let token;
 
   if (

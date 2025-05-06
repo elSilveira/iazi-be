@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { param } from 'express-validator';
-import { handleValidationErrors } from '../middlewares/validationMiddleware'; // Assuming this middleware exists
-import { protect } from '../middlewares/authMiddleware'; // Assuming this middleware exists
+import { validateRequest } from '../middlewares/validationMiddleware'; // Corrected import
+import { authMiddleware } from '../middlewares/authMiddleware'; // Corrected import
 import * as likeController from '../controllers/likeController'; // Import actual controller
 
 const router = Router(); // Not using mergeParams as paths are fully defined here
@@ -39,9 +39,9 @@ const router = Router(); // Not using mergeParams as paths are fully defined her
  */
 router.post(
     '/posts/:postId/like', // Define specific path
-    protect,
+    authMiddleware, // Corrected
     [param('postId').isUUID().withMessage('Invalid Post ID')],
-    handleValidationErrors,
+    validateRequest, // Corrected
     likeController.likePost // Use actual controller function
 );
 
@@ -69,9 +69,9 @@ router.post(
  */
 router.delete(
     '/posts/:postId/like', // Define specific path
-    protect,
+    authMiddleware, // Corrected
     [param('postId').isUUID().withMessage('Invalid Post ID')],
-    handleValidationErrors,
+    validateRequest, // Corrected
     likeController.unlikePost // Use actual controller function
 );
 
@@ -99,9 +99,9 @@ router.delete(
  */
 router.post(
     '/comments/:commentId/like', // Define specific path
-    protect,
+    authMiddleware, // Corrected
     [param('commentId').isUUID().withMessage('Invalid Comment ID')],
-    handleValidationErrors,
+    validateRequest, // Corrected
     likeController.likeComment // Use actual controller function
 );
 
@@ -129,9 +129,9 @@ router.post(
  */
 router.delete(
     '/comments/:commentId/like', // Define specific path
-    protect,
+    authMiddleware, // Corrected
     [param('commentId').isUUID().withMessage('Invalid Comment ID')],
-    handleValidationErrors,
+    validateRequest, // Corrected
     likeController.unlikeComment // Use actual controller function
 );
 

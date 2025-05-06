@@ -35,8 +35,8 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const express_validator_1 = require("express-validator");
-const validationMiddleware_1 = require("../middlewares/validationMiddleware"); // Assuming this middleware exists
-const authMiddleware_1 = require("../middlewares/authMiddleware"); // Assuming this middleware exists
+const validationMiddleware_1 = require("../middlewares/validationMiddleware"); // Corrected import
+const authMiddleware_1 = require("../middlewares/authMiddleware"); // Corrected import
 const likeController = __importStar(require("../controllers/likeController")); // Import actual controller
 const router = (0, express_1.Router)(); // Not using mergeParams as paths are fully defined here
 /**
@@ -69,7 +69,9 @@ const router = (0, express_1.Router)(); // Not using mergeParams as paths are fu
  *       404: { description: 'Post not found' }
  */
 router.post('/posts/:postId/like', // Define specific path
-authMiddleware_1.protect, [(0, express_validator_1.param)('postId').isUUID().withMessage('Invalid Post ID')], validationMiddleware_1.handleValidationErrors, likeController.likePost // Use actual controller function
+authMiddleware_1.authMiddleware, // Corrected
+[(0, express_validator_1.param)('postId').isUUID().withMessage('Invalid Post ID')], validationMiddleware_1.validateRequest, // Corrected
+likeController.likePost // Use actual controller function
 );
 /**
  * @swagger
@@ -94,7 +96,9 @@ authMiddleware_1.protect, [(0, express_validator_1.param)('postId').isUUID().wit
  *       404: { description: 'Post not found' }
  */
 router.delete('/posts/:postId/like', // Define specific path
-authMiddleware_1.protect, [(0, express_validator_1.param)('postId').isUUID().withMessage('Invalid Post ID')], validationMiddleware_1.handleValidationErrors, likeController.unlikePost // Use actual controller function
+authMiddleware_1.authMiddleware, // Corrected
+[(0, express_validator_1.param)('postId').isUUID().withMessage('Invalid Post ID')], validationMiddleware_1.validateRequest, // Corrected
+likeController.unlikePost // Use actual controller function
 );
 /**
  * @swagger
@@ -119,7 +123,9 @@ authMiddleware_1.protect, [(0, express_validator_1.param)('postId').isUUID().wit
  *       404: { description: 'Comment not found' }
  */
 router.post('/comments/:commentId/like', // Define specific path
-authMiddleware_1.protect, [(0, express_validator_1.param)('commentId').isUUID().withMessage('Invalid Comment ID')], validationMiddleware_1.handleValidationErrors, likeController.likeComment // Use actual controller function
+authMiddleware_1.authMiddleware, // Corrected
+[(0, express_validator_1.param)('commentId').isUUID().withMessage('Invalid Comment ID')], validationMiddleware_1.validateRequest, // Corrected
+likeController.likeComment // Use actual controller function
 );
 /**
  * @swagger
@@ -144,6 +150,8 @@ authMiddleware_1.protect, [(0, express_validator_1.param)('commentId').isUUID().
  *       404: { description: 'Comment not found' }
  */
 router.delete('/comments/:commentId/like', // Define specific path
-authMiddleware_1.protect, [(0, express_validator_1.param)('commentId').isUUID().withMessage('Invalid Comment ID')], validationMiddleware_1.handleValidationErrors, likeController.unlikeComment // Use actual controller function
+authMiddleware_1.authMiddleware, // Corrected
+[(0, express_validator_1.param)('commentId').isUUID().withMessage('Invalid Comment ID')], validationMiddleware_1.validateRequest, // Corrected
+likeController.unlikeComment // Use actual controller function
 );
 exports.default = router;

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import * as commentService from '../services/commentService';
-import { AuthenticatedRequest } from '../middlewares/authMiddleware';
+
 import { BadRequestError } from '../lib/errors';
 import { Comment } from '@prisma/client'; // Import if needed for response typing
 
@@ -12,8 +12,8 @@ const getPaginationParams = (req: Request): { page: number, limit: number } => {
     return { page, limit };
 };
 
-export const createComment = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-    const authorId = req.user?.userId;
+export const createComment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const authorId = req.user?.id; // Corrected to use req.user.id
     if (!authorId) {
         return next(new Error('Authentication required but user ID not found in request'));
     }
@@ -46,8 +46,8 @@ export const getComments = async (req: Request, res: Response, next: NextFunctio
     }
 };
 
-export const updateComment = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-    const authorId = req.user?.userId;
+export const updateComment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const authorId = req.user?.id; // Corrected to use req.user.id
     if (!authorId) {
         return next(new Error('Authentication required but user ID not found in request'));
     }
@@ -68,8 +68,8 @@ export const updateComment = async (req: AuthenticatedRequest, res: Response, ne
     }
 };
 
-export const deleteComment = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-    const authorId = req.user?.userId;
+export const deleteComment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const authorId = req.user?.id; // Corrected to use req.user.id
     const userRole = req.user?.role;
 
     if (!authorId || !userRole) {

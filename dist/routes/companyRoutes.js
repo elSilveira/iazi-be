@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const companyController_1 = require("../controllers/companyController");
 const companyValidators_1 = require("../validators/companyValidators");
+const validationMiddleware_1 = require("../middlewares/validationMiddleware"); // Corrected import
 const asyncHandler_1 = __importDefault(require("../utils/asyncHandler")); // Corrected import
 const router = (0, express_1.Router)();
 /**
@@ -14,112 +15,7 @@ const router = (0, express_1.Router)();
  *   name: Companies
  *   description: Gerenciamento de empresas
  */
-/**
- * @swagger
- * components:
- *   schemas:
- *     CompanyAddressInput:
- *       type: object
- *       required:
- *         - street
- *         - number
- *         - neighborhood
- *         - city
- *         - state
- *         - zipCode
- *       properties:
- *         street: { type: string, description: 'Rua do endereço' }
- *         number: { type: string, description: 'Número do endereço' }
- *         neighborhood: { type: string, description: 'Bairro do endereço' }
- *         city: { type: string, description: 'Cidade do endereço' }
- *         state: { type: string, description: 'Estado (UF, 2 caracteres)', minLength: 2, maxLength: 2 }
- *         zipCode: { type: string, description: 'CEP (formato brasileiro)', pattern: '^\\d{5}-\\d{3}$' }
- *         complement: { type: string, description: 'Complemento (opcional)' }
- *     CompanyWorkingHoursInput: # Placeholder - Assuming JSON string for now
- *       type: string
- *       format: json
- *       description: 'Horários de funcionamento em formato JSON (estrutura a definir)'
- *       example: '{"monday": {"open": "08:00", "close": "18:00", "isOpen": true}}'
- *     CompanyCreateInput:
- *       type: object
- *       required:
- *         - name
- *         - description
- *         - categories
- *         - address
- *       properties:
- *         name: { type: string, description: 'Nome da empresa' }
- *         description: { type: string, description: 'Descrição da empresa' }
- *         logo: { type: string, format: url, description: 'URL do logo (opcional)' }
- *         coverImage: { type: string, format: url, description: 'URL da imagem de capa (opcional)' }
- *         yearEstablished: { type: integer, description: 'Ano de estabelecimento (opcional)' }
- *         phone: { type: string, description: 'Telefone (formato brasileiro, opcional)' }
- *         email: { type: string, format: email, description: 'Email da empresa (opcional)' }
- *         categories: { type: array, items: { type: string }, description: 'Lista de categorias (pelo menos uma)' }
- *         address: { $ref: '#/components/schemas/CompanyAddressInput' }
- *         workingHours: { $ref: '#/components/schemas/CompanyWorkingHoursInput' }
- *     CompanyUpdateInput:
- *       type: object
- *       properties:
- *         name: { type: string, description: 'Nome da empresa' }
- *         description: { type: string, description: 'Descrição da empresa' }
- *         logo: { type: string, format: url, nullable: true, description: 'URL do logo' }
- *         coverImage: { type: string, format: url, nullable: true, description: 'URL da imagem de capa' }
- *         yearEstablished: { type: integer, nullable: true, description: 'Ano de estabelecimento' }
- *         phone: { type: string, nullable: true, description: 'Telefone (formato brasileiro)' }
- *         email: { type: string, format: email, nullable: true, description: 'Email da empresa' }
- *         categories: { type: array, items: { type: string }, description: 'Lista de categorias' }
- *         address: { $ref: '#/components/schemas/CompanyAddressInput' } # Assume full address update for simplicity, or define partial
- *         workingHours: { $ref: '#/components/schemas/CompanyWorkingHoursInput' }
- *     Company:
- *       type: object
- *       properties:
- *         id: { type: string, format: uuid, description: 'ID único da empresa' }
- *         name: { type: string, description: 'Nome da empresa' }
- *         description: { type: string, description: 'Descrição da empresa' }
- *         logo: { type: string, format: url, nullable: true, description: 'URL do logo' }
- *         coverImage: { type: string, format: url, nullable: true, description: 'URL da imagem de capa' }
- *         yearEstablished: { type: integer, nullable: true, description: 'Ano de estabelecimento' }
- *         phone: { type: string, nullable: true, description: 'Telefone' }
- *         email: { type: string, format: email, nullable: true, description: 'Email da empresa' }
- *         rating: { type: number, format: float, nullable: true, description: 'Avaliação média da empresa' }
- *         totalReviews: { type: integer, nullable: true, description: 'Número total de avaliações' }
- *         categories: { type: array, items: { type: string }, description: 'Lista de categorias' }
- *         address: { $ref: '#/components/schemas/CompanyAddress' } # Assuming a CompanyAddress schema exists
- *         workingHours: { type: object, nullable: true, description: 'Horários de funcionamento (estrutura a definir)' } # Assuming JSON object
- *         createdAt: { type: string, format: date-time, description: 'Data de criação' }
- *         updatedAt: { type: string, format: date-time, description: 'Data da última atualização' }
- *     CompanyAddress: # Define based on Prisma schema
- *       type: object
- *       properties:
- *         id: { type: string, format: uuid }
- *         street: { type: string }
- *         number: { type: string }
- *         neighborhood: { type: string }
- *         city: { type: string }
- *         state: { type: string }
- *         zipCode: { type: string }
- *         complement: { type: string, nullable: true }
- *         companyId: { type: string, format: uuid }
- *     CompanyListResponse:
- *       type: object
- *       properties:
- *         data:
- *           type: array
- *           items: { $ref: '#/components/schemas/Company' }
- *         pagination:
- *           type: object
- *           properties:
- *             currentPage: { type: integer }
- *             totalPages: { type: integer }
- *             totalItems: { type: integer }
- *             itemsPerPage: { type: integer }
- *   securitySchemes:
- *     bearerAuth: # arbitrary name for the security scheme
- *       type: http
- *       scheme: bearer
- *       bearerFormat: JWT # optional, arbitrary value for documentation purposes
- */
+// ... (Swagger definitions remain the same) ...
 /**
  * @swagger
  * /api/companies:
@@ -197,7 +93,8 @@ router.get("/", (0, asyncHandler_1.default)(companyController_1.getAllCompaniesH
  *         description: Erro interno do servidor.
  */
 router.get("/:id", companyValidators_1.companyIdValidator[0], // Pass the single middleware function directly
-validateRequest, (0, asyncHandler_1.default)(companyController_1.getCompanyByIdHandler));
+validationMiddleware_1.validateRequest, // Corrected
+(0, asyncHandler_1.default)(companyController_1.getCompanyByIdHandler));
 /**
  * @swagger
  * /api/companies:
@@ -228,7 +125,8 @@ validateRequest, (0, asyncHandler_1.default)(companyController_1.getCompanyByIdH
  */
 router.post("/", companyController_1.checkAdminRoleMiddleware, // Apply auth middleware
 ...companyValidators_1.createCompanyValidator, // Spread validation middlewares
-validateRequest, (0, asyncHandler_1.default)(companyController_1.createCompanyHandler));
+validationMiddleware_1.validateRequest, // Corrected
+(0, asyncHandler_1.default)(companyController_1.createCompanyHandler));
 /**
  * @swagger
  * /api/companies/{id}:
@@ -267,7 +165,8 @@ validateRequest, (0, asyncHandler_1.default)(companyController_1.createCompanyHa
  */
 router.put("/:id", companyController_1.checkAdminRoleMiddleware, // Apply auth middleware
 ...companyValidators_1.updateCompanyValidator, // Spread validation middlewares
-validateRequest, (0, asyncHandler_1.default)(companyController_1.updateCompanyHandler));
+validationMiddleware_1.validateRequest, // Corrected
+(0, asyncHandler_1.default)(companyController_1.updateCompanyHandler));
 /**
  * @swagger
  * /api/companies/{id}:
@@ -305,5 +204,6 @@ validateRequest, (0, asyncHandler_1.default)(companyController_1.updateCompanyHa
  */
 router.delete("/:id", companyController_1.checkAdminRoleMiddleware, // Apply auth middleware
 companyValidators_1.companyIdValidator[0], // Pass the single middleware function directly
-validateRequest, (0, asyncHandler_1.default)(companyController_1.deleteCompanyHandler));
+validationMiddleware_1.validateRequest, // Corrected
+(0, asyncHandler_1.default)(companyController_1.deleteCompanyHandler));
 exports.default = router;

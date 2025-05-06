@@ -12,10 +12,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.authorize = exports.protect = void 0;
+exports.authorize = exports.authMiddleware = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const errors_1 = require("../lib/errors"); // Assuming custom errors
-const protect = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+// No need for AuthenticatedRequest interface, rely on global augmentation in src/types/express/index.d.ts
+const authMiddleware = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     let token;
     if (req.headers.authorization &&
         req.headers.authorization.startsWith('Bearer')) {
@@ -29,7 +30,7 @@ const protect = (req, res, next) => __awaiter(void 0, void 0, void 0, function* 
             // In production, you might want to check if the user still exists or is active.
             /*
             const user = await prisma.user.findUnique({
-              where: { id: decoded.userId },
+              where: { id: decoded.userId }, // Use decoded.userId to find user by ID
               select: { id: true, role: true, isActive: true } // Select necessary fields
             });
       
@@ -38,9 +39,9 @@ const protect = (req, res, next) => __awaiter(void 0, void 0, void 0, function* 
               return;
             }
             */
-            // Attach user info to the request object
+            // Attach user info to the request object using the globally augmented type
             req.user = {
-                userId: decoded.userId,
+                id: decoded.userId, // Use 'id' to match global Express.Request type
                 role: decoded.role, // Pass role from token
             };
             next(); // Proceed to the next middleware/controller
@@ -54,12 +55,12 @@ const protect = (req, res, next) => __awaiter(void 0, void 0, void 0, function* 
         next(new errors_1.UnauthorizedError('Not authorized, no token'));
     }
 });
-exports.protect = protect;
+exports.authMiddleware = authMiddleware;
 // Optional: Middleware to check for specific roles
 const authorize = (...roles) => {
     return (req, res, next) => {
         var _a;
-        if (!req.user || !roles.includes(req.user.role)) {
+        if (!req.user || !roles.includes(req.user.role)) { // Access req.user.role (as defined globally)
             return next(new errors_1.UnauthorizedError(`User role ${(_a = req.user) === null || _a === void 0 ? void 0 : _a.role} is not authorized to access this route`));
         }
         next();

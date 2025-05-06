@@ -44,6 +44,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deletePost = exports.updatePost = exports.getPostById = exports.getUserPosts = exports.getPosts = exports.createPost = void 0;
 const postService = __importStar(require("../services/postService"));
+// Removed import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 const errors_1 = require("../lib/errors");
 // Helper to parse pagination query parameters
 const getPaginationParams = (req) => {
@@ -54,7 +55,7 @@ const getPaginationParams = (req) => {
 };
 const createPost = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const authorId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+    const authorId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id; // Changed userId to id
     if (!authorId) {
         // This should ideally be caught by the 'protect' middleware, but double-check
         return next(new Error('Authentication required but user ID not found in request'));
@@ -108,7 +109,7 @@ const getPostById = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
 exports.getPostById = getPostById;
 const updatePost = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const authorId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+    const authorId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id; // Changed userId to id
     if (!authorId) {
         return next(new Error('Authentication required but user ID not found in request'));
     }
@@ -136,7 +137,7 @@ const updatePost = (req, res, next) => __awaiter(void 0, void 0, void 0, functio
 exports.updatePost = updatePost;
 const deletePost = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b;
-    const authorId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+    const authorId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id; // Changed userId to id
     const userRole = (_b = req.user) === null || _b === void 0 ? void 0 : _b.role; // Assuming role is available on req.user
     if (!authorId || !userRole) {
         return next(new Error('Authentication required but user ID or role not found in request'));

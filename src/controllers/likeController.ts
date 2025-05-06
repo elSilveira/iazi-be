@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import * as likeService from '../services/likeService';
-import { AuthenticatedRequest } from '../middlewares/authMiddleware';
+// Removed import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 import { Like } from '@prisma/client'; // Import if needed for response typing
 
-export const likePost = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-    const userId = req.user?.userId;
+export const likePost = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Changed AuthenticatedRequest to Request
+    const userId = req.user?.id; // Changed userId to id
     if (!userId) {
         return next(new Error('Authentication required but user ID not found in request'));
     }
@@ -20,8 +20,8 @@ export const likePost = async (req: AuthenticatedRequest, res: Response, next: N
     }
 };
 
-export const unlikePost = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-    const userId = req.user?.userId;
+export const unlikePost = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Changed AuthenticatedRequest to Request
+    const userId = req.user?.id; // Changed userId to id
     if (!userId) {
         return next(new Error('Authentication required but user ID not found in request'));
     }
@@ -37,8 +37,8 @@ export const unlikePost = async (req: AuthenticatedRequest, res: Response, next:
     }
 };
 
-export const likeComment = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-    const userId = req.user?.userId;
+export const likeComment = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Changed AuthenticatedRequest to Request
+    const userId = req.user?.id; // Changed userId to id
     if (!userId) {
         return next(new Error('Authentication required but user ID not found in request'));
     }
@@ -54,8 +54,8 @@ export const likeComment = async (req: AuthenticatedRequest, res: Response, next
     }
 };
 
-export const unlikeComment = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-    const userId = req.user?.userId;
+export const unlikeComment = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Changed AuthenticatedRequest to Request
+    const userId = req.user?.id; // Changed userId to id
     if (!userId) {
         return next(new Error('Authentication required but user ID not found in request'));
     }

@@ -12,7 +12,7 @@ import {
   updateCompanyValidator, 
   companyIdValidator 
 } from "../validators/companyValidators";
-import { handleValidationErrors } from "../middlewares/validationMiddleware"; // Added import
+import { validateRequest } from "../middlewares/validationMiddleware"; // Corrected import
 import asyncHandler from "../utils/asyncHandler"; // Corrected import
 
 const router = Router();
@@ -106,7 +106,7 @@ router.get("/", asyncHandler(getAllCompanies));
 router.get(
   "/:id", 
   companyIdValidator[0], // Pass the single middleware function directly
-  handleValidationErrors, // Corrected
+  validateRequest, // Corrected
   asyncHandler(getCompanyById)
 );
 
@@ -142,7 +142,7 @@ router.post(
   "/", 
   checkAdminRoleMiddleware, // Apply auth middleware
   ...createCompanyValidator, // Spread validation middlewares
-  handleValidationErrors, // Corrected
+  validateRequest, // Corrected
   asyncHandler(createCompany)
 );
 
@@ -186,7 +186,7 @@ router.put(
   "/:id", 
   checkAdminRoleMiddleware, // Apply auth middleware
   ...updateCompanyValidator, // Spread validation middlewares
-  handleValidationErrors, // Corrected
+  validateRequest, // Corrected
   asyncHandler(updateCompany)
 );
 
@@ -229,7 +229,7 @@ router.delete(
   "/:id", 
   checkAdminRoleMiddleware, // Apply auth middleware
   companyIdValidator[0], // Pass the single middleware function directly
-  handleValidationErrors, // Corrected
+  validateRequest, // Corrected
   asyncHandler(deleteCompany)
 );
 

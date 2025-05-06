@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import * as postService from '../services/postService';
-import { AuthenticatedRequest } from '../middlewares/authMiddleware';
+// Removed import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 import { BadRequestError } from '../lib/errors';
 import { Post } from '@prisma/client'; // Import Post type if needed for response typing
 
@@ -12,8 +12,8 @@ const getPaginationParams = (req: Request): { page: number, limit: number } => {
     return { page, limit };
 };
 
-export const createPost = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-    const authorId = req.user?.userId;
+export const createPost = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Changed AuthenticatedRequest to Request
+    const authorId = req.user?.id; // Changed userId to id
     if (!authorId) {
         // This should ideally be caught by the 'protect' middleware, but double-check
         return next(new Error('Authentication required but user ID not found in request'));
@@ -63,8 +63,8 @@ export const getPostById = async (req: Request, res: Response, next: NextFunctio
     }
 };
 
-export const updatePost = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-    const authorId = req.user?.userId;
+export const updatePost = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Changed AuthenticatedRequest to Request
+    const authorId = req.user?.id; // Changed userId to id
     if (!authorId) {
         return next(new Error('Authentication required but user ID not found in request'));
     }
@@ -91,8 +91,8 @@ export const updatePost = async (req: AuthenticatedRequest, res: Response, next:
     }
 };
 
-export const deletePost = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-    const authorId = req.user?.userId;
+export const deletePost = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Changed AuthenticatedRequest to Request
+    const authorId = req.user?.id; // Changed userId to id
     const userRole = req.user?.role; // Assuming role is available on req.user
 
     if (!authorId || !userRole) {

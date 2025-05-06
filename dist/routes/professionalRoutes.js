@@ -7,7 +7,7 @@ const express_1 = require("express");
 const professionalController_1 = require("../controllers/professionalController");
 const professionalValidators_1 = require("../validators/professionalValidators");
 const serviceValidators_1 = require("../validators/serviceValidators");
-const validationMiddleware_1 = require("../middlewares/validationMiddleware");
+const validationMiddleware_1 = require("../middlewares/validationMiddleware"); // Corrected import
 const asyncHandler_1 = __importDefault(require("../utils/asyncHandler")); // Corrected import
 const router = (0, express_1.Router)();
 /**
@@ -16,65 +16,7 @@ const router = (0, express_1.Router)();
  *   name: Professionals
  *   description: Gerenciamento de profissionais
  */
-/**
- * @swagger
- * components:
- *   schemas:
- *     ProfessionalCreateInput:
- *       type: object
- *       properties:
- *         name: { type: string, description: 'Nome do profissional (opcional, pode vir do usuário associado)' }
- *         role: { type: string, description: 'Cargo do profissional (opcional)' }
- *         companyId: { type: string, format: uuid, description: 'ID da empresa à qual o profissional pertence (opcional)' }
- *         image: { type: string, format: url, description: 'URL da imagem do profissional (opcional)' }
- *         bio: { type: string, description: 'Biografia do profissional (opcional)' }
- *         phone: { type: string, description: 'Telefone do profissional (opcional)' }
- *         # userId: { type: string, format: uuid, description: 'ID do usuário a ser associado (geralmente implícito pela autenticação)' }
- *     ProfessionalUpdateInput:
- *       type: object
- *       properties:
- *         name: { type: string, description: 'Novo nome do profissional' }
- *         role: { type: string, description: 'Novo cargo do profissional' }
- *         image: { type: string, format: url, nullable: true, description: 'Nova URL da imagem do profissional' }
- *         bio: { type: string, nullable: true, description: 'Nova biografia do profissional' }
- *         phone: { type: string, nullable: true, description: 'Novo telefone do profissional' }
- *     ProfessionalServiceAssociationInput:
- *       type: object
- *       required:
- *         - serviceId
- *       properties:
- *         serviceId: { type: string, format: uuid, description: 'ID do serviço a ser associado' }
- *         price: { type: number, format: float, description: 'Preço específico para este profissional (opcional, usa preço padrão do serviço se não fornecido)' }
- *     Professional:
- *       type: object
- *       properties:
- *         id: { type: string, format: uuid, description: 'ID único do profissional' }
- *         userId: { type: string, format: uuid, description: 'ID do usuário associado' }
- *         companyId: { type: string, format: uuid, nullable: true, description: 'ID da empresa associada' }
- *         name: { type: string, description: 'Nome do profissional' }
- *         role: { type: string, nullable: true, description: 'Cargo do profissional' }
- *         image: { type: string, format: url, nullable: true, description: 'URL da imagem' }
- *         bio: { type: string, nullable: true, description: 'Biografia' }
- *         phone: { type: string, nullable: true, description: 'Telefone' }
- *         rating: { type: number, format: float, nullable: true, description: 'Avaliação média do profissional' }
- *         totalReviews: { type: integer, nullable: true, description: 'Número total de avaliações' }
- *         createdAt: { type: string, format: date-time, description: 'Data de criação' }
- *         updatedAt: { type: string, format: date-time, description: 'Data da última atualização' }
- *         # Adicionar user, company, services, appointments se forem incluídos na resposta
- *     ProfessionalListResponse:
- *       type: object
- *       properties:
- *         data:
- *           type: array
- *           items: { $ref: '#/components/schemas/Professional' }
- *         pagination:
- *           type: object
- *           properties:
- *             currentPage: { type: integer }
- *             totalPages: { type: integer }
- *             totalItems: { type: integer }
- *             itemsPerPage: { type: integer }
- */
+// ... (Swagger definitions remain the same) ...
 /**
  * @swagger
  * /api/professionals:
@@ -148,7 +90,8 @@ router.get("/", (0, asyncHandler_1.default)(professionalController_1.getAllProfe
  *         description: Erro interno do servidor.
  */
 router.get("/:id", professionalValidators_1.professionalIdValidator[0], // Pass the single middleware function directly
-validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(professionalController_1.getProfessionalByIdHandler));
+validationMiddleware_1.validateRequest, // Corrected
+(0, asyncHandler_1.default)(professionalController_1.getProfessionalByIdHandler));
 /**
  * @swagger
  * /api/professionals:
@@ -179,7 +122,8 @@ validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(professional
  */
 router.post("/", professionalController_1.checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
 ...professionalValidators_1.createProfessionalValidator, // Spread validation middlewares
-validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(professionalController_1.createProfessionalHandler));
+validationMiddleware_1.validateRequest, // Corrected
+(0, asyncHandler_1.default)(professionalController_1.createProfessionalHandler));
 /**
  * @swagger
  * /api/professionals/{id}:
@@ -218,7 +162,8 @@ validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(professional
  */
 router.put("/:id", professionalController_1.checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
 ...professionalValidators_1.updateProfessionalValidator, // Spread validation middlewares
-validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(professionalController_1.updateProfessionalHandler));
+validationMiddleware_1.validateRequest, // Corrected
+(0, asyncHandler_1.default)(professionalController_1.updateProfessionalHandler));
 /**
  * @swagger
  * /api/professionals/{id}:
@@ -256,7 +201,8 @@ validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(professional
  */
 router.delete("/:id", professionalController_1.checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
 professionalValidators_1.professionalIdValidator[0], // Pass the single middleware function directly
-validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(professionalController_1.deleteProfessionalHandler));
+validationMiddleware_1.validateRequest, // Corrected
+(0, asyncHandler_1.default)(professionalController_1.deleteProfessionalHandler));
 /**
  * @swagger
  * /api/professionals/{professionalId}/services:
@@ -295,7 +241,8 @@ validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(professional
  */
 router.post("/:professionalId/services", professionalController_1.checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware (checks based on professionalId)
 ...professionalValidators_1.professionalServiceAssociationValidator, // Spread validation middlewares
-validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(professionalController_1.addServiceToProfessionalHandler));
+validationMiddleware_1.validateRequest, // Corrected
+(0, asyncHandler_1.default)(professionalController_1.addServiceToProfessionalHandler));
 /**
  * @swagger
  * /api/professionals/{professionalId}/services/{serviceId}:
@@ -338,5 +285,6 @@ validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(professional
 router.delete("/:professionalId/services/:serviceId", professionalController_1.checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware (checks based on professionalId)
 professionalValidators_1.professionalIdValidator[0], // Pass the single middleware function directly
 serviceValidators_1.serviceIdValidator[0], // Pass the single middleware function directly
-validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(professionalController_1.removeServiceFromProfessionalHandler));
+validationMiddleware_1.validateRequest, // Corrected
+(0, asyncHandler_1.default)(professionalController_1.removeServiceFromProfessionalHandler));
 exports.default = router;

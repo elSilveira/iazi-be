@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { body, param } from 'express-validator';
-import { handleValidationErrors } from '../middlewares/validationMiddleware'; // Assuming this middleware exists
-import { protect } from '../middlewares/authMiddleware'; // Assuming this middleware exists
+import { validateRequest } from '../middlewares/validationMiddleware'; // Corrected import
+import { authMiddleware } from '../middlewares/authMiddleware'; // Corrected import
 import * as commentController from '../controllers/commentController'; // Import actual controller
 
 const router = Router({ mergeParams: true }); // mergeParams allows access to :postId from parent router
@@ -50,12 +50,12 @@ const router = Router({ mergeParams: true }); // mergeParams allows access to :p
  */
 router.post(
     '/', // Path relative to where it's mounted (/api/posts/:postId/comments)
-    protect, // Requires authentication
+    authMiddleware, // Corrected: Requires authentication
     [
         param('postId').isUUID().withMessage('Invalid Post ID'), // Validate postId from mergeParams
         body('content').notEmpty().withMessage('Content is required'),
     ],
-    handleValidationErrors,
+    validateRequest, // Corrected
     commentController.createComment // Use actual controller function
 );
 
@@ -92,7 +92,7 @@ router.post(
 router.get(
     '/', // Path relative to where it's mounted (/api/posts/:postId/comments)
     [param('postId').isUUID().withMessage('Invalid Post ID')], // Validate postId from mergeParams
-    handleValidationErrors,
+    validateRequest, // Corrected
     commentController.getComments // Use actual controller function
 );
 
@@ -132,12 +132,12 @@ router.get(
  */
 router.put(
     '/:commentId', // Mounted separately, e.g., app.use('/api/comments', commentRoutes)
-    protect, // Requires authentication
+    authMiddleware, // Corrected: Requires authentication
     [
         param('commentId').isUUID().withMessage('Invalid Comment ID'),
         body('content').notEmpty().withMessage('Content is required'),
     ],
-    handleValidationErrors,
+    validateRequest, // Corrected
     commentController.updateComment // Use actual controller function
 );
 
@@ -165,9 +165,9 @@ router.put(
  */
 router.delete(
     '/:commentId', // Mounted separately, e.g., app.use('/api/comments', commentRoutes)
-    protect, // Requires authentication
+    authMiddleware, // Corrected: Requires authentication
     [param('commentId').isUUID().withMessage('Invalid Comment ID')],
-    handleValidationErrors,
+    validateRequest, // Corrected
     commentController.deleteComment // Use actual controller function
 );
 

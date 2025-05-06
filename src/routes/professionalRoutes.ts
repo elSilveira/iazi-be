@@ -16,7 +16,7 @@ import {
   professionalServiceAssociationValidator
 } from "../validators/professionalValidators";
 import { serviceIdValidator } from "../validators/serviceValidators";
-import { handleValidationErrors } from "../middlewares/validationMiddleware"; // Corrected import
+import { validateRequest } from "../middlewares/validationMiddleware"; // Corrected import
 import asyncHandler from "../utils/asyncHandler"; // Corrected import
 
 const router = Router();
@@ -106,7 +106,7 @@ router.get("/", asyncHandler(getAllProfessionalsHandler));
 router.get(
   "/:id", 
   professionalIdValidator[0], // Pass the single middleware function directly
-  handleValidationErrors, // Corrected
+  validateRequest, // Corrected
   asyncHandler(getProfessionalByIdHandler)
 );
 
@@ -142,7 +142,7 @@ router.post(
   "/", 
   checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
   ...createProfessionalValidator, // Spread validation middlewares
-  handleValidationErrors, // Corrected
+  validateRequest, // Corrected
   asyncHandler(createProfessionalHandler)
 );
 
@@ -186,7 +186,7 @@ router.put(
   "/:id", 
   checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
   ...updateProfessionalValidator, // Spread validation middlewares
-  handleValidationErrors, // Corrected
+  validateRequest, // Corrected
   asyncHandler(updateProfessionalHandler)
 );
 
@@ -229,7 +229,7 @@ router.delete(
   "/:id", 
   checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
   professionalIdValidator[0], // Pass the single middleware function directly
-  handleValidationErrors, // Corrected
+  validateRequest, // Corrected
   asyncHandler(deleteProfessionalHandler)
 );
 
@@ -273,7 +273,7 @@ router.post(
   "/:professionalId/services", 
   checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware (checks based on professionalId)
   ...professionalServiceAssociationValidator, // Spread validation middlewares
-  handleValidationErrors, // Corrected
+  validateRequest, // Corrected
   asyncHandler(addServiceToProfessionalHandler)
 );
 
@@ -321,7 +321,7 @@ router.delete(
   checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware (checks based on professionalId)
   professionalIdValidator[0], // Pass the single middleware function directly
   serviceIdValidator[0],      // Pass the single middleware function directly
-  handleValidationErrors, // Corrected
+  validateRequest, // Corrected
   asyncHandler(removeServiceFromProfessionalHandler)
 );
 

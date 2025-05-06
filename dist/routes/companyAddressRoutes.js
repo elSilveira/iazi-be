@@ -36,21 +36,24 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const companyAddressController = __importStar(require("../controllers/companyAddressController"));
 const companyAddressValidators_1 = require("../validators/companyAddressValidators");
-// Corrected import path
+const authMiddleware_1 = require("../middlewares/authMiddleware"); // Corrected: Use authMiddleware
+const validationMiddleware_1 = require("../middlewares/validationMiddleware"); // Added import for validateRequest
 const router = (0, express_1.Router)();
 // Route to get company address (Public or authenticated? Assuming public for now)
-router.get("/:companyId", companyAddressValidators_1.companyAddressIdValidationRules, validateRequest, companyAddressController.getCompanyAddress);
+router.get("/:companyId", companyAddressValidators_1.companyAddressIdValidationRules, validationMiddleware_1.validateRequest, // Use imported validateRequest
+companyAddressController.getCompanyAddress);
 // Route to create or update company address (Requires authentication and likely specific permissions)
-router.put("/:companyId", authMiddleware, // Use correct middleware name
+router.put("/:companyId", authMiddleware_1.authMiddleware, // Use imported authMiddleware
 // Add specific permission middleware here if needed (e.g., check if user owns the company)
-companyAddressValidators_1.companyAddressValidationRules, validateRequest, companyAddressController.upsertCompanyAddress);
+companyAddressValidators_1.companyAddressValidationRules, validationMiddleware_1.validateRequest, // Use imported validateRequest
+companyAddressController.upsertCompanyAddress);
 // Optional: Route to delete company address (if needed)
 // router.delete(
 //   "/:companyId",
-//   authMiddleware, // Use correct middleware name
+//   authMiddleware, // Use imported authMiddleware
 //   // Add specific permission middleware here
 //   companyAddressIdValidationRules,
-//   validateRequest,
+//   validateRequest, // Use imported validateRequest
 //   companyAddressController.deleteCompanyAddress
 // );
 exports.default = router;

@@ -1,8 +1,8 @@
 import { Router } from "express";
 import * as companyAddressController from "../controllers/companyAddressController";
 import { companyAddressValidationRules, companyAddressIdValidationRules } from "../validators/companyAddressValidators";
-import { protect } from "../middlewares/authMiddleware"; // Usar 'protect' para autenticação
- // Corrected import path
+import { authMiddleware } from "../middlewares/authMiddleware"; // Corrected: Use authMiddleware
+import { validateRequest } from "../middlewares/validationMiddleware"; // Added import for validateRequest
 
 const router = Router();
 
@@ -10,27 +10,27 @@ const router = Router();
 router.get(
   "/:companyId",
   companyAddressIdValidationRules,
-  validateRequest,
+  validateRequest, // Use imported validateRequest
   companyAddressController.getCompanyAddress
 );
 
 // Route to create or update company address (Requires authentication and likely specific permissions)
 router.put(
   "/:companyId",
-  authMiddleware, // Use correct middleware name
+  authMiddleware, // Use imported authMiddleware
   // Add specific permission middleware here if needed (e.g., check if user owns the company)
   companyAddressValidationRules,
-  validateRequest,
+  validateRequest, // Use imported validateRequest
   companyAddressController.upsertCompanyAddress
 );
 
 // Optional: Route to delete company address (if needed)
 // router.delete(
 //   "/:companyId",
-//   authMiddleware, // Use correct middleware name
+//   authMiddleware, // Use imported authMiddleware
 //   // Add specific permission middleware here
 //   companyAddressIdValidationRules,
-//   validateRequest,
+//   validateRequest, // Use imported validateRequest
 //   companyAddressController.deleteCompanyAddress
 // );
 

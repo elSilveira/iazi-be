@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const authController_1 = require("../controllers/authController"); // Importa refreshToken
 const authValidators_1 = require("../validators/authValidators");
+const validationMiddleware_1 = require("../middlewares/validationMiddleware");
 const router = (0, express_1.Router)();
 /**
  * @swagger
@@ -40,7 +41,7 @@ const router = (0, express_1.Router)();
  *       500:
  *         description: Erro interno do servidor.
  */
-router.post("/register", authValidators_1.registerValidator, validateRequest, authController_1.register);
+router.post("/register", authValidators_1.registerValidator, validationMiddleware_1.validateRequest, authController_1.register);
 /**
  * @swagger
  * /api/auth/login:
@@ -76,7 +77,7 @@ router.post("/register", authValidators_1.registerValidator, validateRequest, au
  *       500:
  *         description: Erro interno do servidor.
  */
-router.post("/login", authValidators_1.loginValidator, validateRequest, authController_1.login);
+router.post("/login", authValidators_1.loginValidator, validationMiddleware_1.validateRequest, authController_1.login);
 /**
  * @swagger
  * /api/auth/refresh:

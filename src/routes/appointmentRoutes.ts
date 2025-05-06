@@ -16,8 +16,8 @@ import {
   appointmentIdValidator,
   getAvailabilityValidator // Importar novo validator
 } from "../validators/appointmentValidators";
-import { handleValidationErrors } from "../middlewares/validationMiddleware"; // Corrected import
-import { protect } from "../middlewares/authMiddleware"; // Usar 'protect' para autenticação
+import { validateRequest } from "../middlewares/validationMiddleware"; // Corrected import
+import { authMiddleware } from "../middlewares/authMiddleware"; // Corrected: Use authMiddleware
 import asyncHandler from "../utils/asyncHandler"; // Importar asyncHandler
 
 const router = Router();
@@ -33,10 +33,10 @@ const router = Router();
 
 // --- Rota Pública (ou com autenticação opcional?) para Disponibilidade ---
 // TODO: Implementar e documentar a rota /availability se a função getAppointmentAvailability for exportada
-// router.get("/availability", getAvailabilityValidator, handleValidationErrors, asyncHandler(getAppointmentAvailability)); // Comentado pois a função não está exportada
+// router.get("/availability", getAvailabilityValidator, validateRequest, asyncHandler(getAppointmentAvailability)); // Comentado pois a função não está exportada
 
 // --- Rotas Protegidas --- 
-router.use(asyncHandler(protect)); // Corrected: Use protect wrapped with asyncHandler
+router.use(asyncHandler(authMiddleware)); // Corrected: Use authMiddleware wrapped with asyncHandler
 
 /**
  * @swagger
@@ -125,7 +125,7 @@ router.get("/", asyncHandler(listAppointments)); // Usar asyncHandler
  *       500:
  *         description: Erro interno do servidor.
  */
-router.get("/:id", appointmentIdValidator, handleValidationErrors, asyncHandler(getAppointmentById)); // Corrected: Use handleValidationErrors
+router.get("/:id", appointmentIdValidator, validateRequest, asyncHandler(getAppointmentById)); // Corrected: Use validateRequest
 
 /**
  * @swagger
@@ -155,7 +155,7 @@ router.get("/:id", appointmentIdValidator, handleValidationErrors, asyncHandler(
  *       500:
  *         description: Erro interno do servidor.
  */
-router.post("/", createAppointmentValidator, handleValidationErrors, asyncHandler(createAppointment)); // Corrected: Use handleValidationErrors
+router.post("/", createAppointmentValidator, validateRequest, asyncHandler(createAppointment)); // Corrected: Use validateRequest
 
 /**
  * @swagger
@@ -201,7 +201,7 @@ router.post("/", createAppointmentValidator, handleValidationErrors, asyncHandle
  *       500:
  *         description: Erro interno do servidor.
  */
-router.patch("/:id/status", updateAppointmentValidator, handleValidationErrors, asyncHandler(updateAppointmentStatus)); // Corrected: Use handleValidationErrors
+router.patch("/:id/status", updateAppointmentValidator, validateRequest, asyncHandler(updateAppointmentStatus)); // Corrected: Use validateRequest
 
 /**
  * @swagger
@@ -234,7 +234,7 @@ router.patch("/:id/status", updateAppointmentValidator, handleValidationErrors, 
  *       500:
  *         description: Erro interno do servidor.
  */
-router.patch("/:id/cancel", appointmentIdValidator, handleValidationErrors, asyncHandler(async (req: Request, res: Response, next: NextFunction) => { // Corrected: Use handleValidationErrors
+router.patch("/:id/cancel", appointmentIdValidator, validateRequest, asyncHandler(async (req: Request, res: Response, next: NextFunction) => { // Corrected: Use validateRequest
     // Wrapper para chamar updateAppointmentStatus com status CANCELLED
     req.body.status = 'CANCELLED'; // Forçar o status
     // TODO: Adicionar validação específica para cancelamento se necessário
@@ -244,7 +244,7 @@ router.patch("/:id/cancel", appointmentIdValidator, handleValidationErrors, asyn
 }));
 
 // TODO: Implementar e documentar a rota DELETE se necessário
-// router.delete("/:id", appointmentIdValidator, handleValidationErrors, asyncHandler(deleteAppointment)); // Comentado pois a função não está exportada
+// router.delete("/:id", appointmentIdValidator, validateRequest, asyncHandler(deleteAppointment)); // Comentado pois a função não está exportada
 
 export default router;
 

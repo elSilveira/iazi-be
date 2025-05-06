@@ -46,7 +46,7 @@ exports.unlikeComment = exports.likeComment = exports.unlikePost = exports.likeP
 const likeService = __importStar(require("../services/likeService"));
 const likePost = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id; // Changed userId to id
     if (!userId) {
         return next(new Error('Authentication required but user ID not found in request'));
     }
@@ -63,7 +63,7 @@ const likePost = (req, res, next) => __awaiter(void 0, void 0, void 0, function*
 exports.likePost = likePost;
 const unlikePost = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id; // Changed userId to id
     if (!userId) {
         return next(new Error('Authentication required but user ID not found in request'));
     }
@@ -80,7 +80,7 @@ const unlikePost = (req, res, next) => __awaiter(void 0, void 0, void 0, functio
 exports.unlikePost = unlikePost;
 const likeComment = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id; // Changed userId to id
     if (!userId) {
         return next(new Error('Authentication required but user ID not found in request'));
     }
@@ -97,7 +97,7 @@ const likeComment = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
 exports.likeComment = likeComment;
 const unlikeComment = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id; // Changed userId to id
     if (!userId) {
         return next(new Error('Authentication required but user ID not found in request'));
     }

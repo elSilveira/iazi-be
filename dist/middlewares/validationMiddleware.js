@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleValidationErrors = void 0;
+exports.validateRequest = void 0;
 const express_validator_1 = require("express-validator");
-const handleValidationErrors = (req, res, next) => {
+const validateRequest = (req, res, next) => {
     const errors = (0, express_validator_1.validationResult)(req);
     if (!errors.isEmpty()) {
         // Retorna apenas a primeira mensagem de erro para simplificar
@@ -12,4 +12,4 @@ const handleValidationErrors = (req, res, next) => {
     }
     next(); // Prossegue para o próximo middleware/controller se não houver erros
 };
-exports.handleValidationErrors = handleValidationErrors;
+exports.validateRequest = validateRequest;

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { body, param } from 'express-validator';
-import { handleValidationErrors } from '../middlewares/validationMiddleware'; // Assuming this middleware exists
-import { protect } from '../middlewares/authMiddleware'; // Assuming this middleware exists
+import { validateRequest } from '../middlewares/validationMiddleware'; // Corrected import
+import { authMiddleware } from '../middlewares/authMiddleware'; // Corrected import
 import * as postController from '../controllers/postController'; // Import actual controller
 
 const router = Router();
@@ -44,12 +44,12 @@ const router = Router();
  */
 router.post(
     '/',
-    protect, // Requires authentication
+    authMiddleware, // Corrected: Requires authentication
     [
         body('content').notEmpty().withMessage('Content is required'),
         body('imageUrl').optional().isURL().withMessage('Image URL must be a valid URL'),
     ],
-    handleValidationErrors,
+    validateRequest, // Corrected
     postController.createPost // Use actual controller function
 );
 
@@ -110,7 +110,7 @@ router.get('/', postController.getPosts); // Use actual controller function
 router.get(
     '/users/:userId/posts',
     [param('userId').isUUID().withMessage('Invalid User ID')],
-    handleValidationErrors,
+    validateRequest, // Corrected
     postController.getUserPosts // Use actual controller function
 );
 
@@ -135,7 +135,7 @@ router.get(
 router.get(
     '/:postId',
     [param('postId').isUUID().withMessage('Invalid Post ID')],
-    handleValidationErrors,
+    validateRequest, // Corrected
     postController.getPostById // Use actual controller function
 );
 
@@ -176,13 +176,13 @@ router.get(
  */
 router.put(
     '/:postId',
-    protect, // Requires authentication
+    authMiddleware, // Corrected: Requires authentication
     [
         param('postId').isUUID().withMessage('Invalid Post ID'),
         body('content').optional().notEmpty().withMessage('Content cannot be empty if provided'),
         body('imageUrl').optional().isURL().withMessage('Image URL must be a valid URL'),
     ],
-    handleValidationErrors,
+    validateRequest, // Corrected
     postController.updatePost // Use actual controller function
 );
 
@@ -210,9 +210,9 @@ router.put(
  */
 router.delete(
     '/:postId',
-    protect, // Requires authentication
+    authMiddleware, // Corrected: Requires authentication
     [param('postId').isUUID().withMessage('Invalid Post ID')],
-    handleValidationErrors,
+    validateRequest, // Corrected
     postController.deletePost // Use actual controller function
 );
 

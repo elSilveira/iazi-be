@@ -35,8 +35,8 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const express_validator_1 = require("express-validator");
-const validationMiddleware_1 = require("../middlewares/validationMiddleware"); // Assuming this middleware exists
-const authMiddleware_1 = require("../middlewares/authMiddleware"); // Assuming this middleware exists
+const validationMiddleware_1 = require("../middlewares/validationMiddleware"); // Corrected import
+const authMiddleware_1 = require("../middlewares/authMiddleware"); // Corrected import
 const commentController = __importStar(require("../controllers/commentController")); // Import actual controller
 const router = (0, express_1.Router)({ mergeParams: true }); // mergeParams allows access to :postId from parent router
 /**
@@ -80,11 +80,12 @@ const router = (0, express_1.Router)({ mergeParams: true }); // mergeParams allo
  *       404: { description: 'Post not found' }
  */
 router.post('/', // Path relative to where it's mounted (/api/posts/:postId/comments)
-authMiddleware_1.protect, // Requires authentication
+authMiddleware_1.authMiddleware, // Corrected: Requires authentication
 [
     (0, express_validator_1.param)('postId').isUUID().withMessage('Invalid Post ID'), // Validate postId from mergeParams
     (0, express_validator_1.body)('content').notEmpty().withMessage('Content is required'),
-], validationMiddleware_1.handleValidationErrors, commentController.createComment // Use actual controller function
+], validationMiddleware_1.validateRequest, // Corrected
+commentController.createComment // Use actual controller function
 );
 /**
  * @swagger
@@ -118,7 +119,8 @@ authMiddleware_1.protect, // Requires authentication
  */
 router.get('/', // Path relative to where it's mounted (/api/posts/:postId/comments)
 [(0, express_validator_1.param)('postId').isUUID().withMessage('Invalid Post ID')], // Validate postId from mergeParams
-validationMiddleware_1.handleValidationErrors, commentController.getComments // Use actual controller function
+validationMiddleware_1.validateRequest, // Corrected
+commentController.getComments // Use actual controller function
 );
 /**
  * @swagger
@@ -155,11 +157,12 @@ validationMiddleware_1.handleValidationErrors, commentController.getComments // 
  *       404: { description: 'Comment not found' }
  */
 router.put('/:commentId', // Mounted separately, e.g., app.use('/api/comments', commentRoutes)
-authMiddleware_1.protect, // Requires authentication
+authMiddleware_1.authMiddleware, // Corrected: Requires authentication
 [
     (0, express_validator_1.param)('commentId').isUUID().withMessage('Invalid Comment ID'),
     (0, express_validator_1.body)('content').notEmpty().withMessage('Content is required'),
-], validationMiddleware_1.handleValidationErrors, commentController.updateComment // Use actual controller function
+], validationMiddleware_1.validateRequest, // Corrected
+commentController.updateComment // Use actual controller function
 );
 /**
  * @swagger
@@ -184,7 +187,8 @@ authMiddleware_1.protect, // Requires authentication
  *       404: { description: 'Comment not found' }
  */
 router.delete('/:commentId', // Mounted separately, e.g., app.use('/api/comments', commentRoutes)
-authMiddleware_1.protect, // Requires authentication
-[(0, express_validator_1.param)('commentId').isUUID().withMessage('Invalid Comment ID')], validationMiddleware_1.handleValidationErrors, commentController.deleteComment // Use actual controller function
+authMiddleware_1.authMiddleware, // Corrected: Requires authentication
+[(0, express_validator_1.param)('commentId').isUUID().withMessage('Invalid Comment ID')], validationMiddleware_1.validateRequest, // Corrected
+commentController.deleteComment // Use actual controller function
 );
 exports.default = router;

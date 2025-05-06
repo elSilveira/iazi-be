@@ -54,7 +54,7 @@ const getPaginationParams = (req) => {
 };
 const createComment = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const authorId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+    const authorId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id; // Corrected to use req.user.id
     if (!authorId) {
         return next(new Error('Authentication required but user ID not found in request'));
     }
@@ -88,7 +88,7 @@ const getComments = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
 exports.getComments = getComments;
 const updateComment = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const authorId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+    const authorId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id; // Corrected to use req.user.id
     if (!authorId) {
         return next(new Error('Authentication required but user ID not found in request'));
     }
@@ -109,7 +109,7 @@ const updateComment = (req, res, next) => __awaiter(void 0, void 0, void 0, func
 exports.updateComment = updateComment;
 const deleteComment = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b;
-    const authorId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+    const authorId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id; // Corrected to use req.user.id
     const userRole = (_b = req.user) === null || _b === void 0 ? void 0 : _b.role;
     if (!authorId || !userRole) {
         return next(new Error('Authentication required but user ID or role not found in request'));
