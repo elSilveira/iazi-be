@@ -9,7 +9,6 @@ import {
   removeServiceFromProfessionalHandler
 } from "../controllers/professionalController";
 import { authMiddleware } from "../middlewares/authMiddleware"; // Import basic auth middleware
-import { checkAdminOrCompanyOwnerMiddleware } from "../controllers/professionalController"; // Corrected import for the helper defined in controller
 import { 
   createProfessionalValidator, 
   updateProfessionalValidator, 
@@ -19,6 +18,7 @@ import {
 import { serviceIdValidator } from "../validators/serviceValidators";
 import { validateRequest } from "../middlewares/validationMiddleware"; // Corrected import
 import asyncHandler from "../utils/asyncHandler"; // Corrected import
+import { checkAdminOrCompanyOwnerMiddleware } from "../controllers/companyController";
 
 const router = Router();
 
