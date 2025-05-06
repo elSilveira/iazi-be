@@ -6,9 +6,10 @@ import {
   updateProfessionalHandler,
   deleteProfessionalHandler,
   addServiceToProfessionalHandler,
-  removeServiceFromProfessionalHandler,
-  checkAdminOrCompanyOwnerMiddleware // Import middleware
+  removeServiceFromProfessionalHandler
 } from "../controllers/professionalController";
+import { authMiddleware } from "../middlewares/authMiddleware"; // Import basic auth middleware
+import { checkAdminOrCompanyOwnerMiddleware } from "../controllers/professionalController"; // Corrected import for the helper defined in controller
 import { 
   createProfessionalValidator, 
   updateProfessionalValidator, 
@@ -140,7 +141,7 @@ router.get(
  */
 router.post(
   "/", 
-  checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
+  authMiddleware, // Apply basic auth middleware for creation
   ...createProfessionalValidator, // Spread validation middlewares
   validateRequest, // Corrected
   asyncHandler(createProfessionalHandler)

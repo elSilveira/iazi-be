@@ -31,9 +31,8 @@ export const checkAdminOrCompanyOwnerMiddleware = async (req: Request, res: Resp
     }
 
     if (!companyId) {
-        // If no companyId is involved (e.g., creating a professional without a company initially), only admin can do it?
-        // Or adjust logic based on requirements. For now, restrict to Admin.
-        return checkAdminRoleMiddleware(req, res, next);
+        // If no companyId is involved, allow any authenticated user (authMiddleware should have run)
+        return next(); 
     }
 
     if (req.user?.role === UserRole.ADMIN) {

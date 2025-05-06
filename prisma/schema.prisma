@@ -142,8 +142,8 @@ model Professional {
   rating        Float     @default(0)
   totalReviews  Int       @default(0) @map("total_reviews")
   workingHours  Json?     @map("working_hours") // Horário de trabalho específico do profissional (pode sobrescrever o da empresa)
-  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  companyId     String    @map("company_id")
+  company       Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade) // Made relation optional
+  companyId     String?   @map("company_id") // Made field optional
   services      ProfessionalService[]
   experiences   ProfessionalExperience[] // Added relation
   education     ProfessionalEducation[]  // Added relation
