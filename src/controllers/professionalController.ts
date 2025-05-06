@@ -3,57 +3,7 @@ import { professionalRepository } from "../repositories/professionalRepository";
 import companyRepository from "../repositories/companyRepository"; // Import company repo for ownership check
 import { Prisma, UserRole } from "@prisma/client"; // Added UserRole
 
-// --- Authorization Helpers (Consider moving to middleware) ---
-
-// Middleware for Admin check
-export const checkAdminRoleMiddleware = (req: Request, res: Response, next: NextFunction): void => { // Renamed and ensured void return
-    if (req.user?.role !== UserRole.ADMIN) {
-        res.status(403).json({ message: "Acesso negado. Somente administradores podem realizar esta ação." });
-        return; // Stop execution
-    }
-    next();
-};
-
-// Middleware to check if user is Admin or owns the company
-// Assumes Company model has an ownerId field linked to the User model
-export const checkAdminOrCompanyOwnerMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => { // Renamed and ensured Promise<void> return
-    let companyId: string | null | undefined = req.params.companyId || req.body.companyId;
-
-    // If checking for an existing professional, get companyId from them
-    if (req.params.id && !companyId) {
-        try {
-            const professional = await professionalRepository.findById(req.params.id);
-            companyId = professional?.companyId;
-        } catch (error) {
-            // Handle error if professional not found or other DB issue
-            return next(error);
-        }
-    }
-
-    if (!companyId) {
-        // If no companyId is involved, allow any authenticated user (authMiddleware should have run)
-        return next(); 
-    }
-
-    if (req.user?.role === UserRole.ADMIN) {
-        return next(); // Admin can do anything
-    }
-
-    try {
-        // Fetch the company to check its owner
-        // const company = await companyRepository.findById(companyId);
-        // if (company && company.ownerId === req.user?.id) { // Assuming ownerId exists
-        //     return next();
-        // }
-        // Placeholder: Since ownerId is not in the schema, restrict to Admin for now
-        res.status(403).json({ message: "Acesso negado. Permissão insuficiente (Admin or Company Owner required)." });
-        // No return needed here as response is sent
-    } catch (error) {
-        next(error);
-    }
-};
-
-// --- End Authorization Helpers ---
+// --- Authorization Helpers Removed (Handled by route middleware) ---
 
 
 // Assume an interface for the authenticated user attached by middleware

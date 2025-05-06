@@ -9,7 +9,7 @@ const JWT_SECRET: Secret = process.env.JWT_SECRET || 'your-default-secret'; // U
 type ExpiresInLiteral = '1h' | '2d' | '7d' | number; // Restrict string to known valid literals
 
 // Placeholder function to satisfy imports in tests
-export const generateToken = (payload: object, expiresIn: ExpiresInLiteral = '1h'): string => {
+export const generateToken = (payload: object, expiresIn: ExpiresInLiteral = '60d'): string => {
   console.log(`Generating token for payload: ${JSON.stringify(payload)} with secret (placeholder)`);
 
   // Create SignOptions object. expiresIn type is now more restricted.
