@@ -19,6 +19,7 @@ import { serviceIdValidator } from "../validators/serviceValidators";
 import { validateRequest } from "../middlewares/validationMiddleware"; // Corrected import
 import asyncHandler from "../utils/asyncHandler"; // Corrected import
 import { checkAdminOrCompanyOwnerMiddleware } from "../controllers/companyController";
+import { checkProfessionalOwnerOrAdminMiddleware } from "../middlewares/professionalAuthMiddleware";
 
 const router = Router();
 
@@ -185,7 +186,8 @@ router.post(
  */
 router.put(
   "/:id", 
-  checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
+  authMiddleware, // Ensure user is authenticated first
+  checkProfessionalOwnerOrAdminMiddleware, // Apply new auth middleware
   ...updateProfessionalValidator, // Spread validation middlewares
   validateRequest, // Corrected
   asyncHandler(updateProfessionalHandler)
