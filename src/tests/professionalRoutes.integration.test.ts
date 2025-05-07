@@ -92,6 +92,7 @@ const createTestData = async () => {
         role: "Senior Developer",
         rating: 4.5,
         companyId: company1.id,
+        userId: testUserId, // Added userId
       }
   });
   const prof2 = await prisma.professional.create({
@@ -100,6 +101,7 @@ const createTestData = async () => {
         role: "Junior Developer",
         rating: 3.8,
         companyId: company1.id,
+        userId: testAdminId, // Added userId (can be different or same as prof1 for test purposes)
       }
   });
   testProfessionalId1 = prof1.id;
@@ -112,12 +114,14 @@ const createTestData = async () => {
         role: "Designer",
         rating: 4.8,
         companyId: company2.id,
+        userId: testUserId, // Added userId
       },
       {
         name: "Professional Diana",
         role: "Senior Designer",
         rating: 4.2,
         companyId: company2.id,
+        userId: testAdminId, // Added userId
       },
     ],
     skipDuplicates: true,
@@ -400,7 +404,7 @@ describe("DELETE /api/professionals/:id", () => {
   beforeAll(async () => {
     // Create a professional specifically for delete tests
     const prof = await prisma.professional.create({
-      data: { name: "Professional To Delete", role: "Temp", companyId: testCompanyId1 }
+      data: { name: "Professional To Delete", role: "Temp", companyId: testCompanyId1, userId: testUserId } // Added userId
     });
     professionalToDeleteId = prof.id;
   });
@@ -418,9 +422,9 @@ describe("DELETE /api/professionals/:id", () => {
 
   it("should FORBID a regular USER from deleting a professional", async () => {
      // Recreate the professional for this test case
-     const prof = await prisma.professional.create({
-       data: { name: "Professional To Delete Again", role: "Temp Again", companyId: testCompanyId1 }
-     });
+      const prof = await prisma.professional.create({
+      data: { name: "Professional To Delete Again", role: "Temp Again", companyId: testCompanyId1, userId: testUserId } // Added userId
+    });;
      const tempId = prof.id;
 
     const res = await request(app)

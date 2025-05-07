@@ -115,7 +115,7 @@ beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
     // Create test professional linked to the user account and company
     testProfessional = yield prismaClient_1.prisma.professional.create({
         data: {
-            // Link professional profile to the professional user account if needed
+            userId: testProfessionalUser.id, // Added userId
             name: testProfessionalUser.name,
             role: "Hair Stylist",
             companyId: testCompany.id,
@@ -393,7 +393,7 @@ describe("POST /api/appointments", () => {
     }));
     it("should return 400 if professionalId is required but missing", () => __awaiter(void 0, void 0, void 0, function* () {
         // Create a second service offered by another professional
-        const otherProf = yield prismaClient_1.prisma.professional.create({ data: { name: "Other Prof", role: "Stylist", companyId: testCompany.id } });
+        const otherProf = yield prismaClient_1.prisma.professional.create({ data: { name: "Other Prof", role: "Stylist", companyId: testCompany.id, userId: testUser2.id } }); // Added userId
         yield prismaClient_1.prisma.professionalService.create({ data: { professionalId: otherProf.id, serviceId: testService.id } });
         const response = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")

@@ -16,8 +16,11 @@ exports.professionalRepository = {
     includeDetails: {
         services: { include: { service: true } },
         company: { include: { address: true } },
+        experiences: true, // Maps to ProfessionalExperience model
+        education: true, // Maps to ProfessionalEducation model
+        availability: true, // Maps to ProfessionalAvailabilitySlot model
+        portfolio: true, // Maps to ProfessionalPortfolioItem model
     },
-    // Método antigo, pode ser removido ou mantido
     getAll(companyId) {
         return __awaiter(this, void 0, void 0, function* () {
             return prisma_1.prisma.professional.findMany({
@@ -26,7 +29,6 @@ exports.professionalRepository = {
             });
         });
     },
-    // Novo método findMany com filtros, ordenação e paginação
     findMany(filters, orderBy, skip, take) {
         return __awaiter(this, void 0, void 0, function* () {
             return prisma_1.prisma.professional.findMany({
@@ -38,7 +40,6 @@ exports.professionalRepository = {
             });
         });
     },
-    // Novo método count com filtros
     count(filters) {
         return __awaiter(this, void 0, void 0, function* () {
             return prisma_1.prisma.professional.count({
@@ -54,7 +55,7 @@ exports.professionalRepository = {
             });
         });
     },
-    create(data, serviceIds) {
+    create(data, serviceIds, experiencesData, educationsData, availabilityData, portfolioData) {
         return __awaiter(this, void 0, void 0, function* () {
             return prisma_1.prisma.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
                 const newProfessional = yield tx.professional.create({
@@ -70,7 +71,26 @@ exports.professionalRepository = {
                         skipDuplicates: true,
                     });
                 }
-                // Re-fetch with includes
+                if (experiencesData && experiencesData.length > 0) {
+                    yield tx.professionalExperience.createMany({
+                        data: experiencesData.map(exp => (Object.assign(Object.assign({}, exp), { professionalId: newProfessional.id }))),
+                    });
+                }
+                if (educationsData && educationsData.length > 0) {
+                    yield tx.professionalEducation.createMany({
+                        data: educationsData.map(edu => (Object.assign(Object.assign({}, edu), { professionalId: newProfessional.id }))),
+                    });
+                }
+                if (availabilityData && availabilityData.length > 0) {
+                    yield tx.professionalAvailabilitySlot.createMany({
+                        data: availabilityData.map(slot => (Object.assign(Object.assign({}, slot), { professionalId: newProfessional.id }))),
+                    });
+                }
+                if (portfolioData && portfolioData.length > 0) {
+                    yield tx.professionalPortfolioItem.createMany({
+                        data: portfolioData.map(item => (Object.assign(Object.assign({}, item), { professionalId: newProfessional.id }))),
+                    });
+                }
                 return tx.professional.findUniqueOrThrow({
                     where: { id: newProfessional.id },
                     include: this.includeDetails,
@@ -78,32 +98,54 @@ exports.professionalRepository = {
             }));
         });
     },
-    update(id, data, serviceIds) {
+    update(id, data, serviceIds, experiencesData, educationsData, availabilityData, portfolioData) {
         return __awaiter(this, void 0, void 0, function* () {
-            // Prisma update throws P2025 if record not found
             return prisma_1.prisma.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
                 const updatedProfessional = yield tx.professional.update({
                     where: { id },
                     data,
-                    // Include details directly in update if possible, otherwise re-fetch
-                    // include: this.includeDetails, // Include might not work directly with serviceIds logic
                 });
                 if (serviceIds !== undefined) {
-                    yield tx.professionalService.deleteMany({
-                        where: { professionalId: id },
-                    });
+                    yield tx.professionalService.deleteMany({ where: { professionalId: id } });
                     if (serviceIds.length > 0) {
-                        const serviceConnections = serviceIds.map((serviceId) => ({
-                            professionalId: id,
-                            serviceId: serviceId,
-                        }));
                         yield tx.professionalService.createMany({
-                            data: serviceConnections,
+                            data: serviceIds.map((serviceId) => ({ professionalId: id, serviceId: serviceId })),
                             skipDuplicates: true,
                         });
                     }
                 }
-                // Re-fetch with includes
+                if (experiencesData !== undefined) {
+                    yield tx.professionalExperience.deleteMany({ where: { professionalId: id } });
+                    if (experiencesData.length > 0) {
+                        yield tx.professionalExperience.createMany({
+                            data: experiencesData.map(exp => (Object.assign(Object.assign({}, exp), { professionalId: id }))),
+                        });
+                    }
+                }
+                if (educationsData !== undefined) {
+                    yield tx.professionalEducation.deleteMany({ where: { professionalId: id } });
+                    if (educationsData.length > 0) {
+                        yield tx.professionalEducation.createMany({
+                            data: educationsData.map(edu => (Object.assign(Object.assign({}, edu), { professionalId: id }))),
+                        });
+                    }
+                }
+                if (availabilityData !== undefined) {
+                    yield tx.professionalAvailabilitySlot.deleteMany({ where: { professionalId: id } });
+                    if (availabilityData.length > 0) {
+                        yield tx.professionalAvailabilitySlot.createMany({
+                            data: availabilityData.map(slot => (Object.assign(Object.assign({}, slot), { professionalId: id }))),
+                        });
+                    }
+                }
+                if (portfolioData !== undefined) {
+                    yield tx.professionalPortfolioItem.deleteMany({ where: { professionalId: id } });
+                    if (portfolioData.length > 0) {
+                        yield tx.professionalPortfolioItem.createMany({
+                            data: portfolioData.map(item => (Object.assign(Object.assign({}, item), { professionalId: id }))),
+                        });
+                    }
+                }
                 return tx.professional.findUniqueOrThrow({
                     where: { id: updatedProfessional.id },
                     include: this.includeDetails,
@@ -113,25 +155,22 @@ exports.professionalRepository = {
     },
     delete(id) {
         return __awaiter(this, void 0, void 0, function* () {
-            // Prisma delete throws P2025 if record not found
             return prisma_1.prisma.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
-                // Fetch before deleting to potentially return details (optional)
-                // const professionalToDelete = await tx.professional.findUnique({ 
-                //     where: { id }, 
-                //     include: this.includeDetails 
-                // });
-                // if (!professionalToDelete) throw new Prisma.PrismaClientKnownRequestError("Professional not found", { code: "P2025", clientVersion: "" });
                 yield tx.professionalService.deleteMany({ where: { professionalId: id } });
-                // onDelete: SetNull for appointments should be handled by schema
+                yield tx.professionalExperience.deleteMany({ where: { professionalId: id } });
+                yield tx.professionalEducation.deleteMany({ where: { professionalId: id } });
+                yield tx.professionalAvailabilitySlot.deleteMany({ where: { professionalId: id } });
+                yield tx.professionalPortfolioItem.deleteMany({ where: { professionalId: id } });
                 yield tx.review.updateMany({
                     where: { professionalId: id },
                     data: { professionalId: null }
                 });
+                // Note: onDelete: Cascade for appointments and scheduleBlocks should be handled by schema if set
+                // If not, they might need explicit deletion or update here.
                 const deletedProfessional = yield tx.professional.delete({
                     where: { id },
                 });
-                return deletedProfessional; // Return the basic deleted object
-                // return professionalToDelete; // Or return the object with details fetched before delete
+                return deletedProfessional;
             }));
         });
     },

@@ -77,6 +77,7 @@ const setupEntities = async () => {
                 name: "Test Prof Feed",
                 role: "Tester",
                 companyId: company.id,
+                userId: user.id, // Added userId, assuming the professional is linked to the test user
             },
         });
     }

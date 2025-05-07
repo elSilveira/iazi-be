@@ -6,6 +6,7 @@ import { NotFoundError, ForbiddenError } from "../lib/errors";
 
 // Interface/Tipo para os dados de criação/atualização (DTO)
 interface PostData {
+  title: string; // Added title as it is required by Prisma schema
   content: string;
   imageUrl?: string;
 }
@@ -19,6 +20,7 @@ export const createPost = async (authorId: string, data: PostData): Promise<Post
 
     const newPost = await prisma.post.create({
         data: {
+            title: data.title, // Added title as it is required by Prisma schema
             content: data.content,
             imageUrl: data.imageUrl,
             authorId: authorId,

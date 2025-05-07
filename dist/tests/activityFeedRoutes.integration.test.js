@@ -84,6 +84,7 @@ const setupEntities = () => __awaiter(void 0, void 0, void 0, function* () {
                 name: "Test Prof Feed",
                 role: "Tester",
                 companyId: company.id,
+                userId: user.id, // Added userId, assuming the professional is linked to the test user
             },
         });
     }

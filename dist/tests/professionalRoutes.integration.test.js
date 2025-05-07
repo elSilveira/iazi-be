@@ -98,6 +98,7 @@ const createTestData = () => __awaiter(void 0, void 0, void 0, function* () {
             role: "Senior Developer",
             rating: 4.5,
             companyId: company1.id,
+            userId: testUserId, // Added userId
         }
     });
     const prof2 = yield prismaClient_1.prisma.professional.create({
@@ -106,6 +107,7 @@ const createTestData = () => __awaiter(void 0, void 0, void 0, function* () {
             role: "Junior Developer",
             rating: 3.8,
             companyId: company1.id,
+            userId: testAdminId, // Added userId (can be different or same as prof1 for test purposes)
         }
     });
     testProfessionalId1 = prof1.id;
@@ -117,12 +119,14 @@ const createTestData = () => __awaiter(void 0, void 0, void 0, function* () {
                 role: "Designer",
                 rating: 4.8,
                 companyId: company2.id,
+                userId: testUserId, // Added userId
             },
             {
                 name: "Professional Diana",
                 role: "Senior Designer",
                 rating: 4.2,
                 companyId: company2.id,
+                userId: testAdminId, // Added userId
             },
         ],
         skipDuplicates: true,
@@ -375,7 +379,7 @@ describe("DELETE /api/professionals/:id", () => {
     beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
         // Create a professional specifically for delete tests
         const prof = yield prismaClient_1.prisma.professional.create({
-            data: { name: "Professional To Delete", role: "Temp", companyId: testCompanyId1 }
+            data: { name: "Professional To Delete", role: "Temp", companyId: testCompanyId1, userId: testUserId } // Added userId
         });
         professionalToDeleteId = prof.id;
     }));
@@ -391,8 +395,9 @@ describe("DELETE /api/professionals/:id", () => {
     it("should FORBID a regular USER from deleting a professional", () => __awaiter(void 0, void 0, void 0, function* () {
         // Recreate the professional for this test case
         const prof = yield prismaClient_1.prisma.professional.create({
-            data: { name: "Professional To Delete Again", role: "Temp Again", companyId: testCompanyId1 }
+            data: { name: "Professional To Delete Again", role: "Temp Again", companyId: testCompanyId1, userId: testUserId } // Added userId
         });
+        ;
         const tempId = prof.id;
         const res = yield (0, supertest_1.default)(index_1.app)
             .delete(`/api/professionals/${tempId}`)

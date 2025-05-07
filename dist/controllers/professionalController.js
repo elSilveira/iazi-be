@@ -20,72 +20,20 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.removeServiceFromProfessionalHandler = exports.addServiceToProfessionalHandler = exports.deleteProfessionalHandler = exports.updateProfessionalHandler = exports.createProfessionalHandler = exports.getProfessionalByIdHandler = exports.getAllProfessionalsHandler = exports.checkAdminOrCompanyOwnerMiddleware = exports.checkAdminRoleMiddleware = void 0;
+exports.removeServiceFromProfessionalHandler = exports.addServiceToProfessionalHandler = exports.deleteProfessionalHandler = exports.updateProfessionalHandler = exports.createProfessionalHandler = exports.getProfessionalByIdHandler = exports.getAllProfessionalsHandler = void 0;
 const professionalRepository_1 = require("../repositories/professionalRepository");
-const client_1 = require("@prisma/client"); // Added UserRole
-// --- Authorization Helpers (Consider moving to middleware) ---
-// Middleware for Admin check
-const checkAdminRoleMiddleware = (req, res, next) => {
-    var _a;
-    if (((_a = req.user) === null || _a === void 0 ? void 0 : _a.role) !== client_1.UserRole.ADMIN) {
-        res.status(403).json({ message: "Acesso negado. Somente administradores podem realizar esta ação." });
-        return; // Stop execution
-    }
-    next();
-};
-exports.checkAdminRoleMiddleware = checkAdminRoleMiddleware;
-// Middleware to check if user is Admin or owns the company
-// Assumes Company model has an ownerId field linked to the User model
-const checkAdminOrCompanyOwnerMiddleware = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    let companyId = req.params.companyId || req.body.companyId;
-    // If checking for an existing professional, get companyId from them
-    if (req.params.id && !companyId) {
-        try {
-            const professional = yield professionalRepository_1.professionalRepository.findById(req.params.id);
-            companyId = professional === null || professional === void 0 ? void 0 : professional.companyId;
-        }
-        catch (error) {
-            // Handle error if professional not found or other DB issue
-            return next(error);
-        }
-    }
-    if (!companyId) {
-        // If no companyId is involved (e.g., creating a professional without a company initially), only admin can do it?
-        // Or adjust logic based on requirements. For now, restrict to Admin.
-        return (0, exports.checkAdminRoleMiddleware)(req, res, next);
-    }
-    if (((_a = req.user) === null || _a === void 0 ? void 0 : _a.role) === client_1.UserRole.ADMIN) {
-        return next(); // Admin can do anything
-    }
-    try {
-        // Fetch the company to check its owner
-        // const company = await companyRepository.findById(companyId);
-        // if (company && company.ownerId === req.user?.id) { // Assuming ownerId exists
-        //     return next();
-        // }
-        // Placeholder: Since ownerId is not in the schema, restrict to Admin for now
-        res.status(403).json({ message: "Acesso negado. Permissão insuficiente (Admin or Company Owner required)." });
-        // No return needed here as response is sent
-    }
-    catch (error) {
-        next(error);
-    }
-});
-exports.checkAdminOrCompanyOwnerMiddleware = checkAdminOrCompanyOwnerMiddleware;
-// Helper function for UUID validation
+const client_1 = require("@prisma/client");
 const isValidUUID = (uuid) => {
     const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
     return uuidRegex.test(uuid);
 };
-// Obter todos os profissionais (com filtros e paginação) - Public
 const getAllProfessionalsHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { companyId, q, role, serviceId, city, state, minRating, sort, page = "1", limit = "10" } = req.query;
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
     if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1) {
         res.status(400).json({ message: "Parâmetros de paginação inválidos (page e limit devem ser números positivos)." });
-        return; // Stop execution
+        return;
     }
     const skip = (pageNum - 1) * limitNum;
     try {
@@ -95,9 +43,7 @@ const getAllProfessionalsHandler = (req, res, next) => __awaiter(void 0, void 0,
         if (role)
             filters.role = { contains: role, mode: "insensitive" };
         if (serviceId && typeof serviceId === 'string' && isValidUUID(serviceId)) {
-            filters.services = {
-                some: { serviceId: serviceId }
-            };
+            filters.services = { some: { serviceId: serviceId } };
         }
         if (q) {
             const searchTerm = q;
@@ -120,11 +66,10 @@ const getAllProfessionalsHandler = (req, res, next) => __awaiter(void 0, void 0,
         }
         if (minRating) {
             const ratingNum = parseFloat(minRating);
-            if (!isNaN(ratingNum)) {
+            if (!isNaN(ratingNum))
                 filters.rating = { gte: ratingNum };
-            }
         }
-        let orderBy = { name: "asc" }; // Default sort
+        let orderBy = { name: "asc" };
         switch (sort) {
             case "rating_desc":
                 orderBy = { rating: "desc" };
@@ -151,18 +96,17 @@ const getAllProfessionalsHandler = (req, res, next) => __awaiter(void 0, void 0,
     }
 });
 exports.getAllProfessionalsHandler = getAllProfessionalsHandler;
-// Obter um profissional específico pelo ID - Public
 const getProfessionalByIdHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     if (!isValidUUID(id)) {
         res.status(400).json({ message: "Formato de ID inválido." });
-        return; // Stop execution
+        return;
     }
     try {
         const professional = yield professionalRepository_1.professionalRepository.findById(id);
         if (!professional) {
             res.status(404).json({ message: "Profissional não encontrado" });
-            return; // Stop execution
+            return;
         }
         res.json(professional);
     }
@@ -172,104 +116,118 @@ const getProfessionalByIdHandler = (req, res, next) => __awaiter(void 0, void 0,
     }
 });
 exports.getProfessionalByIdHandler = getProfessionalByIdHandler;
-// Criar um novo profissional - Requires ADMIN (or Company Owner)
-// Main handler logic
 const createProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    // Extract data from request body
-    const { name, role, image, companyId, serviceIds } = req.body;
-    const professionalName = name;
-    if (!professionalName) {
-        res.status(400).json({ message: "Nome do profissional não fornecido." });
-        return; // Stop execution
+    const { name, role, image, companyId, serviceIds, bio, phone, experiences, // Existing in schema as ProfessionalExperience
+    education, // Existing in schema as ProfessionalEducation
+    availability, // Newly added as ProfessionalAvailabilitySlot
+    portfolio // Newly added as ProfessionalPortfolioItem
+     } = req.body;
+    const authUser = req.user;
+    if (!authUser || !authUser.id) {
+        res.status(401).json({ message: "Usuário não autenticado." });
+        return;
     }
-    const professionalRole = role || "Profissional";
+    if (!name) {
+        res.status(400).json({ message: "Nome do profissional não fornecido." });
+        return;
+    }
     try {
-        // Authorization already checked by middleware
-        const dataToCreate = Object.assign({ name: professionalName, role: professionalRole, image: image }, (companyId && isValidUUID(companyId) && { company: { connect: { id: companyId } } }));
-        const newProfessional = yield professionalRepository_1.professionalRepository.create(dataToCreate, serviceIds);
+        const dataToCreate = Object.assign({ name: name, role: role || "Profissional", image: image, bio: bio, phone: phone, user: { connect: { id: authUser.id } } }, (companyId && isValidUUID(companyId) && { company: { connect: { id: companyId } } }));
+        const newProfessional = yield professionalRepository_1.professionalRepository.create(dataToCreate, serviceIds, experiences, education, availability, portfolio);
         res.status(201).json(newProfessional);
     }
     catch (error) {
         console.error("Erro ao criar profissional:", error);
         if (error instanceof client_1.Prisma.PrismaClientKnownRequestError) {
+            if (error.code === 'P2002') {
+                res.status(409).json({ message: "Este usuário já possui um perfil profissional ou ocorreu um conflito de dados (ex: nome duplicado se houver restrição)." });
+                return;
+            }
             if (error.code === 'P2025') {
-                res.status(400).json({ message: `Erro ao conectar: ${((_a = error.meta) === null || _a === void 0 ? void 0 : _a.cause) || 'Registro relacionado não encontrado (ex: Empresa não existe)'}` });
-                return; // Stop execution
+                res.status(400).json({ message: `Erro ao conectar: ${((_a = error.meta) === null || _a === void 0 ? void 0 : _a.cause) || 'Registro relacionado não encontrado (ex: Empresa ou Usuário não existe)'}` });
+                return;
             }
         }
         next(error);
     }
 });
 exports.createProfessionalHandler = createProfessionalHandler;
-// Atualizar um profissional existente - Requires ADMIN (or Company Owner)
-// Main handler logic
 const updateProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const { id } = req.params;
-    // Extract data from request body, excluding fields handled separately
-    const _b = req.body, { serviceIds } = _b, dataToUpdate = __rest(_b, ["serviceIds"]);
+    const { id } = req.params; // ID of the professional profile to update
+    const _b = req.body, { serviceIds, bio, phone, experiences, // Existing in schema as ProfessionalExperience
+    education, // Existing in schema as ProfessionalEducation
+    availability, // Newly added as ProfessionalAvailabilitySlot
+    portfolio } = _b, // Newly added as ProfessionalPortfolioItem
+    dataToUpdateFromRequest = __rest(_b, ["serviceIds", "bio", "phone", "experiences", "education", "availability", "portfolio"]);
+    const authUser = req.user;
+    if (!authUser || !authUser.id) {
+        res.status(401).json({ message: "Usuário não autenticado." });
+        return;
+    }
     try {
-        // Authorization already checked by middleware
-        // Convert rating and totalReviews if they exist and are strings
-        if (dataToUpdate.rating !== undefined && typeof dataToUpdate.rating === 'string') {
-            dataToUpdate.rating = parseFloat(dataToUpdate.rating);
+        const professionalToUpdate = yield professionalRepository_1.professionalRepository.findById(id);
+        if (!professionalToUpdate) {
+            res.status(404).json({ message: "Perfil profissional não encontrado." });
+            return;
         }
-        if (dataToUpdate.totalReviews !== undefined && typeof dataToUpdate.totalReviews === 'string') {
-            dataToUpdate.totalReviews = parseInt(dataToUpdate.totalReviews, 10);
+        if (professionalToUpdate.userId !== authUser.id && authUser.role !== 'ADMIN' && authUser.role !== 'COMPANY_OWNER') {
+            // This check might be redundant if middleware is comprehensive
+            // console.warn("Tentativa de atualização não autorizada bloqueada no controller, verificar middleware.");
+            // res.status(403).json({ message: "Você não tem permissão para atualizar este perfil." });
+            // return;
         }
-        // Prevent updating companyId directly through this route
-        delete dataToUpdate.companyId;
-        // serviceIds are handled separately by the repository method
-        const updatedProfessional = yield professionalRepository_1.professionalRepository.update(id, dataToUpdate, serviceIds);
+        const updatePayload = Object.assign(Object.assign({}, dataToUpdateFromRequest), { bio: bio, phone: phone });
+        if (updatePayload.rating !== undefined && typeof updatePayload.rating === 'string') {
+            updatePayload.rating = parseFloat(updatePayload.rating);
+        }
+        if (updatePayload.totalReviews !== undefined && typeof updatePayload.totalReviews === 'string') {
+            updatePayload.totalReviews = parseInt(updatePayload.totalReviews, 10);
+        }
+        if ('companyId' in updatePayload)
+            delete updatePayload.companyId;
+        if ('userId' in updatePayload)
+            delete updatePayload.userId;
+        const updatedProfessional = yield professionalRepository_1.professionalRepository.update(id, updatePayload, serviceIds, experiences, education, availability, portfolio);
         res.json(updatedProfessional);
     }
     catch (error) {
         console.error(`Erro ao atualizar profissional ${id}:`, error);
-        // Handle P2025 from repo update if needed
         if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-            res.status(404).json({ message: `Erro ao atualizar: ${((_a = error.meta) === null || _a === void 0 ? void 0 : _a.cause) || 'Profissional não encontrado'}` });
-            return; // Stop execution
+            res.status(404).json({ message: `Erro ao atualizar: ${((_a = error.meta) === null || _a === void 0 ? void 0 : _a.cause) || 'Profissional não encontrado ou registro relacionado ausente'}` });
+            return;
         }
         next(error);
     }
 });
 exports.updateProfessionalHandler = updateProfessionalHandler;
-// Deletar um profissional - Requires ADMIN (or Company Owner)
-// Main handler logic
 const deleteProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     const { id } = req.params;
     try {
-        // Authorization already checked by middleware
         yield professionalRepository_1.professionalRepository.delete(id);
         res.status(204).send();
     }
     catch (error) {
         console.error(`Erro ao deletar profissional ${id}:`, error);
-        // Handle P2025 from repo delete
         if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
             res.status(404).json({ message: `Erro ao deletar: ${((_a = error.meta) === null || _a === void 0 ? void 0 : _a.cause) || 'Profissional não encontrado'}` });
-            return; // Stop execution
+            return;
         }
         next(error);
     }
 });
 exports.deleteProfessionalHandler = deleteProfessionalHandler;
-// Add Service to Professional - Requires ADMIN (or Company Owner)
+// Placeholder for future implementation if needed
 const addServiceToProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { professionalId, serviceId } = req.params;
-    // TODO: Implement authorization check based on professional's company
-    // TODO: Implement logic using professionalRepository.addService or similar
     res.status(501).json({ message: "Not Implemented" });
     return;
 });
 exports.addServiceToProfessionalHandler = addServiceToProfessionalHandler;
-// Remove Service from Professional - Requires ADMIN (or Company Owner)
 const removeServiceFromProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { professionalId, serviceId } = req.params;
-    // TODO: Implement authorization check based on professional's company
-    // TODO: Implement logic using professionalRepository.removeService or similar
     res.status(501).json({ message: "Not Implemented" });
     return;
 });

@@ -21,6 +21,7 @@ const createPost = (authorId, data) => __awaiter(void 0, void 0, void 0, functio
     }
     const newPost = yield prisma_1.prisma.post.create({
         data: {
+            title: data.title, // Added title as it is required by Prisma schema
             content: data.content,
             imageUrl: data.imageUrl,
             authorId: authorId,

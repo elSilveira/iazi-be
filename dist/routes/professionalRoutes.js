@@ -5,10 +5,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const professionalController_1 = require("../controllers/professionalController");
+const authMiddleware_1 = require("../middlewares/authMiddleware"); // Import basic auth middleware
 const professionalValidators_1 = require("../validators/professionalValidators");
 const serviceValidators_1 = require("../validators/serviceValidators");
 const validationMiddleware_1 = require("../middlewares/validationMiddleware"); // Corrected import
 const asyncHandler_1 = __importDefault(require("../utils/asyncHandler")); // Corrected import
+const companyController_1 = require("../controllers/companyController");
 const router = (0, express_1.Router)();
 /**
  * @swagger
@@ -120,7 +122,7 @@ validationMiddleware_1.validateRequest, // Corrected
  *       500:
  *         description: Erro interno do servidor.
  */
-router.post("/", professionalController_1.checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
+router.post("/", authMiddleware_1.authMiddleware, // Apply basic auth middleware for creation
 ...professionalValidators_1.createProfessionalValidator, // Spread validation middlewares
 validationMiddleware_1.validateRequest, // Corrected
 (0, asyncHandler_1.default)(professionalController_1.createProfessionalHandler));
@@ -160,7 +162,7 @@ validationMiddleware_1.validateRequest, // Corrected
  *       500:
  *         description: Erro interno do servidor.
  */
-router.put("/:id", professionalController_1.checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
+router.put("/:id", companyController_1.checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
 ...professionalValidators_1.updateProfessionalValidator, // Spread validation middlewares
 validationMiddleware_1.validateRequest, // Corrected
 (0, asyncHandler_1.default)(professionalController_1.updateProfessionalHandler));
@@ -199,7 +201,7 @@ validationMiddleware_1.validateRequest, // Corrected
  *       500:
  *         description: Erro interno do servidor.
  */
-router.delete("/:id", professionalController_1.checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
+router.delete("/:id", companyController_1.checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
 professionalValidators_1.professionalIdValidator[0], // Pass the single middleware function directly
 validationMiddleware_1.validateRequest, // Corrected
 (0, asyncHandler_1.default)(professionalController_1.deleteProfessionalHandler));
@@ -239,7 +241,7 @@ validationMiddleware_1.validateRequest, // Corrected
  *       500:
  *         description: Erro interno do servidor.
  */
-router.post("/:professionalId/services", professionalController_1.checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware (checks based on professionalId)
+router.post("/:professionalId/services", companyController_1.checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware (checks based on professionalId)
 ...professionalValidators_1.professionalServiceAssociationValidator, // Spread validation middlewares
 validationMiddleware_1.validateRequest, // Corrected
 (0, asyncHandler_1.default)(professionalController_1.addServiceToProfessionalHandler));
@@ -282,7 +284,7 @@ validationMiddleware_1.validateRequest, // Corrected
  *       500:
  *         description: Erro interno do servidor.
  */
-router.delete("/:professionalId/services/:serviceId", professionalController_1.checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware (checks based on professionalId)
+router.delete("/:professionalId/services/:serviceId", companyController_1.checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware (checks based on professionalId)
 professionalValidators_1.professionalIdValidator[0], // Pass the single middleware function directly
 serviceValidators_1.serviceIdValidator[0], // Pass the single middleware function directly
 validationMiddleware_1.validateRequest, // Corrected

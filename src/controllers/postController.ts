@@ -19,8 +19,8 @@ export const createPost = async (req: Request, res: Response, next: NextFunction
         return next(new Error('Authentication required but user ID not found in request'));
     }
 
-    const { content, imageUrl } = req.body;
-    const postData = { content, imageUrl };
+    const { title, content, imageUrl } = req.body; // Added title
+    const postData = { title, content, imageUrl }; // Added title
 
     try {
         const newPost = await postService.createPost(authorId, postData);

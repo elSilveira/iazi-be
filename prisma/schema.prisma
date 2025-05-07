@@ -412,6 +412,7 @@ model Post {
   id        String    @id @default(uuid())
   title     String
   content   String
+  imageUrl  String?            // Added imageUrl for posts, as it is used in postService.ts
   author    User      @relation(fields: [authorId], references: [id])
   authorId  String    @map("author_id")
   createdAt DateTime  @default(now()) @map("created_at")
@@ -433,23 +434,35 @@ model Comment {
   postId    String   @map("post_id")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+  likes     Like[] // Added for bi-directional relation with Like model
 
   @@index([authorId])
   @@index([postId])
   @@map("comments")
 }
 
-// Modelo de Like (para posts)
+// Modelo de Like (para posts e comentários)
 model Like {
   id        String   @id @default(uuid())
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String   @map("user_id")
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  postId    String   @map("post_id")
+
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    String?  @map("post_id")
+
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId String?  @map("comment_id")
+
   createdAt DateTime @default(now()) @map("created_at")
 
-  @@unique([userId, postId])
+  // A user can like a specific post once, or a specific comment once.
+  // postId and commentId are optional. The application layer should ensure one is set.
+  // These constraints prevent duplicate likes for the same item by the same user.
+  @@unique([userId, postId], name: "UserPostLikeUniqueConstraint")
+  @@unique([userId, commentId], name: "UserCommentLikeUniqueConstraint")
+
   @@index([postId])
+  @@index([commentId]) // New index
   @@map("likes")
 }
 

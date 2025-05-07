@@ -109,6 +109,9 @@ describe("Appointment Controller Helpers", () => {
             name: "Test Prof",
             role: "Tester",
             image: null,
+            bio: "Test bio", // Added bio
+            phone: "1234567890", // Added phone
+            userId: "user-for-prof-123", // Added userId
             rating: 0,
             totalReviews: 0,
             workingHours: { 1: { start: "09:00", end: "17:00" } }, // Monday 9-5

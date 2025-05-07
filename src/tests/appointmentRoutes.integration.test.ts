@@ -109,7 +109,7 @@ beforeAll(async () => {
     // Create test professional linked to the user account and company
     testProfessional = await prisma.professional.create({
         data: {
-            // Link professional profile to the professional user account if needed
+            userId: testProfessionalUser.id, // Added userId
             name: testProfessionalUser.name,
             role: "Hair Stylist",
             companyId: testCompany.id,
@@ -425,7 +425,7 @@ describe("POST /api/appointments", () => {
 
     it("should return 400 if professionalId is required but missing", async () => {
         // Create a second service offered by another professional
-        const otherProf = await prisma.professional.create({ data: { name: "Other Prof", role: "Stylist", companyId: testCompany.id } });
+        const otherProf = await prisma.professional.create({ data: { name: "Other Prof", role: "Stylist", companyId: testCompany.id, userId: testUser2.id } }); // Added userId
         await prisma.professionalService.create({ data: { professionalId: otherProf.id, serviceId: testService.id } });
 
         const response = await request(app)

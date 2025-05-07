@@ -82,6 +82,7 @@ beforeAll(async () => {
     // Create the Professional profile linked to the user
     const profProfile = await prisma.professional.create({
         data: {
+            userId: testProfUserId, // Added userId
             companyId: testCompanyId,
             name: professionalUser.name, // Use user's name or specific professional name
             // bio: "Test Professional Bio", // Assuming bio exists on Professional model

@@ -6,7 +6,7 @@ const JWT_SECRET: Secret = process.env.JWT_SECRET || 'your-default-secret'; // U
 
 // Define a type that explicitly matches the expected string literals or number
 // Example literals: '1h', '2d', '7d'. Add more as needed or keep it general if usage varies.
-type ExpiresInLiteral = '1h' | '2d' | '7d' | number; // Restrict string to known valid literals
+type ExpiresInLiteral = '1h' | '2d' | '7d' | '60d' | number; // Restrict string to known valid literals, added '60d'
 
 // Placeholder function to satisfy imports in tests
 export const generateToken = (payload: object, expiresIn: ExpiresInLiteral = '60d'): string => {

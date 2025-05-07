@@ -60,8 +60,8 @@ const createPost = (req, res, next) => __awaiter(void 0, void 0, void 0, functio
         // This should ideally be caught by the 'protect' middleware, but double-check
         return next(new Error('Authentication required but user ID not found in request'));
     }
-    const { content, imageUrl } = req.body;
-    const postData = { content, imageUrl };
+    const { title, content, imageUrl } = req.body; // Added title
+    const postData = { title, content, imageUrl }; // Added title
     try {
         const newPost = yield postService.createPost(authorId, postData);
         res.status(201).json(newPost);
