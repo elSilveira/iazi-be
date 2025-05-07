@@ -103,7 +103,13 @@ export const getProfessionalByIdHandler = async (req: Request, res: Response, ne
 };
 
 export const createProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const { name, role, image, companyId, serviceIds, bio, phone } = req.body;
+    const {
+        name, role, image, companyId, serviceIds, bio, phone,
+        experiences, // Existing in schema as ProfessionalExperience
+        education,   // Existing in schema as ProfessionalEducation
+        availability,// Newly added as ProfessionalAvailabilitySlot
+        portfolio    // Newly added as ProfessionalPortfolioItem
+    } = req.body;
     const authUser = req.user as AuthenticatedUser;
 
     if (!authUser || !authUser.id) {
@@ -127,7 +133,14 @@ export const createProfessionalHandler = async (req: Request, res: Response, nex
         ...(companyId && isValidUUID(companyId) && { company: { connect: { id: companyId } } }),
       };
 
-      const newProfessional = await professionalRepository.create(dataToCreate, serviceIds as string[] | undefined);
+      const newProfessional = await professionalRepository.create(
+          dataToCreate,
+          serviceIds as string[] | undefined,
+          experiences as Prisma.ProfessionalExperienceCreateWithoutProfessionalInput[] | undefined,
+          education as Prisma.ProfessionalEducationCreateWithoutProfessionalInput[] | undefined,
+          availability as Prisma.ProfessionalAvailabilitySlotCreateWithoutProfessionalInput[] | undefined,
+          portfolio as Prisma.ProfessionalPortfolioItemCreateWithoutProfessionalInput[] | undefined
+      );
       res.status(201).json(newProfessional);
     } catch (error) {
       console.error("Erro ao criar profissional:", error);
@@ -147,7 +160,14 @@ export const createProfessionalHandler = async (req: Request, res: Response, nex
 
 export const updateProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { id } = req.params; // ID of the professional profile to update
-    const { serviceIds, bio, phone, ...dataToUpdateFromRequest } = req.body;
+    const {
+        serviceIds, bio, phone,
+        experiences, // Existing in schema as ProfessionalExperience
+        education,   // Existing in schema as ProfessionalEducation
+        availability,// Newly added as ProfessionalAvailabilitySlot
+        portfolio,   // Newly added as ProfessionalPortfolioItem
+        ...dataToUpdateFromRequest
+    } = req.body;
     const authUser = req.user as AuthenticatedUser;
 
     if (!authUser || !authUser.id) {
@@ -162,9 +182,7 @@ export const updateProfessionalHandler = async (req: Request, res: Response, nex
         return;
       }
       
-      // Authorization: User can update their own profile, or admin/company owner (handled by middleware on route)
-      // A specific check for non-admin user owning the profile:
-      if (professionalToUpdate.userId !== authUser.id && authUser.role !== 'ADMIN' && authUser.role !== 'COMPANY_OWNER') { 
+      if (professionalToUpdate.userId !== authUser.id && authUser.role !== 'ADMIN' && authUser.role !== 'COMPANY_OWNER') {
           // This check might be redundant if middleware is comprehensive
           // console.warn("Tentativa de atualização não autorizada bloqueada no controller, verificar middleware.");
           // res.status(403).json({ message: "Você não tem permissão para atualizar este perfil." });
@@ -187,7 +205,15 @@ export const updateProfessionalHandler = async (req: Request, res: Response, nex
       if ('companyId' in updatePayload) delete (updatePayload as any).companyId;
       if ('userId' in updatePayload) delete (updatePayload as any).userId;
 
-      const updatedProfessional = await professionalRepository.update(id, updatePayload, serviceIds as string[] | undefined);
+      const updatedProfessional = await professionalRepository.update(
+          id,
+          updatePayload,
+          serviceIds as string[] | undefined,
+          experiences as Prisma.ProfessionalExperienceCreateWithoutProfessionalInput[] | undefined,
+          education as Prisma.ProfessionalEducationCreateWithoutProfessionalInput[] | undefined,
+          availability as Prisma.ProfessionalAvailabilitySlotCreateWithoutProfessionalInput[] | undefined,
+          portfolio as Prisma.ProfessionalPortfolioItemCreateWithoutProfessionalInput[] | undefined
+      );
       res.json(updatedProfessional);
     } catch (error) {
       console.error(`Erro ao atualizar profissional ${id}:`, error);
@@ -201,7 +227,6 @@ export const updateProfessionalHandler = async (req: Request, res: Response, nex
 
 export const deleteProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { id } = req.params;
-    // Add similar authorization checks as in update if needed, or rely on middleware
     try {
       await professionalRepository.delete(id); 
       res.status(204).send(); 
@@ -215,16 +240,16 @@ export const deleteProfessionalHandler = async (req: Request, res: Response, nex
     }
 };
 
+// Placeholder for future implementation if needed
 export const addServiceToProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { professionalId, serviceId } = req.params;
-    // Authorization and logic to be implemented
     res.status(501).json({ message: "Not Implemented" });
     return;
 };
 
 export const removeServiceFromProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { professionalId, serviceId } = req.params;
-    // Authorization and logic to be implemented
     res.status(501).json({ message: "Not Implemented" });
     return;
 };
+

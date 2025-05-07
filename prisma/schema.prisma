@@ -150,8 +150,10 @@ model Professional {
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId        String    @unique @map("user_id") // Each professional profile belongs to one user
   services      ProfessionalService[]
-  experiences   ProfessionalExperience[] // Added relation
-  education     ProfessionalEducation[]  // Added relation
+  experiences   ProfessionalExperience[] // Existing relation
+  education     ProfessionalEducation[]  // Existing relation
+  availability  ProfessionalAvailabilitySlot[] // Added relation for availability
+  portfolio     ProfessionalPortfolioItem[]    // Added relation for portfolio
   scheduledAppointments Appointment[] @relation("ProfessionalAppointments")
   scheduleBlocks ScheduleBlock[] // Added relation to ScheduleBlock
   reviews       Review[]
@@ -166,7 +168,7 @@ model Professional {
   @@map("professionals") // Map to lowercase table name
 }
 
-// Modelo de Experiência Profissional (NOVO)
+// Modelo de Experiência Profissional (Existente)
 model ProfessionalExperience {
   id            String    @id @default(uuid())
   title         String    // Cargo
@@ -184,7 +186,7 @@ model ProfessionalExperience {
   @@map("professional_experiences")
 }
 
-// Modelo de Formação Acadêmica (NOVO)
+// Modelo de Formação Acadêmica (Existente)
 model ProfessionalEducation {
   id            String    @id @default(uuid())
   institution   String    // Nome da instituição
@@ -200,6 +202,35 @@ model ProfessionalEducation {
 
   @@index([professionalId]) // Index for querying education
   @@map("professional_education")
+}
+
+// Modelo de Disponibilidade do Profissional (NOVO)
+model ProfessionalAvailabilitySlot {
+  id              String    @id @default(uuid())
+  dayOfWeek       String    // Ex: "MONDAY", "TUESDAY"
+  startTime       String    // Ex: "09:00"
+  endTime         String    // Ex: "18:00"
+  professional    Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  professionalId  String    @map("professional_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([professionalId])
+  @@map("professional_availability_slots")
+}
+
+// Modelo de Item do Portfólio do Profissional (NOVO)
+model ProfessionalPortfolioItem {
+  id              String    @id @default(uuid())
+  imageUrl        String
+  description     String?
+  professional    Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  professionalId  String    @map("professional_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([professionalId])
+  @@map("professional_portfolio_items")
 }
 
 // Tabela de relacionamento entre Profissional e Serviço

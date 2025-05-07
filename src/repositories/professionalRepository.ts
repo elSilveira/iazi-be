@@ -6,6 +6,10 @@ export type ProfessionalWithDetails = Prisma.ProfessionalGetPayload<{
   include: {
     services: { include: { service: true } };
     company: { include: { address: true } };
+    experiences: true; // Maps to ProfessionalExperience
+    education: true;   // Maps to ProfessionalEducation
+    availability: true; // Maps to ProfessionalAvailabilitySlot
+    portfolio: true;    // Maps to ProfessionalPortfolioItem
   };
 }>;
 
@@ -14,9 +18,12 @@ export const professionalRepository = {
   includeDetails: {
     services: { include: { service: true } },
     company: { include: { address: true } },
+    experiences: true, // Maps to ProfessionalExperience model
+    education: true,   // Maps to ProfessionalEducation model
+    availability: true, // Maps to ProfessionalAvailabilitySlot model
+    portfolio: true,    // Maps to ProfessionalPortfolioItem model
   } as const,
 
-  // Método antigo, pode ser removido ou mantido
   async getAll(companyId?: string): Promise<ProfessionalWithDetails[]> {
     return prisma.professional.findMany({
       where: companyId ? { companyId } : {},
@@ -24,7 +31,6 @@ export const professionalRepository = {
     });
   },
 
-  // Novo método findMany com filtros, ordenação e paginação
   async findMany(
     filters: Prisma.ProfessionalWhereInput,
     orderBy: Prisma.ProfessionalOrderByWithRelationInput,
@@ -40,7 +46,6 @@ export const professionalRepository = {
     });
   },
 
-  // Novo método count com filtros
   async count(filters: Prisma.ProfessionalWhereInput): Promise<number> {
     return prisma.professional.count({
       where: filters,
@@ -54,7 +59,14 @@ export const professionalRepository = {
     });
   },
 
-  async create(data: Prisma.ProfessionalCreateInput, serviceIds?: string[]): Promise<ProfessionalWithDetails> {
+  async create(
+    data: Prisma.ProfessionalCreateInput,
+    serviceIds?: string[],
+    experiencesData?: Prisma.ProfessionalExperienceCreateWithoutProfessionalInput[],
+    educationsData?: Prisma.ProfessionalEducationCreateWithoutProfessionalInput[],
+    availabilityData?: Prisma.ProfessionalAvailabilitySlotCreateWithoutProfessionalInput[],
+    portfolioData?: Prisma.ProfessionalPortfolioItemCreateWithoutProfessionalInput[]
+  ): Promise<ProfessionalWithDetails> {
     return prisma.$transaction(async (tx) => {
       const newProfessional = await tx.professional.create({
         data,
@@ -71,7 +83,30 @@ export const professionalRepository = {
         });
       }
 
-      // Re-fetch with includes
+      if (experiencesData && experiencesData.length > 0) {
+        await tx.professionalExperience.createMany({
+          data: experiencesData.map(exp => ({ ...exp, professionalId: newProfessional.id })),
+        });
+      }
+
+      if (educationsData && educationsData.length > 0) {
+        await tx.professionalEducation.createMany({
+          data: educationsData.map(edu => ({ ...edu, professionalId: newProfessional.id })),
+        });
+      }
+
+      if (availabilityData && availabilityData.length > 0) {
+        await tx.professionalAvailabilitySlot.createMany({
+          data: availabilityData.map(slot => ({ ...slot, professionalId: newProfessional.id })),
+        });
+      }
+
+      if (portfolioData && portfolioData.length > 0) {
+        await tx.professionalPortfolioItem.createMany({
+          data: portfolioData.map(item => ({ ...item, professionalId: newProfessional.id })),
+        });
+      }
+
       return tx.professional.findUniqueOrThrow({
         where: { id: newProfessional.id },
         include: this.includeDetails,
@@ -79,34 +114,67 @@ export const professionalRepository = {
     });
   },
 
-  async update(id: string, data: Prisma.ProfessionalUpdateInput, serviceIds?: string[]): Promise<ProfessionalWithDetails> {
-    // Prisma update throws P2025 if record not found
+  async update(
+    id: string,
+    data: Prisma.ProfessionalUpdateInput,
+    serviceIds?: string[],
+    experiencesData?: Prisma.ProfessionalExperienceCreateWithoutProfessionalInput[],
+    educationsData?: Prisma.ProfessionalEducationCreateWithoutProfessionalInput[],
+    availabilityData?: Prisma.ProfessionalAvailabilitySlotCreateWithoutProfessionalInput[],
+    portfolioData?: Prisma.ProfessionalPortfolioItemCreateWithoutProfessionalInput[]
+  ): Promise<ProfessionalWithDetails> {
     return prisma.$transaction(async (tx) => {
       const updatedProfessional = await tx.professional.update({
         where: { id },
         data,
-        // Include details directly in update if possible, otherwise re-fetch
-        // include: this.includeDetails, // Include might not work directly with serviceIds logic
       });
 
       if (serviceIds !== undefined) {
-        await tx.professionalService.deleteMany({
-          where: { professionalId: id },
-        });
-
+        await tx.professionalService.deleteMany({ where: { professionalId: id } });
         if (serviceIds.length > 0) {
-          const serviceConnections = serviceIds.map((serviceId) => ({
-            professionalId: id,
-            serviceId: serviceId,
-          }));
           await tx.professionalService.createMany({
-            data: serviceConnections,
+            data: serviceIds.map((serviceId) => ({ professionalId: id, serviceId: serviceId })),
             skipDuplicates: true,
           });
         }
       }
 
-      // Re-fetch with includes
+      if (experiencesData !== undefined) {
+        await tx.professionalExperience.deleteMany({ where: { professionalId: id } });
+        if (experiencesData.length > 0) {
+          await tx.professionalExperience.createMany({
+            data: experiencesData.map(exp => ({ ...exp, professionalId: id })),
+          });
+        }
+      }
+
+      if (educationsData !== undefined) {
+        await tx.professionalEducation.deleteMany({ where: { professionalId: id } });
+        if (educationsData.length > 0) {
+          await tx.professionalEducation.createMany({
+            data: educationsData.map(edu => ({ ...edu, professionalId: id })),
+          });
+        }
+      }
+
+      if (availabilityData !== undefined) {
+        await tx.professionalAvailabilitySlot.deleteMany({ where: { professionalId: id } });
+        if (availabilityData.length > 0) {
+          await tx.professionalAvailabilitySlot.createMany({
+            data: availabilityData.map(slot => ({ ...slot, professionalId: id })),
+          });
+        }
+      }
+
+      if (portfolioData !== undefined) {
+        await tx.professionalPortfolioItem.deleteMany({ where: { professionalId: id } });
+        if (portfolioData.length > 0) {
+          await tx.professionalPortfolioItem.createMany({
+            data: portfolioData.map(item => ({ ...item, professionalId: id })),
+          });
+        }
+      }
+
       return tx.professional.findUniqueOrThrow({
         where: { id: updatedProfessional.id },
         include: this.includeDetails,
@@ -114,28 +182,24 @@ export const professionalRepository = {
     });
   },
 
-  async delete(id: string): Promise<Professional> { // Return type is just Professional here
-    // Prisma delete throws P2025 if record not found
+  async delete(id: string): Promise<Professional> {
     return prisma.$transaction(async (tx) => {
-      // Fetch before deleting to potentially return details (optional)
-      // const professionalToDelete = await tx.professional.findUnique({ 
-      //     where: { id }, 
-      //     include: this.includeDetails 
-      // });
-      // if (!professionalToDelete) throw new Prisma.PrismaClientKnownRequestError("Professional not found", { code: "P2025", clientVersion: "" });
-
       await tx.professionalService.deleteMany({ where: { professionalId: id } });
-      // onDelete: SetNull for appointments should be handled by schema
+      await tx.professionalExperience.deleteMany({ where: { professionalId: id } });
+      await tx.professionalEducation.deleteMany({ where: { professionalId: id } });
+      await tx.professionalAvailabilitySlot.deleteMany({ where: { professionalId: id } });
+      await tx.professionalPortfolioItem.deleteMany({ where: { professionalId: id } });
       await tx.review.updateMany({ 
         where: { professionalId: id }, 
         data: { professionalId: null } 
       });
+      // Note: onDelete: Cascade for appointments and scheduleBlocks should be handled by schema if set
+      // If not, they might need explicit deletion or update here.
 
       const deletedProfessional = await tx.professional.delete({
         where: { id },
       });
-      return deletedProfessional; // Return the basic deleted object
-      // return professionalToDelete; // Or return the object with details fetched before delete
+      return deletedProfessional;
     });
   },
 };
