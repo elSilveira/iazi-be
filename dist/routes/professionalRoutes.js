@@ -11,6 +11,7 @@ const serviceValidators_1 = require("../validators/serviceValidators");
 const validationMiddleware_1 = require("../middlewares/validationMiddleware"); // Corrected import
 const asyncHandler_1 = __importDefault(require("../utils/asyncHandler")); // Corrected import
 const companyController_1 = require("../controllers/companyController");
+const professionalAuthMiddleware_1 = require("../middlewares/professionalAuthMiddleware");
 const router = (0, express_1.Router)();
 /**
  * @swagger
@@ -162,7 +163,8 @@ validationMiddleware_1.validateRequest, // Corrected
  *       500:
  *         description: Erro interno do servidor.
  */
-router.put("/:id", companyController_1.checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
+router.put("/:id", authMiddleware_1.authMiddleware, // Ensure user is authenticated first
+professionalAuthMiddleware_1.checkProfessionalOwnerOrAdminMiddleware, // Apply new auth middleware
 ...professionalValidators_1.updateProfessionalValidator, // Spread validation middlewares
 validationMiddleware_1.validateRequest, // Corrected
 (0, asyncHandler_1.default)(professionalController_1.updateProfessionalHandler));

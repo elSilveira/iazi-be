@@ -29,7 +29,8 @@ export const checkProfessionalOwnerOrAdminMiddleware = async (req: Request, res:
     });
 
     if (!professionalProfile) {
-      return res.status(404).json({ message: "Perfil profissional não encontrado." });
+      res.status(404).json({ message: "Perfil profissional não encontrado." });
+      return;
     }
 
     // Verifica se o usuário logado é o dono do perfil profissional
