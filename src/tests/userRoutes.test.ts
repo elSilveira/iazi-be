@@ -68,6 +68,7 @@ describe("User Routes", () => {
         updatedAt: new Date(),
         avatar: null,
         bio: null,
+        slug: "test-user-id"
       };
 
       prismaMock.user.findUnique.mockResolvedValue(mockUser);
@@ -139,6 +140,7 @@ describe("User Routes", () => {
         updatedAt: new Date(),
         avatar: null,
         bio: null,
+        slug: "test-user-id"
       };
 
       prismaMock.user.update.mockResolvedValue(updatedUser);

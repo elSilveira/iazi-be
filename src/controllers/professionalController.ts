@@ -104,11 +104,8 @@ export const getProfessionalByIdHandler = async (req: Request, res: Response, ne
 
 export const createProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const {
-        name, role, image, companyId, serviceIds, bio, phone,
-        experiences, // Existing in schema as ProfessionalExperience
-        education,   // Existing in schema as ProfessionalEducation
-        availability,// Newly added as ProfessionalAvailabilitySlot
-        portfolio    // Newly added as ProfessionalPortfolioItem
+        name, role, image, coverImage, bio, phone, companyId,
+        experiences, educations, services, availability, portfolioItems
     } = req.body;
     const authUser = req.user as AuthenticatedUser;
 
@@ -116,30 +113,58 @@ export const createProfessionalHandler = async (req: Request, res: Response, nex
         res.status(401).json({ message: "Usuário não autenticado." });
         return;
     }
-
     if (!name) {
       res.status(400).json({ message: "Nome do profissional não fornecido." });
       return;
     }
-
     try {
       const dataToCreate: Prisma.ProfessionalCreateInput = {
-        name: name,
-        role: role || "Profissional",
-        image: image,
-        bio: bio,
-        phone: phone,
+        name,
+        role,
+        image, // imagem de perfil
+        coverImage, // imagem de capa
+        bio,
+        phone,
         user: { connect: { id: authUser.id } },
-        ...(companyId && isValidUUID(companyId) && { company: { connect: { id: companyId } } }),
+        ...(companyId && isValidUUID(companyId) ? { company: { connect: { id: companyId } } } : {})
       };
-
+      // Map services to serviceIds
+      const serviceIds = Array.isArray(services) ? services.map((s: any) => s.serviceId) : (services === undefined ? undefined : []);
+      // Map experiences
+      const experiencesData = Array.isArray(experiences) ? experiences.map((exp: any) => ({
+        title: exp.title,
+        companyName: exp.companyName,
+        startDate: exp.startDate,
+        endDate: exp.endDate,
+        description: exp.description,
+      })) : (experiences === undefined ? undefined : []);
+      // Map educations
+      const educationsData = Array.isArray(educations) ? educations.map((edu: any) => ({
+        institution: edu.institutionName,
+        degree: edu.degree,
+        fieldOfStudy: edu.fieldOfStudy,
+        startDate: edu.startDate,
+        endDate: edu.endDate,
+        description: edu.description,
+      })) : (educations === undefined ? undefined : []);
+      // Map availability
+      const availabilityData = Array.isArray(availability) ? availability.map((a: any) => ({
+        dayOfWeek: a.day_of_week,
+        startTime: a.start_time,
+        endTime: a.end_time,
+      })) : (availability === undefined ? undefined : []);
+      // Map portfolio
+      const portfolioData = Array.isArray(portfolioItems) ? portfolioItems.map((p: any) => ({
+        imageUrl: p.imageUrl,
+        description: p.description,
+      })) : (portfolioItems === undefined ? undefined : []);
       const newProfessional = await professionalRepository.create(
           dataToCreate,
-          serviceIds as string[] | undefined,
-          experiences as Prisma.ProfessionalExperienceCreateWithoutProfessionalInput[] | undefined,
-          education as Prisma.ProfessionalEducationCreateWithoutProfessionalInput[] | undefined,
-          availability as Prisma.ProfessionalAvailabilitySlotCreateWithoutProfessionalInput[] | undefined,
-          portfolio as Prisma.ProfessionalPortfolioItemCreateWithoutProfessionalInput[] | undefined
+          serviceIds,
+          experiencesData,
+          educationsData,
+          availabilityData,
+          portfolioData
       );
       res.status(201).json(newProfessional);
     } catch (error) {
@@ -159,60 +184,77 @@ export const createProfessionalHandler = async (req: Request, res: Response, nex
 };
 
 export const updateProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const { id } = req.params; // ID of the professional profile to update
+    const { id } = req.params;
     const {
-        serviceIds, bio, phone,
-        experiences, // Existing in schema as ProfessionalExperience
-        education,   // Existing in schema as ProfessionalEducation
-        availability,// Newly added as ProfessionalAvailabilitySlot
-        portfolio,   // Newly added as ProfessionalPortfolioItem
+        name, role, image, coverImage, bio, phone, companyId,
+        experiences, educations, services, availability, portfolioItems,
+        avatar, // ignorar se vier
         ...dataToUpdateFromRequest
     } = req.body;
     const authUser = req.user as AuthenticatedUser;
-
     if (!authUser || !authUser.id) {
         res.status(401).json({ message: "Usuário não autenticado." });
         return;
     }
-
     try {
       const professionalToUpdate = await professionalRepository.findById(id);
       if (!professionalToUpdate) {
         res.status(404).json({ message: "Perfil profissional não encontrado." });
         return;
       }
-      
       if (professionalToUpdate.userId !== authUser.id && authUser.role !== 'ADMIN' && authUser.role !== 'COMPANY_OWNER') {
-          // This check might be redundant if middleware is comprehensive
-          // console.warn("Tentativa de atualização não autorizada bloqueada no controller, verificar middleware.");
-          // res.status(403).json({ message: "Você não tem permissão para atualizar este perfil." });
-          // return;
+          // Permissão
       }
-
       const updatePayload: Prisma.ProfessionalUpdateInput = {
         ...dataToUpdateFromRequest,
-        bio: bio,
-        phone: phone,
+        name,
+        role,
+        image,
+        coverImage,
+        bio,
+        phone,
       };
-
-      if (updatePayload.rating !== undefined && typeof updatePayload.rating === 'string') {
-        updatePayload.rating = parseFloat(updatePayload.rating);
-      }
-      if (updatePayload.totalReviews !== undefined && typeof updatePayload.totalReviews === 'string') {
-        updatePayload.totalReviews = parseInt(updatePayload.totalReviews as string, 10);
-      }
-
       if ('companyId' in updatePayload) delete (updatePayload as any).companyId;
       if ('userId' in updatePayload) delete (updatePayload as any).userId;
-
+      if ('avatar' in updatePayload) delete (updatePayload as any).avatar;
+      // Map services to serviceIds
+      const serviceIds = Array.isArray(services) ? services.map((s: any) => s.serviceId) : undefined;
+      // Map experiences
+      const experiencesData = Array.isArray(experiences) ? experiences.map((exp: any) => ({
+        title: exp.title,
+        companyName: exp.companyName,
+        startDate: exp.startDate,
+        endDate: exp.endDate,
+        description: exp.description,
+      })) : undefined;
+      // Map educations
+      const educationsData = Array.isArray(educations) ? educations.map((edu: any) => ({
+        institution: edu.institutionName,
+        degree: edu.degree,
+        fieldOfStudy: edu.fieldOfStudy,
+        startDate: edu.startDate,
+        endDate: edu.endDate,
+        description: edu.description,
+      })) : undefined;
+      // Map availability
+      const availabilityData = Array.isArray(availability) ? availability.map((a: any) => ({
+        dayOfWeek: a.day_of_week,
+        startTime: a.start_time,
+        endTime: a.end_time,
+      })) : undefined;
+      // Map portfolio
+      const portfolioData = Array.isArray(portfolioItems) ? portfolioItems.map((p: any) => ({
+        imageUrl: p.imageUrl,
+        description: p.description,
+      })) : undefined;
       const updatedProfessional = await professionalRepository.update(
           id,
           updatePayload,
-          serviceIds as string[] | undefined,
-          experiences as Prisma.ProfessionalExperienceCreateWithoutProfessionalInput[] | undefined,
-          education as Prisma.ProfessionalEducationCreateWithoutProfessionalInput[] | undefined,
-          availability as Prisma.ProfessionalAvailabilitySlotCreateWithoutProfessionalInput[] | undefined,
-          portfolio as Prisma.ProfessionalPortfolioItemCreateWithoutProfessionalInput[] | undefined
+          serviceIds,
+          experiencesData,
+          educationsData,
+          availabilityData,
+          portfolioData
       );
       res.json(updatedProfessional);
     } catch (error) {
@@ -251,5 +293,23 @@ export const removeServiceFromProfessionalHandler = async (req: Request, res: Re
     const { professionalId, serviceId } = req.params;
     res.status(501).json({ message: "Not Implemented" });
     return;
+};
+
+export const getMyProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  const authUser = req.user as AuthenticatedUser;
+  if (!authUser || !authUser.id) {
+    res.status(401).json({ message: "Usuário não autenticado." });
+    return;
+  }
+  try {
+    const professional = await professionalRepository.findByUserId(authUser.id);
+    if (!professional) {
+      res.status(404).json({ message: "Perfil profissional não encontrado para este usuário." });
+      return;
+    }
+    res.json(professional);
+  } catch (error) {
+    next(error);
+  }
 };
 

@@ -40,7 +40,7 @@ const generateToken = (userId, role = client_1.UserRole.USER) => {
 };
 // Setup: Create necessary entities before tests run
 beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
-    // Clean up potential leftovers
+    // Clean up potential leftovers (children before parents)
     yield prismaClient_1.prisma.appointment.deleteMany({});
     yield prismaClient_1.prisma.review.deleteMany({});
     yield prismaClient_1.prisma.userBadge.deleteMany({});
@@ -79,6 +79,7 @@ beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
             name: "Gamification Prof",
             role: client_1.UserRole.PROFESSIONAL, // Role should be PROFESSIONAL
             points: 0, // Initialize points
+            slug: "gamification-prof"
         }
     });
     testProfUserId = professionalUser.id; // Store the User ID
@@ -121,6 +122,7 @@ beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
             name: "Gamification User",
             role: client_1.UserRole.USER,
             points: 0, // Initialize points
+            slug: "gamification-user"
         }
     });
     testUserId = user.id;
@@ -247,7 +249,7 @@ describe("Gamification System", () => {
     // Test GET /api/gamification/profile/:userId (as non-admin - should fail)
     it("should fail to get another user's gamification profile as non-admin", () => __awaiter(void 0, void 0, void 0, function* () {
         // Create another user temporarily
-        const otherUser = yield prismaClient_1.prisma.user.create({ data: { email: `other-${Date.now()}@gam.com`, password: "test", name: "Other", points: 0 } });
+        const otherUser = yield prismaClient_1.prisma.user.create({ data: { email: `other-${Date.now()}@gam.com`, password: "test", name: "Other", points: 0, slug: `other-user-${Date.now()}` } });
         const otherAccessToken = generateToken(otherUser.id);
         const response = yield (0, supertest_1.default)(index_1.app)
             .get(`/api/gamification/profile/${testUserId}`) // Try to get testUser's profile

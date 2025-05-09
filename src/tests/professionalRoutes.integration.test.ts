@@ -32,7 +32,8 @@ const createTestData = async () => {
           email: "admin.prof@test.com",
           password: "hashedpassword", // Use a dummy hash for tests
           role: UserRole.ADMIN,
-          points: 0 // Added points
+          points: 0, // Added points
+          slug: "test-admin-prof" // Novo campo obrigatório
       }
   });
   const regularUser = await prisma.user.create({
@@ -41,7 +42,8 @@ const createTestData = async () => {
           email: "user.prof@test.com",
           password: "hashedpassword",
           role: UserRole.USER,
-          points: 0 // Added points
+          points: 0, // Added points
+          slug: "test-user-prof" // Novo campo obrigatório
       }
   });
   testAdminId = adminUser.id;

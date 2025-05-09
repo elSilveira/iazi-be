@@ -55,6 +55,14 @@ exports.professionalRepository = {
             });
         });
     },
+    findByUserId(userId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return prisma_1.prisma.professional.findUnique({
+                where: { userId },
+                include: this.includeDetails,
+            });
+        });
+    },
     create(data, serviceIds, experiencesData, educationsData, availabilityData, portfolioData) {
         return __awaiter(this, void 0, void 0, function* () {
             return prisma_1.prisma.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {

@@ -49,8 +49,8 @@ const getUserProfile = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
             return;
         }
         // Exclude password from the response
-        const { password } = user, userProfile = __rest(user, ["password"]);
-        res.json(userProfile);
+        const { password, professional } = user, userProfile = __rest(user, ["password", "professional"]);
+        res.json(Object.assign(Object.assign({}, userProfile), { professionalId: professional ? professional.id : null }));
     }
     catch (error) {
         next(error);

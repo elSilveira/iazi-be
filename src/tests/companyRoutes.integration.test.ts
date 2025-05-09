@@ -35,6 +35,7 @@ const createTestData = async () => {
           email: "admin@test.com",
           password: "hashedpassword",
           role: UserRole.ADMIN,
+          slug: "test-admin"
       }
   });
   const regularUser = await prisma.user.upsert({
@@ -45,6 +46,7 @@ const createTestData = async () => {
           email: "user@test.com",
           password: "hashedpassword",
           role: UserRole.USER,
+          slug: "test-user"
       }
   });
   testAdminId = adminUser.id;

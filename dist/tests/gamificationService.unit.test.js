@@ -54,6 +54,7 @@ describe("Gamification Service", () => {
         points: 10,
         createdAt: new Date(),
         updatedAt: new Date(),
+        slug: "user-123"
     };
     // Mock Badge Definitions (similar to the ones in the service)
     const mockBadgeWelcome = {

@@ -1,71 +1,61 @@
 import { body, param } from "express-validator";
 
-// Common sub-validators for nested arrays
+// Novo validador para o contrato atualizado
 const experienceItemValidator = [
+  body("experiences").optional().isArray().withMessage("Experiências deve ser um array."),
   body("experiences.*.title").trim().notEmpty().withMessage("O título da experiência é obrigatório."),
   body("experiences.*.companyName").trim().notEmpty().withMessage("O nome da empresa na experiência é obrigatório."),
-  body("experiences.*.startDate").isISO8601().toDate().withMessage("Data de início da experiência inválida."),
-  body("experiences.*.endDate").optional({ nullable: true }).isISO8601().toDate().withMessage("Data de término da experiência inválida."),
-  body("experiences.*.description").optional({ nullable: true }).trim(),
-  body("experiences.*.isCurrent").optional().isBoolean().withMessage("Valor inválido para 'isCurrent' na experiência.")
+  body("experiences.*.startDate").trim().notEmpty().withMessage("Data de início da experiência é obrigatória.").matches(/^\d{4}-\d{2}(-\d{2})?$/).withMessage("Data de início deve ser YYYY-MM ou YYYY-MM-DD"),
+  body("experiences.*.endDate").optional({ nullable: true }).matches(/^\d{4}-\d{2}(-\d{2})?$/).withMessage("Data de término deve ser YYYY-MM ou YYYY-MM-DD"),
+  body("experiences.*.description").optional({ nullable: true }).trim()
 ];
 
 const educationItemValidator = [
-  body("education.*.institution").trim().notEmpty().withMessage("O nome da instituição de ensino é obrigatório."),
-  body("education.*.degree").trim().notEmpty().withMessage("O grau obtido na formação é obrigatório."),
-  body("education.*.fieldOfStudy").trim().notEmpty().withMessage("A área de estudo da formação é obrigatória."),
-  body("education.*.startDate").isISO8601().toDate().withMessage("Data de início da formação inválida."),
-  body("education.*.endDate").optional({ nullable: true }).isISO8601().toDate().withMessage("Data de término da formação inválida."),
-  body("education.*.description").optional({ nullable: true }).trim()
+  body("educations").optional().isArray().withMessage("Formações deve ser um array."),
+  body("educations.*.institutionName").trim().notEmpty().withMessage("O nome da instituição de ensino é obrigatório."),
+  body("educations.*.degree").trim().notEmpty().withMessage("O grau obtido na formação é obrigatório."),
+  body("educations.*.fieldOfStudy").trim().notEmpty().withMessage("A área de estudo da formação é obrigatória."),
+  body("educations.*.startDate").trim().notEmpty().withMessage("Data de início da formação é obrigatória.").matches(/^\d{4}-\d{2}(-\d{2})?$/).withMessage("Data de início deve ser YYYY-MM ou YYYY-MM-DD"),
+  body("educations.*.endDate").optional({ nullable: true }).matches(/^\d{4}-\d{2}(-\d{2})?$/).withMessage("Data de término deve ser YYYY-MM ou YYYY-MM-DD"),
+  body("educations.*.description").optional({ nullable: true }).trim()
+];
+
+const serviceItemValidator = [
+  body("services").optional().isArray().withMessage("Serviços deve ser um array."),
+  body("services.*.serviceId").notEmpty().isUUID().withMessage("serviceId deve ser um UUID válido."),
+  body("services.*.price").notEmpty().isNumeric().withMessage("O preço do serviço é obrigatório e deve ser numérico.")
 ];
 
 const availabilityItemValidator = [
-  body("availability.*.dayOfWeek").trim().notEmpty().isIn(["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]).withMessage("Dia da semana inválido para disponibilidade."),
-  body("availability.*.startTime").matches(/^([01]\\d|2[0-3]):([0-5]\\d)$/).withMessage("Hora de início da disponibilidade inválida (HH:MM)."),
-  body("availability.*.endTime").matches(/^([01]\\d|2[0-3]):([0-5]\\d)$/).withMessage("Hora de término da disponibilidade inválida (HH:MM).")
+  body("availability").optional().isArray().withMessage("Disponibilidade deve ser um array."),
+  body("availability.*.day_of_week").trim().notEmpty().isIn(["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]).withMessage("Dia da semana inválido para disponibilidade."),
+  body("availability.*.start_time").matches(/^([01]\d|2[0-3]):([0-5]\d)$/).withMessage("Hora de início da disponibilidade inválida (HH:mm)."),
+  body("availability.*.end_time").matches(/^([01]\d|2[0-3]):([0-5]\d)$/).withMessage("Hora de término da disponibilidade inválida (HH:mm).")
 ];
 
 const portfolioItemValidator = [
-  body("portfolio.*.imageUrl").trim().isURL().withMessage("URL da imagem do portfólio inválida."),
-  body("portfolio.*.description").optional({ nullable: true }).trim()
+  body("portfolioItems").optional().isArray().withMessage("Portfólio deve ser um array."),
+  body("portfolioItems.*.imageUrl").trim().isURL().withMessage("URL da imagem do portfólio inválida."),
+  body("portfolioItems.*.description").optional({ nullable: true }).trim()
 ];
 
 export const createProfessionalValidator = [
-  body("name").optional().trim().notEmpty().withMessage("O nome do profissional não pode ser vazio, se fornecido."),
-  body("role").optional().trim().notEmpty().withMessage("O cargo do profissional não pode ser vazio, se fornecido."),
-  body("companyId").optional().isUUID().withMessage("ID da empresa inválido, se fornecido."),
-  body("image").optional({ nullable: true }).trim().isURL().withMessage("URL da imagem inválida."),
-  body("bio").optional({ nullable: true }).trim(),
-  body("phone").optional({ nullable: true }).trim(), 
-  body("serviceIds").optional().isArray().withMessage("serviceIds deve ser um array."),
-  body("serviceIds.*").optional().isUUID().withMessage("Cada ID de serviço em serviceIds deve ser um UUID válido."),
-  body("experiences").optional().isArray().withMessage("Experiências deve ser um array."),
-  ...experienceItemValidator,
-  body("education").optional().isArray().withMessage("Formações deve ser um array."),
-  ...educationItemValidator,
-  body("availability").optional().isArray().withMessage("Disponibilidade deve ser um array."),
-  ...availabilityItemValidator,
-  body("portfolio").optional().isArray().withMessage("Portfólio deve ser um array."),
-  ...portfolioItemValidator
+  body("name").notEmpty().trim().withMessage("O nome do profissional é obrigatório."),
+  body("role").notEmpty().trim().withMessage("O cargo do profissional é obrigatório."),
+  body("companyId").optional().isUUID().withMessage("ID da empresa deve ser UUID, se fornecido."),
+  body("image").notEmpty().trim().isURL().withMessage("URL da imagem é obrigatória e deve ser válida."),
+  body("bio").notEmpty().trim().withMessage("A bio é obrigatória."),
+  body("phone").notEmpty().trim().withMessage("O telefone é obrigatório."),
+  ...experienceItemValidator, // experiences é opcional
+  ...educationItemValidator,  // educations é opcional
+  ...serviceItemValidator,    // services é opcional
+  ...availabilityItemValidator, // availability é opcional
+  ...portfolioItemValidator   // portfolioItems é opcional
 ];
 
 export const updateProfessionalValidator = [
   param("id").isUUID().withMessage("ID do profissional inválido."),
-  body("name").optional().trim().notEmpty().withMessage("O nome do profissional não pode ser vazio."),
-  body("role").optional().trim().notEmpty().withMessage("O cargo do profissional não pode ser vazio."),
-  body("image").optional({ nullable: true }).trim().isURL().withMessage("URL da imagem inválida."),
-  body("bio").optional({ nullable: true }).trim(),
-  body("phone").optional({ nullable: true }).trim(),
-  body("serviceIds").optional().isArray().withMessage("serviceIds deve ser um array."),
-  body("serviceIds.*").optional().isUUID().withMessage("Cada ID de serviço em serviceIds deve ser um UUID válido."),
-  body("experiences").optional().isArray().withMessage("Experiências deve ser um array."),
-  ...experienceItemValidator,
-  body("education").optional().isArray().withMessage("Formações deve ser um array."),
-  ...educationItemValidator,
-  body("availability").optional().isArray().withMessage("Disponibilidade deve ser um array."),
-  ...availabilityItemValidator,
-  body("portfolio").optional().isArray().withMessage("Portfólio deve ser um array."),
-  ...portfolioItemValidator
+  ...createProfessionalValidator // Permite os mesmos campos do create
 ];
 
 export const professionalIdValidator = [
@@ -75,6 +65,6 @@ export const professionalIdValidator = [
 export const professionalServiceAssociationValidator = [
   param("professionalId").isUUID().withMessage("ID do profissional inválido."),
   body("serviceId").isUUID().withMessage("ID do serviço inválido."),
-  body("price").optional().trim().notEmpty().withMessage("O preço específico não pode ser vazio."),
+  body("price").optional().isNumeric().withMessage("O preço específico deve ser numérico."),
 ];
 

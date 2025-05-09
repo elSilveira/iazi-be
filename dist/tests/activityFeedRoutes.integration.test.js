@@ -41,6 +41,7 @@ const setupUserAndToken = () => __awaiter(void 0, void 0, void 0, function* () {
             name: "Test User Feed",
             password: hashedPassword,
             role: client_1.UserRole.USER, // Use enum
+            slug: "test-user-feed"
         },
     });
     token = generateToken({ id: user.id, role: user.role });
@@ -105,7 +106,6 @@ const cleanupDatabase = () => __awaiter(void 0, void 0, void 0, function* () {
     yield prismaClient_1.prisma.activityLog.deleteMany({ where: { userId: user === null || user === void 0 ? void 0 : user.id } });
     yield prismaClient_1.prisma.review.deleteMany({ where: { userId: user === null || user === void 0 ? void 0 : user.id } });
     yield prismaClient_1.prisma.appointment.deleteMany({ where: { userId: user === null || user === void 0 ? void 0 : user.id } });
-    // Ensure professional and service exist before trying to delete ProfessionalService
     if (professional && service) {
         yield prismaClient_1.prisma.professionalService.deleteMany({ where: { professionalId: professional.id, serviceId: service.id } });
     }
@@ -121,7 +121,6 @@ const cleanupDatabase = () => __awaiter(void 0, void 0, void 0, function* () {
     if (user) {
         yield prismaClient_1.prisma.user.deleteMany({ where: { id: user.id } });
     }
-    // Delete category if it was created specifically for this test
     yield prismaClient_1.prisma.category.deleteMany({ where: { name: "Test Category Feed" } });
 });
 // --- Test Suite ---

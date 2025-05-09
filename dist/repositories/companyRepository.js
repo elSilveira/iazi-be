@@ -72,7 +72,7 @@ class CompanyRepository {
                         },
                         categories: true,
                     },
-                    orderBy: { createdAt: "desc" },
+                    orderBy: { updatedAt: "desc" },
                 }),
                 this.prisma.company.count(), // Count without filters for total
             ]);
@@ -91,7 +91,7 @@ class CompanyRepository {
                         include: {
                             user: { select: { id: true, name: true, avatar: true } }, // Include user details in reviews
                         },
-                        orderBy: { createdAt: "desc" },
+                        orderBy: { updatedAt: "desc" },
                     },
                 },
             });

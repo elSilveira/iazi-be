@@ -45,6 +45,7 @@ const createTestData = () => __awaiter(void 0, void 0, void 0, function* () {
             email: "admin@test.com",
             password: "hashedpassword",
             role: client_1.UserRole.ADMIN,
+            slug: "test-admin"
         }
     });
     const regularUser = yield prismaClient_1.prisma.user.upsert({
@@ -55,6 +56,7 @@ const createTestData = () => __awaiter(void 0, void 0, void 0, function* () {
             email: "user@test.com",
             password: "hashedpassword",
             role: client_1.UserRole.USER,
+            slug: "test-user"
         }
     });
     testAdminId = adminUser.id;
@@ -131,8 +133,7 @@ const createTestData = () => __awaiter(void 0, void 0, void 0, function* () {
 });
 // Clean up database before and after tests
 beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
-    // Clean related tables first (order matters due to foreign keys)
-    // await prisma.notification.deleteMany({}); // Model doesn't exist
+    // Clean related tables first (children before parents)
     yield prismaClient_1.prisma.activityLog.deleteMany({});
     yield prismaClient_1.prisma.userBadge.deleteMany({});
     yield prismaClient_1.prisma.badge.deleteMany({});
@@ -153,8 +154,7 @@ beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
     yield createTestData();
 }));
 afterAll(() => __awaiter(void 0, void 0, void 0, function* () {
-    // Clean up again
-    // await prisma.notification.deleteMany({});
+    // Clean up again (children before parents)
     yield prismaClient_1.prisma.activityLog.deleteMany({});
     yield prismaClient_1.prisma.userBadge.deleteMany({});
     yield prismaClient_1.prisma.badge.deleteMany({});

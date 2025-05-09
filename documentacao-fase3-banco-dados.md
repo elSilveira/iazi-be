@@ -36,7 +36,7 @@ Esta documentação detalha a implementação da Fase 3 do projeto ServiConnect,
 
 O arquivo `prisma/schema.prisma` foi atualizado para definir os modelos de dados da aplicação, incluindo:
 
-*   `User`: Informações do usuário (autenticação).
+*   `User`: Informações do usuário (autenticação). Inclui um campo `slug` que é uma string única e URL-friendly, gerada a partir do nome do usuário, para ser usada em URLs de perfil.
 *   `Company`: Informações da empresa prestadora de serviços.
 *   `Address`: Endereço da empresa (relação 1-para-1 com `Company`).
 *   `Service`: Serviços oferecidos pela empresa.

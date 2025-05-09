@@ -45,7 +45,8 @@ const createTestData = () => __awaiter(void 0, void 0, void 0, function* () {
             email: "admin.svc@test.com",
             password: "hashedpassword", // Use a dummy hash for tests
             role: client_1.UserRole.ADMIN,
-            points: 0 // Add points
+            points: 0, // Add points
+            slug: "test-admin-svc"
         }
     });
     const regularUser = yield prismaClient_1.prisma.user.upsert({
@@ -56,7 +57,8 @@ const createTestData = () => __awaiter(void 0, void 0, void 0, function* () {
             email: "user.svc@test.com",
             password: "hashedpassword",
             role: client_1.UserRole.USER,
-            points: 0 // Add points
+            points: 0, // Add points
+            slug: "test-user-svc"
         }
     });
     testAdminId = adminUser.id;
@@ -149,18 +151,18 @@ const createTestData = () => __awaiter(void 0, void 0, void 0, function* () {
 });
 // Clean up database before and after tests
 beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
-    // Clean related tables first
+    // Clean related tables first (children before parents)
     yield prismaClient_1.prisma.activityLog.deleteMany({});
     yield prismaClient_1.prisma.userBadge.deleteMany({});
     yield prismaClient_1.prisma.badge.deleteMany({});
-    yield prismaClient_1.prisma.gamificationEvent.deleteMany({}); // Added GamificationEvent
+    yield prismaClient_1.prisma.gamificationEvent.deleteMany({});
     yield prismaClient_1.prisma.professionalService.deleteMany({});
     yield prismaClient_1.prisma.appointment.deleteMany({});
     yield prismaClient_1.prisma.review.deleteMany({});
     yield prismaClient_1.prisma.service.deleteMany({});
     yield prismaClient_1.prisma.professionalExperience.deleteMany({});
     yield prismaClient_1.prisma.professionalEducation.deleteMany({});
-    yield prismaClient_1.prisma.scheduleBlock.deleteMany({}); // Added ScheduleBlock
+    yield prismaClient_1.prisma.scheduleBlock.deleteMany({});
     yield prismaClient_1.prisma.professional.deleteMany({});
     yield prismaClient_1.prisma.companyAddress.deleteMany({});
     yield prismaClient_1.prisma.company.deleteMany({});
@@ -171,18 +173,18 @@ beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
     yield createTestData();
 }));
 afterAll(() => __awaiter(void 0, void 0, void 0, function* () {
-    // Clean up again
+    // Clean up again (children before parents)
     yield prismaClient_1.prisma.activityLog.deleteMany({});
     yield prismaClient_1.prisma.userBadge.deleteMany({});
     yield prismaClient_1.prisma.badge.deleteMany({});
-    yield prismaClient_1.prisma.gamificationEvent.deleteMany({}); // Added GamificationEvent
+    yield prismaClient_1.prisma.gamificationEvent.deleteMany({});
     yield prismaClient_1.prisma.professionalService.deleteMany({});
     yield prismaClient_1.prisma.appointment.deleteMany({});
     yield prismaClient_1.prisma.review.deleteMany({});
     yield prismaClient_1.prisma.service.deleteMany({});
     yield prismaClient_1.prisma.professionalExperience.deleteMany({});
     yield prismaClient_1.prisma.professionalEducation.deleteMany({});
-    yield prismaClient_1.prisma.scheduleBlock.deleteMany({}); // Added ScheduleBlock
+    yield prismaClient_1.prisma.scheduleBlock.deleteMany({});
     yield prismaClient_1.prisma.professional.deleteMany({});
     yield prismaClient_1.prisma.companyAddress.deleteMany({});
     yield prismaClient_1.prisma.company.deleteMany({});

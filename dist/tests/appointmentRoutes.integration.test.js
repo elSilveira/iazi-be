@@ -43,19 +43,19 @@ const getNextDayOfWeek = (dayOfWeek) => {
 const nextMonday = getNextDayOfWeek(1);
 const nextTuesday = getNextDayOfWeek(2);
 beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
-    // Clean up potential leftovers (order matters)
+    // Clean up potential leftovers (order matters, children before parents)
     yield prismaClient_1.prisma.appointment.deleteMany();
     yield prismaClient_1.prisma.scheduleBlock.deleteMany();
     yield prismaClient_1.prisma.professionalService.deleteMany();
     yield prismaClient_1.prisma.review.deleteMany();
-    yield prismaClient_1.prisma.activityLog.deleteMany(); // Added ActivityLog cleanup
+    yield prismaClient_1.prisma.activityLog.deleteMany();
     yield prismaClient_1.prisma.gamificationEvent.deleteMany();
     yield prismaClient_1.prisma.userBadge.deleteMany();
-    yield prismaClient_1.prisma.badge.deleteMany(); // Added Badge cleanup
+    yield prismaClient_1.prisma.badge.deleteMany();
     yield prismaClient_1.prisma.service.deleteMany();
     yield prismaClient_1.prisma.category.deleteMany();
-    yield prismaClient_1.prisma.professionalExperience.deleteMany(); // Added
-    yield prismaClient_1.prisma.professionalEducation.deleteMany(); // Added
+    yield prismaClient_1.prisma.professionalExperience.deleteMany();
+    yield prismaClient_1.prisma.professionalEducation.deleteMany();
     yield prismaClient_1.prisma.professional.deleteMany();
     yield prismaClient_1.prisma.companyAddress.deleteMany();
     yield prismaClient_1.prisma.company.deleteMany();
@@ -68,6 +68,7 @@ beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
             name: "Test User",
             password: "password123", // Hashed in real app
             role: client_1.UserRole.USER,
+            slug: "test-user"
         },
     });
     testUser2 = yield prismaClient_1.prisma.user.create({
@@ -76,6 +77,7 @@ beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
             name: "Test User 2",
             password: "password123",
             role: client_1.UserRole.USER,
+            slug: "test-user-2"
         },
     });
     testAdmin = yield prismaClient_1.prisma.user.create({
@@ -84,6 +86,7 @@ beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
             name: "Test Admin",
             password: "password123",
             role: client_1.UserRole.ADMIN,
+            slug: "test-admin"
         },
     });
     testProfessionalUser = yield prismaClient_1.prisma.user.create({
@@ -92,6 +95,7 @@ beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
             name: "Test Professional User",
             password: "password123",
             role: client_1.UserRole.USER, // Or a specific PROFESSIONAL role if you have one
+            slug: "test-professional-user"
         },
     });
     // Create test company
@@ -152,7 +156,7 @@ beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
     professionalToken = (0, jwt_1.generateToken)({ id: testProfessionalUser.id, role: testProfessionalUser.role });
 }));
 afterAll(() => __awaiter(void 0, void 0, void 0, function* () {
-    // Clean up test data
+    // Clean up test data (children before parents)
     yield prismaClient_1.prisma.appointment.deleteMany();
     yield prismaClient_1.prisma.scheduleBlock.deleteMany();
     yield prismaClient_1.prisma.professionalService.deleteMany();

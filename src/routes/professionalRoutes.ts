@@ -6,7 +6,8 @@ import {
   updateProfessionalHandler,
   deleteProfessionalHandler,
   addServiceToProfessionalHandler,
-  removeServiceFromProfessionalHandler
+  removeServiceFromProfessionalHandler,
+  getMyProfessionalHandler
 } from "../controllers/professionalController";
 import { authMiddleware } from "../middlewares/authMiddleware"; // Import basic auth middleware
 import { 
@@ -20,6 +21,7 @@ import { validateRequest } from "../middlewares/validationMiddleware"; // Correc
 import asyncHandler from "../utils/asyncHandler"; // Corrected import
 import { checkAdminOrCompanyOwnerMiddleware } from "../controllers/companyController";
 import { checkProfessionalOwnerOrAdminMiddleware } from "../middlewares/professionalAuthMiddleware";
+import { professionalRepository } from "../repositories/professionalRepository";
 
 const router = Router();
 
@@ -79,6 +81,29 @@ const router = Router();
  *         description: Erro interno do servidor.
  */
 router.get("/", asyncHandler(getAllProfessionalsHandler));
+
+/**
+ * @swagger
+ * /api/professionals/me:
+ *   get:
+ *     summary: Retorna os dados do perfil profissional do usuário autenticado
+ *     tags: [Professionals]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dados do perfil profissional retornados com sucesso.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Professional' }
+ *       401:
+ *         description: Não autorizado (token inválido ou ausente).
+ *       404:
+ *         description: Perfil profissional não encontrado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.get("/me", authMiddleware, asyncHandler(getMyProfessionalHandler));
 
 /**
  * @swagger

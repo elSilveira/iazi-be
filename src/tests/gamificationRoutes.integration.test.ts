@@ -75,6 +75,7 @@ beforeAll(async () => {
             name: "Gamification Prof",
             role: UserRole.PROFESSIONAL, // Role should be PROFESSIONAL
             points: 0, // Initialize points
+            slug: "gamification-prof"
         }
     });
     testProfUserId = professionalUser.id; // Store the User ID
@@ -121,6 +122,7 @@ beforeAll(async () => {
             name: "Gamification User",
             role: UserRole.USER,
             points: 0, // Initialize points
+            slug: "gamification-user"
         }
     });
     testUserId = user.id;
@@ -263,7 +265,7 @@ describe("Gamification System", () => {
     // Test GET /api/gamification/profile/:userId (as non-admin - should fail)
     it("should fail to get another user's gamification profile as non-admin", async () => {
         // Create another user temporarily
-        const otherUser = await prisma.user.create({ data: { email: `other-${Date.now()}@gam.com`, password: "test", name: "Other", points: 0 } });
+        const otherUser = await prisma.user.create({ data: { email: `other-${Date.now()}@gam.com`, password: "test", name: "Other", points: 0, slug: `other-user-${Date.now()}` } });
         const otherAccessToken = generateToken(otherUser.id);
 
         const response = await request(app)

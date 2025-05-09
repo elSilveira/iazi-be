@@ -132,6 +132,7 @@ model Professional {
   name                  String
   role                  String
   image                 String?
+  coverImage            String?                        @map("cover_image")
   rating                Float                          @default(0)
   totalReviews          Int                            @default(0) @map("total_reviews")
   companyId             String?                        @map("company_id")

@@ -10,3 +10,65 @@
 2025-05-09 02:46:12:4612 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
 2025-05-09 02:46:12:4612 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
 2025-05-09 02:46:12:4612 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 11:09:39:939 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 11:09:40:940 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 11:09:40:940 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 14:31:21:3121 [31merror[39m: [31m401 - Not authorized, token failed - /api/professionals - POST - 127.0.0.1[39m
+2025-05-09 14:31:21:3121 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 14:56:28:5628 [31merror[39m: [31m500 - Cannot read properties of undefined (reading 'ADMIN') - /api/appointments - GET - ::ffff:127.0.0.1[39m
+2025-05-09 15:25:19:2519 [31merror[39m: [31m401 - Not authorized, token failed - /api/users/me - GET - 127.0.0.1[39m
+2025-05-09 15:25:19:2519 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 15:25:28:2528 [31merror[39m: [31m401 - Credenciais inválidas - /api/auth/login - POST - 127.0.0.1[39m
+2025-05-09 16:24:54:2454 [31merror[39m: [31m401 - Not authorized, token failed - /api/professionals - POST - 127.0.0.1[39m
+2025-05-09 16:24:54:2454 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 16:40:02:402 [31merror[39m: [31m401 - Not authorized, token failed - /api/users/me - GET - 127.0.0.1[39m
+2025-05-09 16:40:02:402 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 16:41:19:4119 [31merror[39m: [31m401 - Credenciais inválidas - /api/auth/login - POST - 127.0.0.1[39m
+2025-05-09 16:41:21:4121 [31merror[39m: [31m401 - Credenciais inválidas - /api/auth/login - POST - 127.0.0.1[39m
+2025-05-09 17:00:51:051 [31merror[39m: [31m401 - Not authorized, token failed - /api/users/me - GET - 127.0.0.1[39m
+2025-05-09 17:00:51:051 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 17:40:23:4023 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 17:40:23:4023 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 17:40:23:4023 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 17:59:57:5957 [31merror[39m: [31m401 - Not authorized, token failed - /api/users/me - GET - 127.0.0.1[39m
+2025-05-09 17:59:57:5957 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 18:19:01:191 [31merror[39m: [31m500 - [39m
+[31mInvalid `tx.professional.update()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\professionalRepository.ts:134:57[39m
+
+[31m  131   portfolioData?: Prisma.ProfessionalPortfolioItemCreateWithoutProfessionalInput[][39m
+[31m  132 ): Promise<ProfessionalWithDetails> {[39m
+[31m  133   return prisma.$transaction(async (tx) => {[39m
+[31m→ 134     const updatedProfessional = await tx.professional.update({[39m
+[31m            where: {[39m
+[31m              id: "2948c5cf-8649-40d0-b65a-fff478130d83"[39m
+[31m            },[39m
+[31m            data: {[39m
+[31m              avatar: "https://upload.wikimedia.org/wikipedia/commons/6/6a/PNG_Test.png",[39m
+[31m              ~~~~~~[39m
+[31m              name: "Eduardo Silveira",[39m
+[31m              role: "Dev",[39m
+[31m              image: "https://upload.wikimedia.org/wikipedia/commons/6/6a/PNG_Test.png",[39m
+[31m              coverImage: "https://upload.wikimedia.org/wikipedia/commons/6/6a/PNG_Test.png",[39m
+[31m              bio: "Minha Bio",[39m
+[31m              phone: "45991464369",[39m
+[31m          ?   id?: String | StringFieldUpdateOperationsInput,[39m
+[31m          ?   rating?: Float | FloatFieldUpdateOperationsInput,[39m
+[31m          ?   totalReviews?: Int | IntFieldUpdateOperationsInput,[39m
+[31m          ?   createdAt?: DateTime | DateTimeFieldUpdateOperationsInput,[39m
+[31m          ?   updatedAt?: DateTime | DateTimeFieldUpdateOperationsInput,[39m
+[31m          ?   workingHours?: NullableJsonNullValueInput | Json,[39m
+[31m          ?   scheduledAppointments?: AppointmentUpdateManyWithoutProfessionalNestedInput,[39m
+[31m          ?   availability?: ProfessionalAvailabilitySlotUpdateManyWithoutProfessionalNestedInput,[39m
+[31m          ?   education?: ProfessionalEducationUpdateManyWithoutProfessionalNestedInput,[39m
+[31m          ?   experiences?: ProfessionalExperienceUpdateManyWithoutProfessionalNestedInput,[39m
+[31m          ?   portfolio?: ProfessionalPortfolioItemUpdateManyWithoutProfessionalNestedInput,[39m
+[31m          ?   services?: ProfessionalServiceUpdateManyWithoutProfessionalNestedInput,[39m
+[31m          ?   company?: CompanyUpdateOneWithoutProfessionalsNestedInput,[39m
+[31m          ?   user?: UserUpdateOneRequiredWithoutProfessionalNestedInput,[39m
+[31m          ?   reviews?: ReviewUpdateManyWithoutProfessionalNestedInput,[39m
+[31m          ?   scheduleBlocks?: ScheduleBlockUpdateManyWithoutProfessionalNestedInput[39m
+[31m            }[39m
+[31m          })[39m
+
+[31mUnknown argument `avatar`. Available options are marked with ?. - /api/professionals/2948c5cf-8649-40d0-b65a-fff478130d83 - PUT - 127.0.0.1[39m

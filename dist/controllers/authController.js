@@ -42,6 +42,30 @@ const isValidEmail = (email) => {
     const emailRegex = /^[^"]+@[^"]+\.[a-zA-Z]{2,}$/;
     return emailRegex.test(email);
 };
+// Helper to generate a URL-friendly slug from a name
+function slugify(name) {
+    return name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '');
+}
+function generateUniqueUserSlug(base) {
+    return __awaiter(this, void 0, void 0, function* () {
+        let slug = slugify(base);
+        let suffix = 1;
+        let unique = false;
+        while (!unique) {
+            const existing = yield userRepository_1.userRepository.findBySlug(slug);
+            if (!existing) {
+                unique = true;
+            }
+            else {
+                slug = `${slugify(base)}-${suffix++}`;
+            }
+        }
+        return slug;
+    });
+}
 // Função de Login
 const login = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { email, password } = req.body;
@@ -91,11 +115,13 @@ const register = (req, res, next) => __awaiter(void 0, void 0, void 0, function*
         }
         const saltRounds = 10;
         const hashedPassword = yield bcrypt_1.default.hash(password, saltRounds);
+        const slug = yield generateUniqueUserSlug(name);
         const userData = {
             email,
             password: hashedPassword,
             name,
             avatar,
+            slug,
         };
         const newUser = yield userRepository_1.userRepository.create(userData);
         // --- GAMIFICATION INTEGRATION START ---

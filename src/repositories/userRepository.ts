@@ -8,9 +8,10 @@ export const userRepository = {
     });
   },
 
-  async findById(id: string): Promise<User | null> {
+  async findById(id: string): Promise<(User & { professional: { id: string } | null }) | null> {
     return prisma.user.findUnique({
       where: { id },
+      include: { professional: { select: { id: true } } },
     });
   },
 

@@ -242,6 +242,87 @@ const options = {
                     },
                     required: ['name', 'description', 'categories'],
                 },
+                ProfessionalCreateInput: {
+                    type: 'object',
+                    required: [
+                        'name', 'role', 'image', 'bio', 'phone', 'companyId',
+                        'experiences', 'educations', 'services', 'availability', 'portfolioItems'
+                    ],
+                    properties: {
+                        name: { type: 'string', description: 'Nome do profissional' },
+                        role: { type: 'string', description: 'Cargo ou função do profissional' },
+                        image: { type: 'string', description: 'URL do avatar/foto' },
+                        bio: { type: 'string', description: 'Biografia' },
+                        phone: { type: 'string', description: 'Telefone' },
+                        companyId: { type: 'string', format: 'uuid', description: 'ID da empresa associada' },
+                        experiences: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                required: ['title', 'companyName', 'startDate', 'endDate', 'description'],
+                                properties: {
+                                    title: { type: 'string' },
+                                    companyName: { type: 'string' },
+                                    startDate: { type: 'string', description: 'YYYY-MM ou YYYY-MM-DD' },
+                                    endDate: { type: 'string', description: 'YYYY-MM ou YYYY-MM-DD' },
+                                    description: { type: 'string' }
+                                }
+                            }
+                        },
+                        educations: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                required: ['institutionName', 'degree', 'fieldOfStudy', 'startDate', 'endDate', 'description'],
+                                properties: {
+                                    institutionName: { type: 'string' },
+                                    degree: { type: 'string' },
+                                    fieldOfStudy: { type: 'string' },
+                                    startDate: { type: 'string', description: 'YYYY-MM ou YYYY-MM-DD' },
+                                    endDate: { type: 'string', description: 'YYYY-MM ou YYYY-MM-DD' },
+                                    description: { type: 'string' }
+                                }
+                            }
+                        },
+                        services: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                required: ['serviceId', 'price'],
+                                properties: {
+                                    serviceId: { type: 'string', format: 'uuid' },
+                                    price: { type: 'number' }
+                                }
+                            }
+                        },
+                        availability: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                required: ['day_of_week', 'start_time', 'end_time'],
+                                properties: {
+                                    day_of_week: { type: 'string', enum: [
+                                            'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'
+                                        ] },
+                                    start_time: { type: 'string', description: 'HH:mm' },
+                                    end_time: { type: 'string', description: 'HH:mm' }
+                                }
+                            }
+                        },
+                        portfolioItems: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                required: ['imageUrl', 'description'],
+                                properties: {
+                                    imageUrl: { type: 'string', description: 'URL da imagem' },
+                                    description: { type: 'string' }
+                                }
+                            }
+                        }
+                    }
+                },
+                ProfessionalUpdateInput: { $ref: '#/components/schemas/ProfessionalCreateInput' },
                 // ... outros inputs ...
             },
             securitySchemes: {

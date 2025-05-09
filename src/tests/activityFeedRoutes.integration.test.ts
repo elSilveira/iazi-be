@@ -30,6 +30,7 @@ const setupUserAndToken = async () => {
             name: "Test User Feed",
             password: hashedPassword,
             role: UserRole.USER, // Use enum
+            slug: "test-user-feed"
         },
     });
     token = generateToken({ id: user.id, role: user.role });

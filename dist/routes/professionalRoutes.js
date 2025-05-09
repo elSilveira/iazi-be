@@ -69,6 +69,28 @@ const router = (0, express_1.Router)();
 router.get("/", (0, asyncHandler_1.default)(professionalController_1.getAllProfessionalsHandler));
 /**
  * @swagger
+ * /api/professionals/me:
+ *   get:
+ *     summary: Retorna os dados do perfil profissional do usuário autenticado
+ *     tags: [Professionals]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dados do perfil profissional retornados com sucesso.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Professional' }
+ *       401:
+ *         description: Não autorizado (token inválido ou ausente).
+ *       404:
+ *         description: Perfil profissional não encontrado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.get("/me", authMiddleware_1.authMiddleware, (0, asyncHandler_1.default)(professionalController_1.getMyProfessionalHandler));
+/**
+ * @swagger
  * /api/professionals/{id}:
  *   get:
  *     summary: Obtém um profissional específico pelo ID

@@ -59,6 +59,13 @@ export const professionalRepository = {
     });
   },
 
+  async findByUserId(userId: string): Promise<ProfessionalWithDetails | null> {
+    return prisma.professional.findUnique({
+      where: { userId },
+      include: this.includeDetails,
+    });
+  },
+
   async create(
     data: Prisma.ProfessionalCreateInput,
     serviceIds?: string[],

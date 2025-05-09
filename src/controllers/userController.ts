@@ -27,8 +27,11 @@ export const getUserProfile = async (req: Request, res: Response, next: NextFunc
       return;
     }
     // Exclude password from the response
-    const { password, ...userProfile } = user;
-    res.json(userProfile);
+    const { password, professional, ...userProfile } = user;
+    res.json({
+      ...userProfile,
+      professionalId: professional ? professional.id : null
+    });
   } catch (error) {
     next(error);
   }

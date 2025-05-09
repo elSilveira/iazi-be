@@ -23,6 +23,14 @@ exports.userRepository = {
         return __awaiter(this, void 0, void 0, function* () {
             return prisma_1.prisma.user.findUnique({
                 where: { id },
+                include: { professional: { select: { id: true } } },
+            });
+        });
+    },
+    findBySlug(slug) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return prisma_1.prisma.user.findUnique({
+                where: { slug },
             });
         });
     },

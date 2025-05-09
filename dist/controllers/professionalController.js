@@ -20,7 +20,7 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.removeServiceFromProfessionalHandler = exports.addServiceToProfessionalHandler = exports.deleteProfessionalHandler = exports.updateProfessionalHandler = exports.createProfessionalHandler = exports.getProfessionalByIdHandler = exports.getAllProfessionalsHandler = void 0;
+exports.getMyProfessionalHandler = exports.removeServiceFromProfessionalHandler = exports.addServiceToProfessionalHandler = exports.deleteProfessionalHandler = exports.updateProfessionalHandler = exports.createProfessionalHandler = exports.getProfessionalByIdHandler = exports.getAllProfessionalsHandler = void 0;
 const professionalRepository_1 = require("../repositories/professionalRepository");
 const client_1 = require("@prisma/client");
 const isValidUUID = (uuid) => {
@@ -118,11 +118,7 @@ const getProfessionalByIdHandler = (req, res, next) => __awaiter(void 0, void 0,
 exports.getProfessionalByIdHandler = getProfessionalByIdHandler;
 const createProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const { name, role, image, companyId, serviceIds, bio, phone, experiences, // Existing in schema as ProfessionalExperience
-    education, // Existing in schema as ProfessionalEducation
-    availability, // Newly added as ProfessionalAvailabilitySlot
-    portfolio // Newly added as ProfessionalPortfolioItem
-     } = req.body;
+    const { name, role, image, coverImage, bio, phone, companyId, experiences, educations, services, availability, portfolioItems } = req.body;
     const authUser = req.user;
     if (!authUser || !authUser.id) {
         res.status(401).json({ message: "Usuário não autenticado." });
@@ -133,8 +129,43 @@ const createProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, 
         return;
     }
     try {
-        const dataToCreate = Object.assign({ name: name, role: role || "Profissional", image: image, bio: bio, phone: phone, user: { connect: { id: authUser.id } } }, (companyId && isValidUUID(companyId) && { company: { connect: { id: companyId } } }));
-        const newProfessional = yield professionalRepository_1.professionalRepository.create(dataToCreate, serviceIds, experiences, education, availability, portfolio);
+        const dataToCreate = Object.assign({ name,
+            role,
+            image, // imagem de perfil
+            coverImage, // imagem de capa
+            bio,
+            phone, user: { connect: { id: authUser.id } } }, (companyId && isValidUUID(companyId) ? { company: { connect: { id: companyId } } } : {}));
+        // Map services to serviceIds
+        const serviceIds = Array.isArray(services) ? services.map((s) => s.serviceId) : (services === undefined ? undefined : []);
+        // Map experiences
+        const experiencesData = Array.isArray(experiences) ? experiences.map((exp) => ({
+            title: exp.title,
+            companyName: exp.companyName,
+            startDate: exp.startDate,
+            endDate: exp.endDate,
+            description: exp.description,
+        })) : (experiences === undefined ? undefined : []);
+        // Map educations
+        const educationsData = Array.isArray(educations) ? educations.map((edu) => ({
+            institution: edu.institutionName,
+            degree: edu.degree,
+            fieldOfStudy: edu.fieldOfStudy,
+            startDate: edu.startDate,
+            endDate: edu.endDate,
+            description: edu.description,
+        })) : (educations === undefined ? undefined : []);
+        // Map availability
+        const availabilityData = Array.isArray(availability) ? availability.map((a) => ({
+            dayOfWeek: a.day_of_week,
+            startTime: a.start_time,
+            endTime: a.end_time,
+        })) : (availability === undefined ? undefined : []);
+        // Map portfolio
+        const portfolioData = Array.isArray(portfolioItems) ? portfolioItems.map((p) => ({
+            imageUrl: p.imageUrl,
+            description: p.description,
+        })) : (portfolioItems === undefined ? undefined : []);
+        const newProfessional = yield professionalRepository_1.professionalRepository.create(dataToCreate, serviceIds, experiencesData, educationsData, availabilityData, portfolioData);
         res.status(201).json(newProfessional);
     }
     catch (error) {
@@ -155,12 +186,9 @@ const createProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, 
 exports.createProfessionalHandler = createProfessionalHandler;
 const updateProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const { id } = req.params; // ID of the professional profile to update
-    const _b = req.body, { serviceIds, bio, phone, experiences, // Existing in schema as ProfessionalExperience
-    education, // Existing in schema as ProfessionalEducation
-    availability, // Newly added as ProfessionalAvailabilitySlot
-    portfolio } = _b, // Newly added as ProfessionalPortfolioItem
-    dataToUpdateFromRequest = __rest(_b, ["serviceIds", "bio", "phone", "experiences", "education", "availability", "portfolio"]);
+    const { id } = req.params;
+    const _b = req.body, { name, role, image, coverImage, bio, phone, companyId, experiences, educations, services, availability, portfolioItems, avatar } = _b, // ignorar se vier
+    dataToUpdateFromRequest = __rest(_b, ["name", "role", "image", "coverImage", "bio", "phone", "companyId", "experiences", "educations", "services", "availability", "portfolioItems", "avatar"]);
     const authUser = req.user;
     if (!authUser || !authUser.id) {
         res.status(401).json({ message: "Usuário não autenticado." });
@@ -173,23 +201,51 @@ const updateProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, 
             return;
         }
         if (professionalToUpdate.userId !== authUser.id && authUser.role !== 'ADMIN' && authUser.role !== 'COMPANY_OWNER') {
-            // This check might be redundant if middleware is comprehensive
-            // console.warn("Tentativa de atualização não autorizada bloqueada no controller, verificar middleware.");
-            // res.status(403).json({ message: "Você não tem permissão para atualizar este perfil." });
-            // return;
+            // Permissão
         }
-        const updatePayload = Object.assign(Object.assign({}, dataToUpdateFromRequest), { bio: bio, phone: phone });
-        if (updatePayload.rating !== undefined && typeof updatePayload.rating === 'string') {
-            updatePayload.rating = parseFloat(updatePayload.rating);
-        }
-        if (updatePayload.totalReviews !== undefined && typeof updatePayload.totalReviews === 'string') {
-            updatePayload.totalReviews = parseInt(updatePayload.totalReviews, 10);
-        }
+        const updatePayload = Object.assign(Object.assign({}, dataToUpdateFromRequest), { name,
+            role,
+            image,
+            coverImage,
+            bio,
+            phone });
         if ('companyId' in updatePayload)
             delete updatePayload.companyId;
         if ('userId' in updatePayload)
             delete updatePayload.userId;
-        const updatedProfessional = yield professionalRepository_1.professionalRepository.update(id, updatePayload, serviceIds, experiences, education, availability, portfolio);
+        if ('avatar' in updatePayload)
+            delete updatePayload.avatar;
+        // Map services to serviceIds
+        const serviceIds = Array.isArray(services) ? services.map((s) => s.serviceId) : undefined;
+        // Map experiences
+        const experiencesData = Array.isArray(experiences) ? experiences.map((exp) => ({
+            title: exp.title,
+            companyName: exp.companyName,
+            startDate: exp.startDate,
+            endDate: exp.endDate,
+            description: exp.description,
+        })) : undefined;
+        // Map educations
+        const educationsData = Array.isArray(educations) ? educations.map((edu) => ({
+            institution: edu.institutionName,
+            degree: edu.degree,
+            fieldOfStudy: edu.fieldOfStudy,
+            startDate: edu.startDate,
+            endDate: edu.endDate,
+            description: edu.description,
+        })) : undefined;
+        // Map availability
+        const availabilityData = Array.isArray(availability) ? availability.map((a) => ({
+            dayOfWeek: a.day_of_week,
+            startTime: a.start_time,
+            endTime: a.end_time,
+        })) : undefined;
+        // Map portfolio
+        const portfolioData = Array.isArray(portfolioItems) ? portfolioItems.map((p) => ({
+            imageUrl: p.imageUrl,
+            description: p.description,
+        })) : undefined;
+        const updatedProfessional = yield professionalRepository_1.professionalRepository.update(id, updatePayload, serviceIds, experiencesData, educationsData, availabilityData, portfolioData);
         res.json(updatedProfessional);
     }
     catch (error) {
@@ -232,3 +288,22 @@ const removeServiceFromProfessionalHandler = (req, res, next) => __awaiter(void 
     return;
 });
 exports.removeServiceFromProfessionalHandler = removeServiceFromProfessionalHandler;
+const getMyProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const authUser = req.user;
+    if (!authUser || !authUser.id) {
+        res.status(401).json({ message: "Usuário não autenticado." });
+        return;
+    }
+    try {
+        const professional = yield professionalRepository_1.professionalRepository.findByUserId(authUser.id);
+        if (!professional) {
+            res.status(404).json({ message: "Perfil profissional não encontrado para este usuário." });
+            return;
+        }
+        res.json(professional);
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.getMyProfessionalHandler = getMyProfessionalHandler;

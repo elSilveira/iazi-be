@@ -59,6 +59,7 @@ beforeAll(async () => {
             name: "Test User",
             password: "password123", // Hashed in real app
             role: UserRole.USER,
+            slug: "test-user"
         },
     });
     testUser2 = await prisma.user.create({
@@ -67,6 +68,7 @@ beforeAll(async () => {
             name: "Test User 2",
             password: "password123",
             role: UserRole.USER,
+            slug: "test-user-2"
         },
     });
     testAdmin = await prisma.user.create({
@@ -75,6 +77,7 @@ beforeAll(async () => {
             name: "Test Admin",
             password: "password123",
             role: UserRole.ADMIN,
+            slug: "test-admin"
         },
     });
     testProfessionalUser = await prisma.user.create({
@@ -83,6 +86,7 @@ beforeAll(async () => {
             name: "Test Professional User",
             password: "password123",
             role: UserRole.USER, // Or a specific PROFESSIONAL role if you have one
+            slug: "test-professional-user"
         },
     });
 
