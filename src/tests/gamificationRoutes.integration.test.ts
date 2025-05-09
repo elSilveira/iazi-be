@@ -32,7 +32,7 @@ const generateToken = (userId: string, role: UserRole = UserRole.USER): string =
 
 // Setup: Create necessary entities before tests run
 beforeAll(async () => {
-    // Clean up potential leftovers
+    // Clean up potential leftovers (children before parents)
     await prisma.appointment.deleteMany({});
     await prisma.review.deleteMany({});
     await prisma.userBadge.deleteMany({});

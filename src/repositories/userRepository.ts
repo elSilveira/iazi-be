@@ -14,6 +14,12 @@ export const userRepository = {
     });
   },
 
+  async findBySlug(slug: string): Promise<User | null> {
+    return prisma.user.findUnique({
+      where: { slug },
+    });
+  },
+
   async create(data: Prisma.UserCreateInput): Promise<User> {
     return prisma.user.create({
       data,

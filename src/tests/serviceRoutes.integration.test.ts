@@ -144,18 +144,18 @@ const createTestData = async () => {
 
 // Clean up database before and after tests
 beforeAll(async () => {
-  // Clean related tables first
+  // Clean related tables first (children before parents)
   await prisma.activityLog.deleteMany({});
   await prisma.userBadge.deleteMany({});
   await prisma.badge.deleteMany({});
-  await prisma.gamificationEvent.deleteMany({}); // Added GamificationEvent
+  await prisma.gamificationEvent.deleteMany({});
   await prisma.professionalService.deleteMany({});
   await prisma.appointment.deleteMany({});
   await prisma.review.deleteMany({});
   await prisma.service.deleteMany({});
   await prisma.professionalExperience.deleteMany({});
   await prisma.professionalEducation.deleteMany({});
-  await prisma.scheduleBlock.deleteMany({}); // Added ScheduleBlock
+  await prisma.scheduleBlock.deleteMany({});
   await prisma.professional.deleteMany({});
   await prisma.companyAddress.deleteMany({});
   await prisma.company.deleteMany({});
@@ -167,18 +167,18 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // Clean up again
+  // Clean up again (children before parents)
   await prisma.activityLog.deleteMany({});
   await prisma.userBadge.deleteMany({});
   await prisma.badge.deleteMany({});
-  await prisma.gamificationEvent.deleteMany({}); // Added GamificationEvent
+  await prisma.gamificationEvent.deleteMany({});
   await prisma.professionalService.deleteMany({});
   await prisma.appointment.deleteMany({});
   await prisma.review.deleteMany({});
   await prisma.service.deleteMany({});
   await prisma.professionalExperience.deleteMany({});
   await prisma.professionalEducation.deleteMany({});
-  await prisma.scheduleBlock.deleteMany({}); // Added ScheduleBlock
+  await prisma.scheduleBlock.deleteMany({});
   await prisma.professional.deleteMany({});
   await prisma.companyAddress.deleteMany({});
   await prisma.company.deleteMany({});

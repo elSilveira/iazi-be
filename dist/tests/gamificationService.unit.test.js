@@ -97,8 +97,8 @@ describe("Gamification Service", () => {
                     userId: mockUserId,
                     eventType: eventType,
                     pointsAwarded: pointsToAdd,
-                    relatedEntityId: undefined,
-                    relatedEntityType: undefined,
+                    referenceId: undefined,
+                    details: { relatedEntityType: undefined },
                 },
             });
             expect(prismaClient_1.prisma.user.update).toHaveBeenCalledWith({
@@ -117,7 +117,7 @@ describe("Gamification Service", () => {
             var _a;
             const eventType = gamificationService_1.GamificationEventType.APPOINTMENT_COMPLETED;
             const pointsToAdd = (_a = EVENT_POINTS[eventType]) !== null && _a !== void 0 ? _a : 0;
-            const relatedEntityId = "appt-1";
+            const referenceId = "appt-1";
             // Mocks for first event
             prismaClient_1.prisma.user.findUnique.mockResolvedValueOnce(mockUser);
             prismaClient_1.prisma.gamificationEvent.create.mockResolvedValueOnce({});
@@ -126,7 +126,7 @@ describe("Gamification Service", () => {
             prismaClient_1.prisma.userBadge.findMany.mockResolvedValueOnce([]); // No badges yet
             prismaClient_1.prisma.gamificationEvent.count.mockResolvedValueOnce(1); // First event of this type
             prismaClient_1.prisma.userBadge.create.mockResolvedValueOnce({}); // Award badge
-            yield gamificationService_1.gamificationService.triggerEvent(mockUserId, eventType, { relatedEntityId });
+            yield gamificationService_1.gamificationService.triggerEvent(mockUserId, eventType, { referenceId });
             expect(prismaClient_1.prisma.gamificationEvent.count).toHaveBeenCalledWith({
                 where: { userId: mockUserId, eventType: mockBadgeFirstAppointment.eventTrigger },
             });
@@ -144,7 +144,7 @@ describe("Gamification Service", () => {
             // User now has the first appointment badge
             prismaClient_1.prisma.userBadge.findMany.mockResolvedValueOnce([{ badgeId: mockBadgeFirstAppointment.id }]);
             prismaClient_1.prisma.gamificationEvent.count.mockResolvedValueOnce(2); // Second event of this type
-            yield gamificationService_1.gamificationService.triggerEvent(mockUserId, eventType, { relatedEntityId: "appt-2" });
+            yield gamificationService_1.gamificationService.triggerEvent(mockUserId, eventType, { referenceId: "appt-2" });
             // Verify badge was NOT awarded again
             expect(prismaClient_1.prisma.gamificationEvent.count).toHaveBeenCalledWith({
                 where: { userId: mockUserId, eventType: mockBadgeFirstAppointment.eventTrigger },

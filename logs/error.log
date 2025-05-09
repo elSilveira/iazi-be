@@ -1,3 +1,12 @@
 2025-05-06 01:39:13:3913 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
 2025-05-06 01:39:13:3913 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
 2025-05-06 01:39:13:3913 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 01:41:33:4133 [31merror[39m: [31m500 - Cannot read properties of undefined (reading 'ADMIN') - /api/appointments - GET - ::ffff:127.0.0.1[39m
+2025-05-09 01:45:01:451 [31merror[39m: [31m500 - Cannot read properties of undefined (reading 'ADMIN') - /api/appointments - GET - ::ffff:127.0.0.1[39m
+2025-05-09 01:58:55:5855 [31merror[39m: [31m401 - Credenciais inválidas - /api/auth/login - POST - 127.0.0.1[39m
+2025-05-09 02:01:23:123 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 02:01:23:123 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 02:01:23:123 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 02:46:12:4612 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 02:46:12:4612 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 02:46:12:4612 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m

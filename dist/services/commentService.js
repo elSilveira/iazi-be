@@ -13,11 +13,11 @@ exports.deleteComment = exports.updateComment = exports.getCommentsByPost = expo
 const prisma_1 = require("../lib/prisma");
 const client_1 = require("@prisma/client");
 const errors_1 = require("../lib/errors");
-const createComment = (authorId, postId, content) => __awaiter(void 0, void 0, void 0, function* () {
+const createComment = (userId, postId, content) => __awaiter(void 0, void 0, void 0, function* () {
     // Verifica se o usuário e o post existem
-    const userExists = yield prisma_1.prisma.user.findUnique({ where: { id: authorId } });
+    const userExists = yield prisma_1.prisma.user.findUnique({ where: { id: userId } });
     if (!userExists) {
-        throw new errors_1.NotFoundError(`User with ID ${authorId} not found`);
+        throw new errors_1.NotFoundError(`User with ID ${userId} not found`);
     }
     const postExists = yield prisma_1.prisma.post.findUnique({ where: { id: postId } });
     if (!postExists) {
@@ -26,11 +26,11 @@ const createComment = (authorId, postId, content) => __awaiter(void 0, void 0, v
     const newComment = yield prisma_1.prisma.comment.create({
         data: {
             content,
-            authorId,
+            userId,
             postId,
         },
         include: {
-            author: { select: { id: true, name: true, avatar: true } }
+            user: { select: { id: true, name: true, avatar: true } }
         }
     });
     return newComment;
@@ -49,7 +49,7 @@ const getCommentsByPost = (postId, page, limit) => __awaiter(void 0, void 0, voi
         take: limit,
         orderBy: { createdAt: 'asc' }, // Ou 'desc' dependendo da ordem desejada
         include: {
-            author: { select: { id: true, name: true, avatar: true } },
+            user: { select: { id: true, name: true, avatar: true } },
             _count: { select: { likes: true } } // Conta likes do comentário
         }
     });
@@ -61,14 +61,14 @@ const updateComment = (userId, commentId, content) => __awaiter(void 0, void 0, 
     if (!comment) {
         throw new errors_1.NotFoundError(`Comment with ID ${commentId} not found`);
     }
-    if (comment.authorId !== userId) {
+    if (comment.userId !== userId) {
         throw new errors_1.ForbiddenError("User is not authorized to update this comment");
     }
     const updatedComment = yield prisma_1.prisma.comment.update({
         where: { id: commentId },
         data: { content },
         include: {
-            author: { select: { id: true, name: true, avatar: true } },
+            user: { select: { id: true, name: true, avatar: true } },
             _count: { select: { likes: true } }
         }
     });
@@ -81,7 +81,7 @@ const deleteComment = (userId, userRole, commentId) => __awaiter(void 0, void 0,
         throw new errors_1.NotFoundError(`Comment with ID ${commentId} not found`);
     }
     // Permite deletar se for o autor OU se for ADMIN
-    if (comment.authorId !== userId && userRole !== client_1.UserRole.ADMIN) {
+    if (comment.userId !== userId && userRole !== client_1.UserRole.ADMIN) {
         throw new errors_1.ForbiddenError("User is not authorized to delete this comment");
     }
     // A deleção em cascata (definida no schema) cuidará dos likes associados

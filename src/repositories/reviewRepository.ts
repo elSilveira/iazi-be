@@ -66,7 +66,7 @@ export const reviewRepository = {
         user: { select: { id: true, name: true, avatar: true } } // Incluir dados do usuário
       },
       orderBy: {
-        createdAt: 'desc',
+        updatedAt: 'desc',
       },
     });
   },

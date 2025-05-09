@@ -2,11 +2,11 @@ import { prisma } from "../lib/prisma";
 import { Comment, Prisma, UserRole } from "@prisma/client";
 import { NotFoundError, ForbiddenError } from "../lib/errors";
 
-export const createComment = async (authorId: string, postId: string, content: string): Promise<Comment> => {
+export const createComment = async (userId: string, postId: string, content: string): Promise<Comment> => {
     // Verifica se o usuário e o post existem
-    const userExists = await prisma.user.findUnique({ where: { id: authorId } });
+    const userExists = await prisma.user.findUnique({ where: { id: userId } });
     if (!userExists) {
-        throw new NotFoundError(`User with ID ${authorId} not found`);
+        throw new NotFoundError(`User with ID ${userId} not found`);
     }
     const postExists = await prisma.post.findUnique({ where: { id: postId } });
     if (!postExists) {
@@ -16,11 +16,11 @@ export const createComment = async (authorId: string, postId: string, content: s
     const newComment = await prisma.comment.create({
         data: {
             content,
-            authorId,
+            userId,
             postId,
         },
         include: { // Inclui o autor para retornar informações básicas
-            author: { select: { id: true, name: true, avatar: true } }
+            user: { select: { id: true, name: true, avatar: true } }
         }
     });
     return newComment;
@@ -41,7 +41,7 @@ export const getCommentsByPost = async (postId: string, page: number, limit: num
         take: limit,
         orderBy: { createdAt: 'asc' }, // Ou 'desc' dependendo da ordem desejada
         include: {
-            author: { select: { id: true, name: true, avatar: true } },
+            user: { select: { id: true, name: true, avatar: true } },
             _count: { select: { likes: true } } // Conta likes do comentário
         }
     });
@@ -55,7 +55,7 @@ export const updateComment = async (userId: string, commentId: string, content: 
         throw new NotFoundError(`Comment with ID ${commentId} not found`);
     }
 
-    if (comment.authorId !== userId) {
+    if (comment.userId !== userId) {
         throw new ForbiddenError("User is not authorized to update this comment");
     }
 
@@ -63,7 +63,7 @@ export const updateComment = async (userId: string, commentId: string, content: 
         where: { id: commentId },
         data: { content },
         include: { // Retorna o comentário atualizado com informações do autor
-            author: { select: { id: true, name: true, avatar: true } },
+            user: { select: { id: true, name: true, avatar: true } },
              _count: { select: { likes: true } }
         }
     });
@@ -78,7 +78,7 @@ export const deleteComment = async (userId: string, userRole: UserRole | string,
     }
 
     // Permite deletar se for o autor OU se for ADMIN
-    if (comment.authorId !== userId && userRole !== UserRole.ADMIN) {
+    if (comment.userId !== userId && userRole !== UserRole.ADMIN) {
         throw new ForbiddenError("User is not authorized to delete this comment");
     }
 

@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,54 +7,35 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Enum para os papéis de usuário
-enum UserRole {
-  USER
-  ADMIN
-  PROFESSIONAL // Adicionado para representar um profissional individual
-  COMPANY_OWNER // Adicionado para representar o dono de uma empresa
-  STAFF         // Adicionado para representar um funcionário de uma empresa (se necessário)
-}
-
-// Enum para o status do agendamento
-enum AppointmentStatus {
-  PENDING
-  CONFIRMED
-  CANCELLED
-  COMPLETED
-  NO_SHOW
-}
-
-// Modelo de Usuário
 model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  name          String
-  password      String
-  avatar        String?   // Renamed from avatar, added based on controller/frontend usage
-  bio           String?   // Added bio field based on controller/frontend usage
-  phone         String?   // Added phone field based on controller/frontend usage
-  role          UserRole  @default(USER) // Added role field based on controller/test usage
-  points        Int       @default(0) // GAMIFICATION: User points
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  addresses     UserAddress[] // Relation to UserAddress
-  appointments  Appointment[]
-  reviews       Review[]
-  badges        UserBadge[] // GAMIFICATION: Badges awarded to user
-  gamificationEvents GamificationEvent[] // GAMIFICATION: History of events
-  activityLogs  ActivityLog[] // FEED: User's activity logs
-  posts     Post[]    // Postagens criadas pelo usuário
-  comments  Comment[] // Comentários criados pelo usuário
-  likes     Like[]    // Likes dados pelo usuário
-  professional  Professional? // Relation to Professional profile
+  id                 String              @id @default(uuid())
+  email              String              @unique
+  name               String
+  password           String
+  avatar             String?
+  bio                String?
+  phone              String?
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+  points             Int                 @default(0)
+  role               UserRole            @default(USER)
+  slug               String              @unique
+  activityLogs       ActivityLog[]
+  appointments       Appointment[]
+  comments           Comment[]
+  gamificationEvents GamificationEvent[]
+  likes              Like[]
+  posts              Post[]
+  professional       Professional?
+  reviews            Review[]
+  addresses          UserAddress[]
+  badges             UserBadge[]
 
-  @@index([email]) // Index for login
-  @@index([points]) // GAMIFICATION: Index for leaderboard
-  @@map("users") // Map to lowercase table name
+  @@index([email])
+  @@index([points])
+  @@map("users")
 }
 
-// Modelo de Endereço do Usuário (NOVO)
 model UserAddress {
   id           String   @id @default(uuid())
   street       String
@@ -67,410 +45,396 @@ model UserAddress {
   city         String
   state        String
   zipCode      String   @map("zip_code")
-  isPrimary    Boolean  @default(false) // Indica se é o endereço principal
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isPrimary    Boolean  @default(false)
   userId       String   @map("user_id")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId]) // Index for querying user addresses
-  @@index([city])   // Index for potential location filtering
-  @@index([state])  // Index for potential location filtering
-  @@map("user_addresses") // Map to lowercase table name
+  @@index([userId])
+  @@index([city])
+  @@index([state])
+  @@map("user_addresses")
 }
 
-// Modelo de Empresa
 model Company {
-  id              String         @id @default(uuid())
+  id              String          @id @default(uuid())
   name            String
   description     String
   logo            String?
-  coverImage      String?        @map("cover_image")
-  rating          Float          @default(0)
-  totalReviews    Int            @default(0) @map("total_reviews")
-  yearEstablished String?        @map("year_established")
+  coverImage      String?         @map("cover_image")
+  rating          Float           @default(0)
+  totalReviews    Int             @default(0) @map("total_reviews")
+  yearEstablished String?         @map("year_established")
   phone           String?
   email           String?
-  address         CompanyAddress? // Relation to CompanyAddress
-  workingHours    Json?          @map("working_hours") // Horário de funcionamento da empresa
-  categories      String[]       // TODO: Consider changing to relation with Category model.
-  services        Service[]
+  workingHours    Json?           @map("working_hours")
+  categories      String[]
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  address         CompanyAddress?
   professionals   Professional[]
   reviews         Review[]
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
+  services        Service[]
 
-  @@index([name])   // Index for sorting and searching
-  @@index([rating]) // Index for sorting and filtering
-  @@index([categories], type: Gin) // Added GIN index for categories array (PostgreSQL)
-  @@map("companies") // Map to lowercase table name
+  @@index([name])
+  @@index([rating])
+  @@index([categories], type: Gin)
+  @@map("companies")
 }
 
-// Modelo de Endereço da Empresa (Renomeado de Address)
 model CompanyAddress {
-  id            String    @id @default(uuid())
-  street        String
-  number        String
-  complement    String?
-  neighborhood  String
-  city          String
-  state         String
-  zipCode       String    @map("zip_code")
-  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  companyId     String    @unique @map("company_id") // Unique index already exists
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id           String   @id @default(uuid())
+  street       String
+  number       String
+  complement   String?
+  neighborhood String
+  city         String
+  state        String
+  zipCode      String   @map("zip_code")
+  companyId    String   @unique @map("company_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  @@index([city])  // Index for location filtering
-  @@index([state]) // Index for location filtering
-  @@map("company_addresses") // Map to lowercase table name
+  @@index([city])
+  @@index([state])
+  @@map("company_addresses")
 }
 
-// Modelo de Serviço
 model Service {
-  id            String    @id @default(uuid())
+  id            String                @id @default(uuid())
   name          String
   description   String
-  price         Decimal   // Changed from String to support numeric filtering/sorting
-  duration      String    // Duração do serviço (ex: "30min", "1h", "1h30min") - será parseado na lógica de disponibilidade
-  category      Category @relation(fields: [categoryId], references: [id]) // Changed to relation
-  categoryId    Int      @map("category_id") // Added categoryId field
+  duration      String
+  categoryId    Int                   @map("category_id")
   image         String?
-  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  companyId     String    @map("company_id")
-  professionals ProfessionalService[]
+  companyId     String                @map("company_id")
+  createdAt     DateTime              @default(now()) @map("created_at")
+  updatedAt     DateTime              @updatedAt @map("updated_at")
+  price         Decimal
   appointments  Appointment[]
+  professionals ProfessionalService[]
   reviews       Review[]
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  category      Category              @relation(fields: [categoryId], references: [id])
+  company       Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  @@index([name])       // Index for sorting and searching
-  @@index([price])      // Index for sorting and filtering
-  @@index([categoryId]) // Index for filtering
-  @@index([companyId])  // Index for filtering
-  @@unique([name, companyId]) // Add unique constraint for upsert in tests
-  @@map("services") // Map to lowercase table name
+  @@unique([name, companyId])
+  @@index([name])
+  @@index([price])
+  @@index([categoryId])
+  @@index([companyId])
+  @@map("services")
 }
 
-// Modelo de Profissional
 model Professional {
-  id            String    @id @default(uuid())
-  name          String
-  role          String
-  image         String?
-  bio           String?   // Added bio field
-  phone         String?   // Added phone field
-  rating        Float     @default(0)
-  totalReviews  Int       @default(0) @map("total_reviews")
-  workingHours  Json?     @map("working_hours") // Horário de trabalho específico do profissional (pode sobrescrever o da empresa)
-  company       Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull) // onDelete: SetNull if professional can exist without company
-  companyId     String?   @map("company_id")
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId        String    @unique @map("user_id") // Each professional profile belongs to one user
-  services      ProfessionalService[]
-  experiences   ProfessionalExperience[] // Existing relation
-  education     ProfessionalEducation[]  // Existing relation
-  availability  ProfessionalAvailabilitySlot[] // Added relation for availability
-  portfolio     ProfessionalPortfolioItem[]    // Added relation for portfolio
-  scheduledAppointments Appointment[] @relation("ProfessionalAppointments")
-  scheduleBlocks ScheduleBlock[] // Added relation to ScheduleBlock
-  reviews       Review[]
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id                    String                         @id @default(uuid())
+  name                  String
+  role                  String
+  image                 String?
+  rating                Float                          @default(0)
+  totalReviews          Int                            @default(0) @map("total_reviews")
+  companyId             String?                        @map("company_id")
+  createdAt             DateTime                       @default(now()) @map("created_at")
+  updatedAt             DateTime                       @updatedAt @map("updated_at")
+  workingHours          Json?                          @map("working_hours")
+  bio                   String?
+  phone                 String?
+  userId                String                         @unique @map("user_id")
+  scheduledAppointments Appointment[]                  @relation("ProfessionalAppointments")
+  availability          ProfessionalAvailabilitySlot[]
+  education             ProfessionalEducation[]
+  experiences           ProfessionalExperience[]
+  portfolio             ProfessionalPortfolioItem[]
+  services              ProfessionalService[]
+  company               Company?                       @relation(fields: [companyId], references: [id])
+  user                  User                           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviews               Review[]
+  scheduleBlocks        ScheduleBlock[]
 
-  @@index([name])      // Index for sorting and searching
-  @@index([rating])    // Index for sorting and filtering
-  @@index([companyId]) // Index for filtering
-  @@index([role])      // Index for filtering and searching
-  @@index([userId])    // Index for querying by user
-  @@map("professionals") // Map to lowercase table name
+  @@index([name])
+  @@index([rating])
+  @@index([companyId])
+  @@index([role])
+  @@index([userId])
+  @@map("professionals")
 }
 
-// Modelo de Experiência Profissional (Existente)
 model ProfessionalExperience {
-  id            String    @id @default(uuid())
-  title         String    // Cargo
-  companyName   String    @map("company_name") // Nome da empresa onde trabalhou
-  description   String?   // Descrição das responsabilidades
-  startDate     DateTime  @map("start_date") // Data de início
-  endDate       DateTime? @map("end_date")   // Data de término (opcional se atual)
-  isCurrent     Boolean   @default(false) @map("is_current") // Se é o emprego atual
-  professional  Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  professionalId String    @map("professional_id")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id             String       @id @default(uuid())
+  title          String
+  companyName    String       @map("company_name")
+  description    String?
+  startDate      DateTime     @map("start_date")
+  endDate        DateTime?    @map("end_date")
+  isCurrent      Boolean      @default(false) @map("is_current")
+  professionalId String       @map("professional_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
 
-  @@index([professionalId]) // Index for querying experiences
+  @@index([professionalId])
   @@map("professional_experiences")
 }
 
-// Modelo de Formação Acadêmica (Existente)
 model ProfessionalEducation {
-  id            String    @id @default(uuid())
-  institution   String    // Nome da instituição
-  degree        String    // Grau obtido (ex: Bacharelado, Técnico)
-  fieldOfStudy  String    @map("field_of_study") // Área de estudo
-  startDate     DateTime  @map("start_date") // Data de início
-  endDate       DateTime? @map("end_date")   // Data de término (opcional)
-  description   String?   // Descrição adicional
-  professional  Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  professionalId String    @map("professional_id")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id             String       @id @default(uuid())
+  institution    String
+  degree         String
+  fieldOfStudy   String       @map("field_of_study")
+  startDate      DateTime     @map("start_date")
+  endDate        DateTime?    @map("end_date")
+  description    String?
+  professionalId String       @map("professional_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
 
-  @@index([professionalId]) // Index for querying education
+  @@index([professionalId])
   @@map("professional_education")
 }
 
-// Modelo de Disponibilidade do Profissional (NOVO)
 model ProfessionalAvailabilitySlot {
-  id              String    @id @default(uuid())
-  dayOfWeek       String    // Ex: "MONDAY", "TUESDAY"
-  startTime       String    // Ex: "09:00"
-  endTime         String    // Ex: "18:00"
-  professional    Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  professionalId  String    @map("professional_id")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id             String       @id @default(uuid())
+  dayOfWeek      String
+  startTime      String
+  endTime        String
+  professionalId String       @map("professional_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
 
   @@index([professionalId])
   @@map("professional_availability_slots")
 }
 
-// Modelo de Item do Portfólio do Profissional (NOVO)
 model ProfessionalPortfolioItem {
-  id              String    @id @default(uuid())
-  imageUrl        String
-  description     String?
-  professional    Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  professionalId  String    @map("professional_id")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id             String       @id @default(uuid())
+  imageUrl       String
+  description    String?
+  professionalId String       @map("professional_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
 
   @@index([professionalId])
   @@map("professional_portfolio_items")
 }
 
-// Tabela de relacionamento entre Profissional e Serviço
 model ProfessionalService {
-  professional  Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
   professionalId String       @map("professional_id")
-  service       Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  serviceId     String       @map("service_id")
-  price         String?      // Keeping this as String? for now, might need specific pricing per professional
+  serviceId      String       @map("service_id")
+  price          String?
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  service        Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@id([professionalId, serviceId])
-  @@index([serviceId]) // Index for filtering professionals by service
-  @@map("professional_services") // Map to lowercase table name
+  @@index([serviceId])
+  @@map("professional_services")
 }
 
-// Modelo de Agendamento
 model Appointment {
-  id            String    @id @default(uuid())
-  date          DateTime  // Data e hora de início do agendamento
-  status        AppointmentStatus @default(PENDING)
-  user          User      @relation(fields: [userId], references: [id])
-  userId        String    @map("user_id")
-  service       Service   @relation(fields: [serviceId], references: [id])
-  serviceId     String    @map("service_id")
-  professional  Professional? @relation("ProfessionalAppointments", fields: [professionalId], references: [id], onDelete: SetNull)
-  professionalId String?   @map("professional_id")
-  notes         String?
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id             String            @id @default(uuid())
+  date           DateTime
+  userId         String            @map("user_id")
+  serviceId      String            @map("service_id")
+  professionalId String?           @map("professional_id")
+  notes          String?
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+  status         AppointmentStatus @default(PENDING)
+  professional   Professional?     @relation("ProfessionalAppointments", fields: [professionalId], references: [id])
+  service        Service           @relation(fields: [serviceId], references: [id])
+  user           User              @relation(fields: [userId], references: [id])
 
-  @@index([userId])         // Index for user appointments
-  @@index([serviceId])      // Index for service appointments
-  @@index([professionalId]) // Index for professional appointments
-  @@index([date])           // Index for filtering by date
-  @@index([status])         // Added index for status filtering
-  @@map("appointments") // Map to lowercase table name
+  @@index([userId])
+  @@index([serviceId])
+  @@index([professionalId])
+  @@index([date])
+  @@index([status])
+  @@map("appointments")
 }
 
-// Modelo de Avaliação
 model Review {
-  id            String    @id @default(uuid())
-  rating        Float
-  comment       String?
-  user          User      @relation(fields: [userId], references: [id])
-  userId        String    @map("user_id")
-  service       Service?  @relation(fields: [serviceId], references: [id])
-  serviceId     String?   @map("service_id")
-  professional  Professional? @relation(fields: [professionalId], references: [id])
-  professionalId String?   @map("professional_id")
-  company       Company?  @relation(fields: [companyId], references: [id])
-  companyId     String?   @map("company_id")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id             String        @id @default(uuid())
+  rating         Float
+  comment        String?
+  userId         String        @map("user_id")
+  serviceId      String?       @map("service_id")
+  professionalId String?       @map("professional_id")
+  companyId      String?       @map("company_id")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  company        Company?      @relation(fields: [companyId], references: [id])
+  professional   Professional? @relation(fields: [professionalId], references: [id])
+  service        Service?      @relation(fields: [serviceId], references: [id])
+  user           User          @relation(fields: [userId], references: [id])
 
-  @@index([userId])         // Index for user reviews
-  @@index([serviceId])      // Index for service reviews
-  @@index([professionalId]) // Index for professional reviews
-  @@index([companyId])      // Index for company reviews
-  @@index([rating])         // Index for filtering by rating
-  @@map("reviews") // Map to lowercase table name
+  @@index([userId])
+  @@index([serviceId])
+  @@index([professionalId])
+  @@index([companyId])
+  @@index([rating])
+  @@map("reviews")
 }
 
-// Modelo de Categoria (NOVO)
 model Category {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique // Unique index already exists
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
   icon      String?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  services  Service[] // Added opposite relation field
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  services  Service[]
 
-  @@map("categories") // Map to lowercase table name
+  @@map("categories")
 }
 
-// Modelo de Bloqueio de Agenda (NOVO)
 model ScheduleBlock {
-  id            String    @id @default(uuid())
-  professionalId String    @map("professional_id")
-  professional  Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  startTime     DateTime  @map("start_time") // Início do período de bloqueio/folga
-  endTime       DateTime  @map("end_time")   // Fim do período de bloqueio/folga
-  reason        String?   // Motivo (opcional, ex: "Férias", "Almoço", "Bloqueio Manual")
-  isAllDay      Boolean   @default(false) @map("is_all_day") // Indica se o bloqueio é para o dia todo
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id             String       @id @default(uuid())
+  professionalId String       @map("professional_id")
+  startTime      DateTime     @map("start_time")
+  endTime        DateTime     @map("end_time")
+  reason         String?
+  isAllDay       Boolean      @default(false) @map("is_all_day")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
 
-  @@index([professionalId]) // Index for querying blocks by professional
-  @@index([startTime])      // Index for querying blocks by time
-  @@index([endTime])        // Index for querying blocks by time
+  @@index([professionalId])
+  @@index([startTime])
+  @@index([endTime])
   @@map("schedule_blocks")
 }
 
-// --- GAMIFICATION MODELS ---
-
-// Modelo de Badge (Conquista)
 model Badge {
-  id              String    @id @default(uuid())
-  name            String    @unique // Nome do badge (ex: "Primeiro Agendamento", "Top Avaliador")
-  description     String    // Descrição do que o badge representa
-  iconUrl         String?   @map("icon_url") // URL para o ícone do badge
-  pointsThreshold Int?      @map("points_threshold") // Pontos necessários para ganhar (opcional)
-  eventTrigger    String?   @map("event_trigger") // Evento específico que concede o badge (ex: "FIRST_APPOINTMENT_COMPLETED")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-  users           UserBadge[] // Relação com usuários que possuem o badge
+  id              String      @id @default(uuid())
+  name            String      @unique
+  description     String
+  iconUrl         String?     @map("icon_url")
+  pointsThreshold Int?        @map("points_threshold")
+  eventTrigger    String?     @map("event_trigger")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  users           UserBadge[]
 
   @@index([name])
   @@map("badges")
 }
 
-// Tabela de relacionamento entre Usuário e Badge
 model UserBadge {
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String   @map("user_id")
-  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
   badgeId   String   @map("badge_id")
-  awardedAt DateTime @default(now()) @map("awarded_at") // Quando o badge foi concedido
+  awardedAt DateTime @default(now()) @map("awarded_at")
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@id([userId, badgeId]) // Chave primária composta
-  @@index([badgeId]) // Index para buscar usuários por badge
+  @@id([userId, badgeId])
+  @@index([badgeId])
   @@map("user_badges")
 }
 
-// Modelo de Evento de Gamificação (para histórico e triggers)
 model GamificationEvent {
-  id          String    @id @default(uuid())
-  userId      String    @map("user_id")
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  eventType   String    @map("event_type") // Ex: "APPOINTMENT_COMPLETED", "REVIEW_SUBMITTED", "PROFILE_COMPLETED"
-  pointsAwarded Int       @default(0) @map("points_awarded")
-  details     Json?     // Detalhes adicionais sobre o evento (ex: ID do agendamento, ID da avaliação)
-  createdAt   DateTime  @default(now()) @map("created_at")
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  eventType     String   @map("event_type")
+  pointsAwarded Int      @default(0) @map("points_awarded")
+  createdAt     DateTime @default(now()) @map("created_at")
+  details       Json?
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([eventType])
   @@map("gamification_events")
 }
 
-// --- FEED/SOCIAL MODELS ---
-
-// Modelo de Postagem (Feed)
 model Post {
-  id          String    @id @default(uuid())
-  userId      String    @map("user_id")
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  content     String    // Conteúdo da postagem (texto, link para imagem/vídeo)
-  imageUrl    String?   @map("image_url") // URL da imagem, se houver
-  videoUrl    String?   @map("video_url") // URL do vídeo, se houver
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  comments    Comment[] // Comentários na postagem
-  likes       Like[]    // Likes na postagem
+  id        String    @id @default(uuid())
+  content   String
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  imageUrl  String?   @map("image_url")
+  userId    String    @map("user_id")
+  videoUrl  String?   @map("video_url")
+  comments  Comment[]
+  likes     Like[]
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("posts")
 }
 
-// Modelo de Comentário
 model Comment {
   id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  postId    String   @map("post_id")
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   content   String
+  postId    String   @map("post_id")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-  likes     Like[]   // Likes no comentário
+  userId    String   @map("user_id")
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes     Like[]
 
   @@index([userId])
   @@index([postId])
   @@map("comments")
 }
 
-// Modelo de Like (para Posts e Comentários)
 model Like {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  postId    String?  @map("post_id") // Opcional: Like pode ser em um Post
-  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
-  commentId String?  @map("comment_id") // Opcional: Like pode ser em um Comment
-  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  postId    String?  @map("post_id")
   createdAt DateTime @default(now()) @map("created_at")
+  commentId String?  @map("comment_id")
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, postId]) // Usuário só pode curtir um post uma vez
-  @@unique([userId, commentId]) // Usuário só pode curtir um comentário uma vez
+  @@unique([userId, postId])
+  @@unique([userId, commentId])
   @@index([postId])
   @@index([commentId])
   @@map("likes")
 }
 
-// Modelo de Log de Atividade (para Feed)
 model ActivityLog {
-  id          String    @id @default(uuid())
-  userId      String    @map("user_id")
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  activityType String   @map("activity_type") // Ex: "CREATED_POST", "LIKED_COMMENT", "COMPLETED_APPOINTMENT"
-  referenceId String?   @map("reference_id") // ID do objeto relacionado (Post, Comment, Appointment)
-  details     Json?     // Detalhes adicionais
-  createdAt   DateTime  @default(now()) @map("created_at")
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  activityType String   @map("activity_type")
+  details      Json?
+  referenceId  String?  @map("reference_id")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([activityType])
   @@map("activity_logs")
 }
 
-// --- NOTIFICATION MODELS ---
-
-// Modelo de Notificação
 model Notification {
-  id        String    @id @default(uuid())
-  userId    String    @map("user_id") // Para quem é a notificação
-  // user      User      @relation(fields: [userId], references: [id], onDelete: Cascade) // Relação com usuário (opcional, pode ser apenas ID)
-  type      String    // Tipo de notificação (ex: "NEW_APPOINTMENT", "APPOINTMENT_REMINDER", "REVIEW_RECEIVED")
-  message   String    // Conteúdo da notificação
-  isRead    Boolean   @default(false) @map("is_read")
-  linkTo    String?   @map("link_to") // Link para onde a notificação deve levar (ex: /appointments/123)
-  createdAt DateTime  @default(now()) @map("created_at")
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  type      String
+  message   String
+  isRead    Boolean  @default(false) @map("is_read")
+  linkTo    String?  @map("link_to")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@index([userId])
   @@index([isRead])
   @@map("notifications")
 }
 
+enum UserRole {
+  USER
+  ADMIN
+  PROFESSIONAL
+  COMPANY_OWNER
+  STAFF
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}

@@ -61,10 +61,8 @@ class GamificationService {
      * @param userId ID of the user
      * @param points Points to add
      * @param eventType The type of event triggering the points
-     * @param relatedEntityId Optional ID of the related entity (e.g., appointmentId)
-     * @param relatedEntityType Optional type of the related entity (e.g., "Appointment")
      */
-    addPoints(tx, userId, points, eventType, relatedEntityId, relatedEntityType) {
+    addPoints(tx, userId, points, eventType) {
         return __awaiter(this, void 0, void 0, function* () {
             console.log(`Adding ${points} points to user ${userId} for event ${eventType}`);
             // Record the event first
@@ -73,8 +71,6 @@ class GamificationService {
                     userId,
                     eventType,
                     pointsAwarded: points,
-                    relatedEntityId,
-                    relatedEntityType,
                 },
             });
             // Update user points directly on the User model
@@ -91,7 +87,7 @@ class GamificationService {
         });
     }
     /**
-     * Awards a badge to a user if they haven't received it already.
+     * Awards a badge to a user if they haven\'t received it already.
      * Runs within a transaction.
      * @param tx Prisma Transaction Client
      * @param userId ID of the user
@@ -119,7 +115,7 @@ class GamificationService {
         });
     }
     /**
-     * Checks if any badges should be awarded based on the user's new state (points, event counts).
+     * Checks if any badges should be awarded based on the user\'s new state (points, event counts).
      * Runs within a transaction.
      * @param tx Prisma Transaction Client
      * @param userId ID of the user
@@ -148,12 +144,12 @@ class GamificationService {
                 }
                 // Check specific event trigger
                 if (!shouldAward && badge.eventTrigger && badge.eventTrigger === triggeredEventType) {
-                    // Check if it's the first occurrence for specific badges by name
+                    // Check if it\'s the first occurrence for specific badges by name
                     if (badge.name === "Primeiro Agendamento" || badge.name === "Avaliador Iniciante") {
                         const eventCount = yield tx.gamificationEvent.count({
                             where: { userId: userId, eventType: badge.eventTrigger },
                         });
-                        // The event was just recorded, so count should be exactly 1 if it's the first time
+                        // The event was just recorded, so count should be exactly 1 if it\'s the first time
                         if (eventCount === 1) {
                             shouldAward = true;
                         }
@@ -188,7 +184,7 @@ class GamificationService {
      * This is the main public method to be called by other services/controllers.
      * @param userId ID of the user performing the action
      * @param eventType Type of the event that occurred
-     * @param context Optional context data (e.g., { relatedEntityId: '...' })
+     * @param context Optional context data (no longer used for relatedEntityId/Type)
      */
     triggerEvent(userId, eventType, context) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -201,10 +197,10 @@ class GamificationService {
                     const userExists = yield tx.user.findUnique({ where: { id: userId } });
                     if (!userExists) {
                         console.error(`User ${userId} not found. Cannot trigger gamification event.`);
-                        return; // Exit transaction if user doesn't exist
+                        return; // Exit transaction if user doesn\'t exist
                     }
                     if (pointsToAdd > 0) {
-                        updatedUser = yield this.addPoints(tx, userId, pointsToAdd, eventType, context === null || context === void 0 ? void 0 : context.relatedEntityId, context === null || context === void 0 ? void 0 : context.relatedEntityType);
+                        updatedUser = yield this.addPoints(tx, userId, pointsToAdd, eventType);
                     }
                     // Check for badges after points are added and event is recorded
                     yield this.checkAndAwardBadges(tx, userId, updatedUser !== null && updatedUser !== void 0 ? updatedUser : undefined, eventType);

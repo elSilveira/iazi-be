@@ -23,6 +23,39 @@ async function hashPassword(password: string): Promise<string> {
   return password + "-hashed";
 }
 
+// Helper to generate a URL-friendly slug from a name
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '');
+}
+
+// Helper to ensure slug uniqueness
+async function generateUniqueSlug(base: string, attempt = 0): Promise<string> {
+  let slug = slugify(base);
+  if (attempt > 0) slug += `-${attempt}`;
+  const existing = await prisma.user.findUnique({ where: { slug } });
+  if (!existing) return slug;
+  return generateUniqueSlug(base, attempt + 1);
+}
+
+// Helper to generate a unique slug for a user
+async function generateUniqueUserSlug(base: string): Promise<string> {
+  let slug = slugify(base);
+  let suffix = 1;
+  let unique = false;
+  while (!unique) {
+    const existing = await prisma.user.findUnique({ where: { slug } });
+    if (!existing) {
+      unique = true;
+    } else {
+      slug = `${slugify(base)}-${suffix++}`;
+    }
+  }
+  return slug;
+}
+
 const prisma = new PrismaClient();
 
 async function main() {
@@ -80,9 +113,10 @@ async function main() {
 
   // --- Create Users ---
   const hashedPasswordAlice = await hashPassword("password123");
+  const aliceSlug = await generateUniqueUserSlug("Alice Demo");
   const userAlice = await prisma.user.upsert({
     where: { email: "alice@example.com" },
-    update: { updatedAt: new Date() },
+    update: { updatedAt: new Date(), slug: aliceSlug },
     create: {
       email: "alice@example.com",
       name: "Alice Demo",
@@ -92,6 +126,7 @@ async function main() {
       bio: "Usuária de demonstração para testes.",
       phone: "11911111111",
       points: 50,
+      slug: aliceSlug,
       createdAt: pastDate(100),
       updatedAt: pastDate(10),
     },
@@ -99,9 +134,10 @@ async function main() {
   console.log(`Created/Updated user: ${userAlice.name} (ID: ${userAlice.id}) created at ${userAlice.createdAt}`);
 
   const hashedPasswordBob = await hashPassword("password456");
+  const bobSlug = await generateUniqueUserSlug("Bob Testador");
   const userBob = await prisma.user.upsert({
     where: { email: "bob@example.com" },
-    update: { updatedAt: new Date() },
+    update: { updatedAt: new Date(), slug: bobSlug },
     create: {
       email: "bob@example.com",
       name: "Bob Testador",
@@ -111,6 +147,7 @@ async function main() {
       bio: "Outro usuário para testes.",
       phone: "11922222222",
       points: 25,
+      slug: bobSlug,
       createdAt: pastDate(80),
       updatedAt: pastDate(5),
     },
@@ -288,11 +325,12 @@ async function main() {
     await prisma.activityLog.create({
       data: {
         userId: userAlice.id,
-        type: "APPOINTMENT_CONFIRMED", 
-        message: `Seu agendamento para Corte de Cabelo foi confirmado para ${appointment1.date.toLocaleString("pt-BR")}`,
-        relatedEntityId: appointment1.id,
-        relatedEntityType: "Appointment",
-        createdAt: new Date(), // ActivityLog has createdAt
+        activityType: "APPOINTMENT_CONFIRMED", // updated field name
+        details: {
+          message: `Seu agendamento para Corte de Cabelo foi confirmado para ${appointment1.date.toLocaleString("pt-BR")}`
+        },
+        referenceId: appointment1.id,
+        createdAt: new Date(),
       }
     });
   }
@@ -306,8 +344,7 @@ async function main() {
       serviceId: corteServiceId,
       professionalId: joaoSilvaId,
       companyId: companyVintage.id,
-      createdAt: pastDate(3),
-      updatedAt: pastDate(3),
+      updatedAt: pastDate(3), // removed createdAt
     }
   });
   console.log("Created a review.");
@@ -377,15 +414,12 @@ async function main() {
   console.log(`Awarded '${badge1.name}' to ${userAlice.name}`);
 
   // --- Create Gamification Event ---
-  // GamificationEvent in schema does NOT have createdAt or updatedAt
   await prisma.gamificationEvent.create({
     data: {
       userId: userAlice.id,
-      eventType: "APPOINTMENT_COMPLETED", 
+      eventType: "APPOINTMENT_COMPLETED",
       pointsAwarded: 10,
-      relatedEntityId: corteServiceId, 
-      relatedEntityType: "Service",
-      // No createdAt or updatedAt for GamificationEvent as per schema
+      details: { relatedEntityId: corteServiceId, relatedEntityType: "Service" }, // use details JSON
     }
   });
   console.log("Created gamification event for Alice.");
@@ -393,9 +427,8 @@ async function main() {
   // --- Create Posts ---
   const post1 = await prisma.post.create({
     data: {
-      title: "Novo Visual para o Verão!",
-      content: "Confira as novas tendências de cortes para o verão na Barbearia Vintage! Agende seu horário.",
-      authorId: userAlice.id, 
+      content: "Novo Visual para o Verão! Confira as novas tendências de cortes para o verão na Barbearia Vintage! Agende seu horário.",
+      userId: userAlice.id, // changed from authorId
       imageUrl: "https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=600",
       createdAt: pastDate(8),
       updatedAt: pastDate(7),
@@ -407,7 +440,7 @@ async function main() {
   await prisma.comment.create({
     data: {
       content: "Adorei as dicas! Vou agendar!",
-      authorId: userBob.id,
+      userId: userBob.id, // changed from authorId
       postId: post1.id,
       createdAt: pastDate(6),
       updatedAt: pastDate(6),

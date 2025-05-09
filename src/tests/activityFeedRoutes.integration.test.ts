@@ -100,7 +100,6 @@ const cleanupDatabase = async () => {
     await prisma.activityLog.deleteMany({ where: { userId: user?.id } });
     await prisma.review.deleteMany({ where: { userId: user?.id } });
     await prisma.appointment.deleteMany({ where: { userId: user?.id } });
-    // Ensure professional and service exist before trying to delete ProfessionalService
     if (professional && service) {
         await prisma.professionalService.deleteMany({ where: { professionalId: professional.id, serviceId: service.id } });
     }
@@ -116,7 +115,6 @@ const cleanupDatabase = async () => {
     if (user) {
         await prisma.user.deleteMany({ where: { id: user.id } });
     }
-    // Delete category if it was created specifically for this test
     await prisma.category.deleteMany({ where: { name: "Test Category Feed" } });
 };
 
@@ -144,12 +142,12 @@ describe("Activity Feed API (/api/users/me/feed)", () => {
         // Clean up entities created within tests
         if (createdAppointmentId) {
             await prisma.appointment.deleteMany({ where: { id: createdAppointmentId } });
-            await prisma.activityLog.deleteMany({ where: { relatedEntityId: createdAppointmentId } });
+            await prisma.activityLog.deleteMany({ where: { referenceId: createdAppointmentId } });
             createdAppointmentId = null;
         }
         if (createdReviewId) {
             await prisma.review.deleteMany({ where: { id: createdReviewId } });
-            await prisma.activityLog.deleteMany({ where: { relatedEntityId: createdReviewId } });
+            await prisma.activityLog.deleteMany({ where: { referenceId: createdReviewId } });
             createdReviewId = null;
         }
     });
@@ -175,13 +173,15 @@ describe("Activity Feed API (/api/users/me/feed)", () => {
         const log = await prisma.activityLog.findFirst({
             where: {
                 userId: user.id,
-                type: "NEW_APPOINTMENT",
-                relatedEntityId: createdAppointmentId,
+                activityType: "NEW_APPOINTMENT",
+                referenceId: createdAppointmentId,
             },
         });
         expect(log).not.toBeNull();
-        expect(log?.message).toContain("Você agendou");
-        expect(log?.message).toContain(service.name);
+        // Ensure details is an object before accessing message
+        const details = typeof log?.details === 'object' && log?.details !== null ? log.details as { message?: string } : {};
+        expect(details.message).toContain("Você agendou");
+        expect(details.message).toContain(service.name);
     });
 
     // This test depends on a PATCH /cancel endpoint which might not exist
@@ -215,14 +215,15 @@ describe("Activity Feed API (/api/users/me/feed)", () => {
         const log = await prisma.activityLog.findFirst({
             where: {
                 userId: user.id,
-                type: "APPOINTMENT_CANCELLED",
-                relatedEntityId: appointmentId,
+                activityType: "APPOINTMENT_CANCELLED",
+                referenceId: appointmentId,
             },
             orderBy: { createdAt: 'desc' } // Get the latest log for this appointment
         });
         expect(log).not.toBeNull();
-        expect(log?.message).toContain("foi cancelado");
-        expect(log?.message).toContain(service.name);
+        const detailsCancel = typeof log?.details === 'object' && log?.details !== null ? log.details as { message?: string } : {};
+        expect(detailsCancel.message).toContain("foi cancelado");
+        expect(detailsCancel.message).toContain(service.name);
     });
 
     it("should log NEW_REVIEW activity when a review is created", async () => {
@@ -244,14 +245,15 @@ describe("Activity Feed API (/api/users/me/feed)", () => {
         const log = await prisma.activityLog.findFirst({
             where: {
                 userId: user.id,
-                type: "NEW_REVIEW",
-                relatedEntityId: createdReviewId,
+                activityType: "NEW_REVIEW",
+                referenceId: createdReviewId,
             },
         });
         expect(log).not.toBeNull();
-        expect(log?.message).toContain("Você avaliou");
-        expect(log?.message).toContain(`serviço ${service.name}`);
-        expect(log?.message).toContain(`${reviewData.rating} estrela(s)`);
+        const detailsReview = typeof log?.details === 'object' && log?.details !== null ? log.details as { message?: string } : {};
+        expect(detailsReview.message).toContain("Você avaliou");
+        expect(detailsReview.message).toContain(`serviço ${service.name}`);
+        expect(detailsReview.message).toContain(`${reviewData.rating} estrela(s)`);
     });
 
     it("should return the user's activity feed with pagination", async () => {

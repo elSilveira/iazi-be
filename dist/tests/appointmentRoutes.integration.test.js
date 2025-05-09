@@ -316,8 +316,7 @@ describe("POST /api/appointments", () => {
         // Clean up appointment created in the test
         if (createdAppointmentId) {
             yield prismaClient_1.prisma.appointment.deleteMany({ where: { id: createdAppointmentId } });
-            yield prismaClient_1.prisma.activityLog.deleteMany({ where: { relatedEntityId: createdAppointmentId } });
-            yield prismaClient_1.prisma.gamificationEvent.deleteMany({ where: { relatedEntityId: createdAppointmentId } });
+            yield prismaClient_1.prisma.activityLog.deleteMany({ where: { referenceId: createdAppointmentId } });
             createdAppointmentId = null;
         }
     }));
@@ -339,12 +338,9 @@ describe("POST /api/appointments", () => {
         expect(new Date(response.body.date)).toEqual(bookableTime);
         expect(response.body.status).toBe(client_1.AppointmentStatus.PENDING);
         // Check if ActivityLog and Gamification events were triggered (optional but good)
-        const activityLogs = yield prismaClient_1.prisma.activityLog.findMany({ where: { userId: testUser.id, relatedEntityId: createdAppointmentId } });
+        const activityLogs = yield prismaClient_1.prisma.activityLog.findMany({ where: { userId: testUser.id, referenceId: createdAppointmentId } });
         expect(activityLogs.length).toBeGreaterThanOrEqual(1); // Should have at least one log for creation
-        expect(activityLogs[0].type).toBe("NEW_APPOINTMENT");
-        const gamificationEvents = yield prismaClient_1.prisma.gamificationEvent.findMany({ where: { userId: testUser.id, relatedEntityId: createdAppointmentId } });
-        // Gamification might trigger later (on CONFIRMED/COMPLETED), so this might be 0
-        // expect(gamificationEvents.length).toBeGreaterThan(0); 
+        expect(activityLogs[0].activityType).toBe("NEW_APPOINTMENT");
     }));
     it("should return 401 if user is not authenticated", () => __awaiter(void 0, void 0, void 0, function* () {
         const response = yield (0, supertest_1.default)(index_1.app)
@@ -676,8 +672,7 @@ describe("PATCH /api/appointments/:id/status", () => {
     }));
     afterEach(() => __awaiter(void 0, void 0, void 0, function* () {
         yield prismaClient_1.prisma.appointment.deleteMany({ where: { id: { in: [pendingAppointment.id, confirmedAppointment.id] } } });
-        yield prismaClient_1.prisma.activityLog.deleteMany({ where: { relatedEntityId: { in: [pendingAppointment.id, confirmedAppointment.id] } } });
-        yield prismaClient_1.prisma.gamificationEvent.deleteMany({ where: { relatedEntityId: { in: [pendingAppointment.id, confirmedAppointment.id] } } });
+        yield prismaClient_1.prisma.activityLog.deleteMany({ where: { referenceId: { in: [pendingAppointment.id, confirmedAppointment.id] } } });
     }));
     it("should allow admin to confirm a pending appointment", () => __awaiter(void 0, void 0, void 0, function* () {
         const response = yield (0, supertest_1.default)(index_1.app)
@@ -687,7 +682,7 @@ describe("PATCH /api/appointments/:id/status", () => {
         expect(response.status).toBe(200);
         expect(response.body.status).toBe(client_1.AppointmentStatus.CONFIRMED);
         // Check activity log
-        const logs = yield prismaClient_1.prisma.activityLog.findMany({ where: { userId: pendingAppointment.userId, relatedEntityId: pendingAppointment.id, type: "APPOINTMENT_CONFIRMED" } });
+        const logs = yield prismaClient_1.prisma.activityLog.findMany({ where: { userId: pendingAppointment.userId, referenceId: pendingAppointment.id, activityType: "APPOINTMENT_CONFIRMED" } });
         expect(logs.length).toBe(1);
     }));
     it("should allow owner to cancel a pending appointment with enough notice", () => __awaiter(void 0, void 0, void 0, function* () {
@@ -698,7 +693,7 @@ describe("PATCH /api/appointments/:id/status", () => {
         expect(response.status).toBe(200);
         expect(response.body.status).toBe(client_1.AppointmentStatus.CANCELLED);
         // Check activity log
-        const logs = yield prismaClient_1.prisma.activityLog.findMany({ where: { userId: pendingAppointment.userId, relatedEntityId: pendingAppointment.id, type: "APPOINTMENT_CANCELLED" } });
+        const logs = yield prismaClient_1.prisma.activityLog.findMany({ where: { userId: pendingAppointment.userId, referenceId: pendingAppointment.id, activityType: "APPOINTMENT_CANCELLED" } });
         expect(logs.length).toBe(1);
     }));
     it("should allow owner to cancel a confirmed appointment with enough notice", () => __awaiter(void 0, void 0, void 0, function* () {
@@ -737,10 +732,10 @@ describe("PATCH /api/appointments/:id/status", () => {
         expect(response.status).toBe(200);
         expect(response.body.status).toBe(client_1.AppointmentStatus.COMPLETED);
         // Check activity log
-        const logs = yield prismaClient_1.prisma.activityLog.findMany({ where: { userId: confirmedAppointment.userId, relatedEntityId: confirmedAppointment.id, type: "APPOINTMENT_COMPLETED" } });
+        const logs = yield prismaClient_1.prisma.activityLog.findMany({ where: { userId: confirmedAppointment.userId, referenceId: confirmedAppointment.id, activityType: "APPOINTMENT_COMPLETED" } });
         expect(logs.length).toBe(1);
         // Check gamification event
-        const gamificationEvent = yield prismaClient_1.prisma.gamificationEvent.findFirst({ where: { userId: confirmedAppointment.userId, relatedEntityId: confirmedAppointment.id, eventType: gamificationService_1.GamificationEventType.APPOINTMENT_COMPLETED } });
+        const gamificationEvent = yield prismaClient_1.prisma.gamificationEvent.findFirst({ where: { userId: confirmedAppointment.userId, eventType: gamificationService_1.GamificationEventType.APPOINTMENT_COMPLETED } });
         expect(gamificationEvent).toBeDefined();
     }));
     it("should deny non-admin/non-owner from changing status", () => __awaiter(void 0, void 0, void 0, function* () {

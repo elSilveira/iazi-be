@@ -126,8 +126,7 @@ const createTestData = async () => {
 
 // Clean up database before and after tests
 beforeAll(async () => {
-  // Clean related tables first (order matters due to foreign keys)
-  // await prisma.notification.deleteMany({}); // Model doesn't exist
+  // Clean related tables first (children before parents)
   await prisma.activityLog.deleteMany({});
   await prisma.userBadge.deleteMany({});
   await prisma.badge.deleteMany({});
@@ -149,8 +148,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // Clean up again
-  // await prisma.notification.deleteMany({});
+  // Clean up again (children before parents)
   await prisma.activityLog.deleteMany({});
   await prisma.userBadge.deleteMany({});
   await prisma.badge.deleteMany({});

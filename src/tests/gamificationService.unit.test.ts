@@ -100,8 +100,8 @@ describe("Gamification Service", () => {
                     userId: mockUserId,
                     eventType: eventType,
                     pointsAwarded: pointsToAdd,
-                    relatedEntityId: undefined,
-                    relatedEntityType: undefined,
+                    referenceId: undefined,
+                    details: { relatedEntityType: undefined },
                 },
             });
             expect(prisma.user.update).toHaveBeenCalledWith({
@@ -121,7 +121,7 @@ describe("Gamification Service", () => {
         it("should award 'Primeiro Agendamento' badge only on the first APPOINTMENT_COMPLETED event", async () => {
             const eventType = GamificationEventType.APPOINTMENT_COMPLETED;
             const pointsToAdd = EVENT_POINTS[eventType] ?? 0;
-            const relatedEntityId = "appt-1";
+            const referenceId = "appt-1";
 
             // Mocks for first event
             (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce(mockUser);
@@ -132,7 +132,7 @@ describe("Gamification Service", () => {
             (prisma.gamificationEvent.count as jest.Mock).mockResolvedValueOnce(1); // First event of this type
             (prisma.userBadge.create as jest.Mock).mockResolvedValueOnce({}); // Award badge
 
-            await gamificationService.triggerEvent(mockUserId, eventType, { relatedEntityId });
+            await gamificationService.triggerEvent(mockUserId, eventType, { referenceId });
 
             expect(prisma.gamificationEvent.count).toHaveBeenCalledWith({
                 where: { userId: mockUserId, eventType: mockBadgeFirstAppointment.eventTrigger },
@@ -154,7 +154,7 @@ describe("Gamification Service", () => {
             (prisma.userBadge.findMany as jest.Mock).mockResolvedValueOnce([{ badgeId: mockBadgeFirstAppointment.id }]);
             (prisma.gamificationEvent.count as jest.Mock).mockResolvedValueOnce(2); // Second event of this type
 
-            await gamificationService.triggerEvent(mockUserId, eventType, { relatedEntityId: "appt-2" });
+            await gamificationService.triggerEvent(mockUserId, eventType, { referenceId: "appt-2" });
 
             // Verify badge was NOT awarded again
             expect(prisma.gamificationEvent.count).toHaveBeenCalledWith({

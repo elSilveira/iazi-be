@@ -22,6 +22,29 @@ const isValidEmail = (email: string): boolean => {
   return emailRegex.test(email);
 };
 
+// Helper to generate a URL-friendly slug from a name
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '');
+}
+
+async function generateUniqueUserSlug(base: string): Promise<string> {
+  let slug = slugify(base);
+  let suffix = 1;
+  let unique = false;
+  while (!unique) {
+    const existing = await userRepository.findBySlug(slug);
+    if (!existing) {
+      unique = true;
+    } else {
+      slug = `${slugify(base)}-${suffix++}`;
+    }
+  }
+  return slug;
+}
+
 // Função de Login
 export const login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { email, password } = req.body;
@@ -83,12 +106,14 @@ export const register = async (req: Request, res: Response, next: NextFunction):
 
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const slug = await generateUniqueUserSlug(name);
 
     const userData: Prisma.UserCreateInput = {
       email,
       password: hashedPassword,
       name,
       avatar,
+      slug,
     };
     const newUser = await userRepository.create(userData);
 

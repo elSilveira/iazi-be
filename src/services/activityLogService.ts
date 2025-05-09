@@ -9,13 +9,13 @@ interface RelatedEntity {
  * Logs an activity for a specific user.
  *
  * @param userId - The ID of the user performing the action.
- * @param type - The type of activity (e.g., 'NEW_APPOINTMENT', 'NEW_REVIEW').
+ * @param activityType - The type of activity (e.g., 'NEW_APPOINTMENT', 'NEW_REVIEW').
  * @param relatedEntity - Optional entity related to the activity (e.g., the appointment or review object).
  * @param message - A descriptive message for the activity log.
  */
 export const logActivity = async (
   userId: string,
-  type: string,
+  activityType: string, // renamed from 'type'
   message: string,
   relatedEntity?: RelatedEntity | null
 ): Promise<void> => {
@@ -23,13 +23,12 @@ export const logActivity = async (
     await prisma.activityLog.create({
       data: {
         userId,
-        type,
-        message,
-        relatedEntityId: relatedEntity?.id,
-        relatedEntityType: relatedEntity?.type,
+        activityType, // use correct field name
+        referenceId: relatedEntity?.id, // use correct field name
+        details: { message, relatedEntityType: relatedEntity?.type }, // store message and type in details JSON
       },
     });
-    console.log(`Activity logged: User ${userId}, Type: ${type}, Message: ${message}`);
+    console.log(`Activity logged: User ${userId}, Type: ${activityType}, Message: ${message}`);
   } catch (error) {
     console.error('Error logging activity:', error);
     // Decide if the error should be thrown or handled silently
