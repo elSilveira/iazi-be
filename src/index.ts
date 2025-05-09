@@ -24,6 +24,9 @@ import { setupSwagger } from './swagger';
 const app: Express = express();
 const port = process.env.PORT || 3002;
 
+// Confia no primeiro proxy
+app.set('trust proxy', 1);
+
 // --- Rate Limiting Configuration ---
 const authLimiter = rateLimit({
 	windowMs: 15 * 60 * 1000, // 15 minutes
@@ -47,7 +50,7 @@ app.use(helmet());
 
 // Configuração CORS mais restrita para produção
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' ? process.env.FRONTEND_URL || '*' : '*', // Permite origem específica em produção ou qualquer em dev/test
+  origin: process.env.NODE_ENV === 'production' ? process.env.FRONTEND_URL || '*' : '*',
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   credentials: true, // Se precisar enviar cookies/authorization headers
   optionsSuccessStatus: 204
@@ -58,14 +61,6 @@ app.use(cors(corsOptions));
 // Apply authLimiter specifically to auth routes
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
-
-// Apply appointmentLimiter specifically to the POST /api/appointments route
-// Note: Applying middleware directly to a specific method on a router is cleaner
-// but requires modifying the router file. Applying here targets the path.
-// This might affect GET requests too if not handled carefully in the router.
-// A better approach is to apply it within the appointmentRoutes.ts file if possible.
-// For now, applying broadly to the path for demonstration.
-// app.use('/api/appointments', appointmentLimiter); // Consider applying more granularly
 
 // *** Aumentar limite do payload para JSON e URL-encoded ***
 app.use(express.json({ limit: '10mb' }));
@@ -84,12 +79,12 @@ app.use('/api/auth', authRouter);
 app.use('/api/services', serviceRouter);
 app.use('/api/companies', companyRouter);
 app.use('/api/professionals', professionalRouter);
-app.use('/api/appointments', appointmentRouter); // Appointment limiter might be better applied inside this router
+app.use('/api/appointments', appointmentRouter);
 app.use('/api/reviews', reviewRouter);
 app.use('/api/users', userRouter);
 app.use('/api/categories', categoryRouter);
-app.use('/api/notifications', notificationRouter); // Added notification routes
-app.use('/api/gamification', gamificationRouter); // Added gamification routes
+app.use('/api/notifications', notificationRouter);
+app.use('/api/gamification', gamificationRouter);
 
 import { errorMiddleware } from './middlewares/errorMiddleware'; // Importar o middleware de erro
 app.use(errorMiddleware); // Usar o middleware de erro global
@@ -113,6 +108,5 @@ import likeRoutes from './routes/likeRoutes';
 
 
 // Rotas Sociais
-app.use("/api/posts", postRoutes); // Monta as rotas de posts e comentários aninhados
-app.use("/api", likeRoutes);    // Monta as rotas de likes (com caminhos completos definidos nelas)
-
+app.use("/api/posts", postRoutes); 
+app.use("/api", likeRoutes);

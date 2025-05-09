@@ -10,6 +10,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Enum para os papéis de usuário
+enum UserRole {
+  USER
+  ADMIN
+  PROFESSIONAL // Adicionado para representar um profissional individual
+  COMPANY_OWNER // Adicionado para representar o dono de uma empresa
+  STAFF         // Adicionado para representar um funcionário de uma empresa (se necessário)
+}
+
+// Enum para o status do agendamento
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
 // Modelo de Usuário
 model User {
   id            String    @id @default(uuid())
@@ -354,115 +372,105 @@ model UserBadge {
   @@map("user_badges")
 }
 
-// Modelo de Histórico de Eventos de Gamificação
+// Modelo de Evento de Gamificação (para histórico e triggers)
 model GamificationEvent {
-  id                String    @id @default(uuid())
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId            String    @map("user_id")
-  eventType         String    @map("event_type") // Tipo do evento (ex: "USER_REGISTERED", "APPOINTMENT_COMPLETED")
-  pointsAwarded     Int       @map("points_awarded") // Pontos concedidos por este evento
-  awardedAt         DateTime  @default(now()) @map("awarded_at")
-  relatedEntityId   String?   @map("related_entity_id") // ID da entidade relacionada (ex: ID do agendamento, ID da avaliação)
-  relatedEntityType String?   @map("related_entity_type") // Tipo da entidade relacionada (ex: "Appointment", "Review")
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventType   String    @map("event_type") // Ex: "APPOINTMENT_COMPLETED", "REVIEW_SUBMITTED", "PROFILE_COMPLETED"
+  pointsAwarded Int       @default(0) @map("points_awarded")
+  details     Json?     // Detalhes adicionais sobre o evento (ex: ID do agendamento, ID da avaliação)
+  createdAt   DateTime  @default(now()) @map("created_at")
 
   @@index([userId])
   @@index([eventType])
-  @@index([awardedAt])
   @@map("gamification_events")
 }
 
-// --- FEED MODELS ---
+// --- FEED/SOCIAL MODELS ---
 
-// Modelo de Log de Atividade
-model ActivityLog {
-  id                String    @id @default(uuid())
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId            String    @map("user_id")
-  type              String    // Tipo da atividade (ex: "NEW_APPOINTMENT", "NEW_REVIEW")
-  message           String    // Mensagem descritiva da atividade
-  relatedEntityId   String?   @map("related_entity_id") // ID da entidade relacionada (ex: Appointment ID)
-  relatedEntityType String?   @map("related_entity_type") // Tipo da entidade (ex: "Appointment")
-  createdAt         DateTime  @default(now()) @map("created_at")
-
-  @@index([userId]) // Index para buscar atividades do usuário
-  @@index([createdAt]) // Index para ordenar o feed
-  @@index([type]) // Index para filtrar por tipo de atividade
-  @@map("activity_logs")
-}
-
-// --- ENUMS ---
-
-enum UserRole {
-  USER
-  ADMIN
-  PROFESSIONAL // Not used directly on User model, but Professional has a User
-  COMPANY_OWNER // Not used directly on User model, but Company might have an owner User
-}
-
-enum AppointmentStatus {
-  PENDING
-  CONFIRMED
-  CANCELLED
-  COMPLETED
-  NO_SHOW
-}
-
-// Modelo de Post (para feed)
+// Modelo de Postagem (Feed)
 model Post {
-  id        String    @id @default(uuid())
-  title     String
-  content   String
-  imageUrl  String?            // Added imageUrl for posts, as it is used in postService.ts
-  author    User      @relation(fields: [authorId], references: [id])
-  authorId  String    @map("author_id")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  comments  Comment[]
-  likes     Like[]
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content     String    // Conteúdo da postagem (texto, link para imagem/vídeo)
+  imageUrl    String?   @map("image_url") // URL da imagem, se houver
+  videoUrl    String?   @map("video_url") // URL do vídeo, se houver
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  comments    Comment[] // Comentários na postagem
+  likes       Like[]    // Likes na postagem
 
-  @@index([authorId])
+  @@index([userId])
   @@map("posts")
 }
 
-// Modelo de Comentário (para posts)
+// Modelo de Comentário
 model Comment {
   id        String   @id @default(uuid())
-  content   String
-  author    User     @relation(fields: [authorId], references: [id])
-  authorId  String   @map("author_id")
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   postId    String   @map("post_id")
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  content   String
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-  likes     Like[] // Added for bi-directional relation with Like model
+  likes     Like[]   // Likes no comentário
 
-  @@index([authorId])
+  @@index([userId])
   @@index([postId])
   @@map("comments")
 }
 
-// Modelo de Like (para posts e comentários)
+// Modelo de Like (para Posts e Comentários)
 model Like {
   id        String   @id @default(uuid())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String   @map("user_id")
-
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String?  @map("post_id") // Opcional: Like pode ser em um Post
   post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
-  postId    String?  @map("post_id")
-
+  commentId String?  @map("comment_id") // Opcional: Like pode ser em um Comment
   comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  commentId String?  @map("comment_id")
-
   createdAt DateTime @default(now()) @map("created_at")
 
-  // A user can like a specific post once, or a specific comment once.
-  // postId and commentId are optional. The application layer should ensure one is set.
-  // These constraints prevent duplicate likes for the same item by the same user.
-  @@unique([userId, postId], name: "UserPostLikeUniqueConstraint")
-  @@unique([userId, commentId], name: "UserCommentLikeUniqueConstraint")
-
+  @@unique([userId, postId]) // Usuário só pode curtir um post uma vez
+  @@unique([userId, commentId]) // Usuário só pode curtir um comentário uma vez
   @@index([postId])
-  @@index([commentId]) // New index
+  @@index([commentId])
   @@map("likes")
+}
+
+// Modelo de Log de Atividade (para Feed)
+model ActivityLog {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityType String   @map("activity_type") // Ex: "CREATED_POST", "LIKED_COMMENT", "COMPLETED_APPOINTMENT"
+  referenceId String?   @map("reference_id") // ID do objeto relacionado (Post, Comment, Appointment)
+  details     Json?     // Detalhes adicionais
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([activityType])
+  @@map("activity_logs")
+}
+
+// --- NOTIFICATION MODELS ---
+
+// Modelo de Notificação
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id") // Para quem é a notificação
+  // user      User      @relation(fields: [userId], references: [id], onDelete: Cascade) // Relação com usuário (opcional, pode ser apenas ID)
+  type      String    // Tipo de notificação (ex: "NEW_APPOINTMENT", "APPOINTMENT_REMINDER", "REVIEW_RECEIVED")
+  message   String    // Conteúdo da notificação
+  isRead    Boolean   @default(false) @map("is_read")
+  linkTo    String?   @map("link_to") // Link para onde a notificação deve levar (ex: /appointments/123)
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
 }
 
