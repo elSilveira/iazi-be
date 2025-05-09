@@ -64,16 +64,12 @@ class GamificationService {
      * @param userId ID of the user
      * @param points Points to add
      * @param eventType The type of event triggering the points
-     * @param relatedEntityId Optional ID of the related entity (e.g., appointmentId)
-     * @param relatedEntityType Optional type of the related entity (e.g., "Appointment")
      */
     private async addPoints(
         tx: Prisma.TransactionClient,
         userId: string,
         points: number,
-        eventType: GamificationEventType,
-        relatedEntityId?: string,
-        relatedEntityType?: string
+        eventType: GamificationEventType
     ): Promise<User> {
         console.log(`Adding ${points} points to user ${userId} for event ${eventType}`);
         // Record the event first
@@ -82,8 +78,6 @@ class GamificationService {
                 userId,
                 eventType,
                 pointsAwarded: points,
-                relatedEntityId,
-                relatedEntityType,
             },
         });
 
@@ -101,7 +95,7 @@ class GamificationService {
     }
 
     /**
-     * Awards a badge to a user if they haven't received it already.
+     * Awards a badge to a user if they haven\'t received it already.
      * Runs within a transaction.
      * @param tx Prisma Transaction Client
      * @param userId ID of the user
@@ -130,7 +124,7 @@ class GamificationService {
     }
 
     /**
-     * Checks if any badges should be awarded based on the user's new state (points, event counts).
+     * Checks if any badges should be awarded based on the user\'s new state (points, event counts).
      * Runs within a transaction.
      * @param tx Prisma Transaction Client
      * @param userId ID of the user
@@ -163,12 +157,12 @@ class GamificationService {
 
             // Check specific event trigger
             if (!shouldAward && badge.eventTrigger && badge.eventTrigger === triggeredEventType) {
-                 // Check if it's the first occurrence for specific badges by name
+                 // Check if it\'s the first occurrence for specific badges by name
                  if (badge.name === "Primeiro Agendamento" || badge.name === "Avaliador Iniciante") {
                      const eventCount = await tx.gamificationEvent.count({
                          where: { userId: userId, eventType: badge.eventTrigger },
                      });
-                     // The event was just recorded, so count should be exactly 1 if it's the first time
+                     // The event was just recorded, so count should be exactly 1 if it\'s the first time
                      if (eventCount === 1) {
                          shouldAward = true;
                      }
@@ -204,9 +198,9 @@ class GamificationService {
      * This is the main public method to be called by other services/controllers.
      * @param userId ID of the user performing the action
      * @param eventType Type of the event that occurred
-     * @param context Optional context data (e.g., { relatedEntityId: '...' })
+     * @param context Optional context data (no longer used for relatedEntityId/Type)
      */
-    public async triggerEvent(userId: string, eventType: GamificationEventType, context?: { relatedEntityId?: string; relatedEntityType?: string }): Promise<void> {
+    public async triggerEvent(userId: string, eventType: GamificationEventType, context?: { [key: string]: any }): Promise<void> {
         const pointsToAdd = EVENT_POINTS[eventType] ?? 0;
 
         try {
@@ -216,7 +210,7 @@ class GamificationService {
                 const userExists = await tx.user.findUnique({ where: { id: userId } });
                 if (!userExists) {
                     console.error(`User ${userId} not found. Cannot trigger gamification event.`);
-                    return; // Exit transaction if user doesn't exist
+                    return; // Exit transaction if user doesn\'t exist
                 }
 
                 if (pointsToAdd > 0) {
@@ -224,9 +218,7 @@ class GamificationService {
                         tx,
                         userId,
                         pointsToAdd,
-                        eventType,
-                        context?.relatedEntityId,
-                        context?.relatedEntityType
+                        eventType
                     );
                 }
 
