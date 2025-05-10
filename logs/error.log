@@ -72,3 +72,465 @@
 [31m          })[39m
 
 [31mUnknown argument `avatar`. Available options are marked with ?. - /api/professionals/2948c5cf-8649-40d0-b65a-fff478130d83 - PUT - 127.0.0.1[39m
+2025-05-09 18:27:11:2711 [31merror[39m: [31m401 - Not authorized, token failed - /api/users/me - GET - 127.0.0.1[39m
+2025-05-09 18:27:11:2711 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 18:28:11:2811 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 18:28:11:2811 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 18:30:33:3033 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 18:30:33:3033 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 18:30:33:3033 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 18:33:57:3357 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 18:33:57:3357 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 18:39:06:396 [31merror[39m: [31m401 - Credenciais inválidas - /api/auth/login - POST - 127.0.0.1[39m
+2025-05-09 18:39:16:3916 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 18:59:01:591 [31merror[39m: [31m401 - Credenciais inválidas - /api/auth/login - POST - 127.0.0.1[39m
+2025-05-09 19:00:32:032 [31merror[39m: [31m500 - [39m
+[31mInvalid `tx.professionalExperience.createMany()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\professionalRepository.ts:94:41[39m
+
+[31m  91 }[39m
+[31m  92 [39m
+[31m  93 if (experiencesData && experiencesData.length > 0) {[39m
+[31m→ 94   await tx.professionalExperience.createMany({[39m
+[31m         data: [[39m
+[31m           {[39m
+[31m             title: "Cavalo",[39m
+[31m             companyName: "No Exercito",[39m
+[31m             startDate: "2025-03",[39m
+[31m             endDate: "2025-02",[39m
+[31m             description: "Experiente nada",[39m
+[31m             professionalId: "022a0282-f18f-49da-b6cd-65024bd8a74b"[39m
+[31m           }[39m
+[31m         ][39m
+[31m       })[39m
+
+[31mInvalid value for argument `startDate`: premature end of input. Expected ISO-8601 DateTime. - /api/professionals - POST - 127.0.0.1[39m
+2025-05-09 19:02:00:20 [31merror[39m: [31m500 - [39m
+[31mInvalid `tx.professionalEducation.createMany()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\professionalRepository.ts:100:40[39m
+
+[31m   97 }[39m
+[31m   98 [39m
+[31m   99 if (educationsData && educationsData.length > 0) {[39m
+[31m→ 100   await tx.professionalEducation.createMany({[39m
+[31m          data: [[39m
+[31m            {[39m
+[31m              institution: "Nenhuma",[39m
+[31m              degree: "INteressante",[39m
+[31m              fieldOfStudy: "Hone",[39m
+[31m              startDate: "2025-12",[39m
+[31m              endDate: "2025-04",[39m
+[31m              description: "nada demais",[39m
+[31m              professionalId: "a63a22bf-b8f8-4ef2-901d-1f02504042ac"[39m
+[31m            }[39m
+[31m          ][39m
+[31m        })[39m
+
+[31mInvalid value for argument `startDate`: premature end of input. Expected ISO-8601 DateTime. - /api/professionals - POST - 127.0.0.1[39m
+2025-05-09 19:03:31:331 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 19:03:31:331 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 19:03:34:334 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 20:15:09:159 [31merror[39m: [31m401 - Not authorized, token failed - /api/professionals - POST - 127.0.0.1[39m
+2025-05-09 20:15:09:159 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 20:15:11:1511 [31merror[39m: [31m401 - Credenciais inválidas - /api/auth/login - POST - 127.0.0.1[39m
+2025-05-09 20:39:17:3917 [31merror[39m: [31m401 - Not authorized, no token - /api/services - POST - ::ffff:127.0.0.1[39m
+2025-05-09 20:42:28:4228 [31merror[39m: [31m401 - Not authorized, no token - /api/services - POST - ::ffff:127.0.0.1[39m
+2025-05-09 20:43:17:4317 [31merror[39m: [31m401 - Not authorized, token failed - /api/professionals/me - GET - 127.0.0.1[39m
+2025-05-09 20:43:17:4317 [31merror[39m: [31m401 - Not authorized, token failed - /api/professionals/me - GET - 127.0.0.1[39m
+2025-05-09 20:43:17:4317 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 20:43:19:4319 [31merror[39m: [31m401 - Credenciais inválidas - /api/auth/login - POST - 127.0.0.1[39m
+2025-05-09 20:58:04:584 [31merror[39m: [31m401 - Credenciais inválidas - /api/auth/login - POST - 127.0.0.1[39m
+2025-05-09 21:13:08:138 [31merror[39m: [31m401 - Not authorized, token failed - /api/services - POST - 127.0.0.1[39m
+2025-05-09 21:13:08:138 [31merror[39m: [31m401 - Not authorized, token failed - /api/professionals/99543ebc-cd0e-4692-b5f4-357802ffe6e9 - PUT - 127.0.0.1[39m
+2025-05-09 21:13:08:138 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 21:30:52:3052 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 21:30:52:3052 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 21:30:52:3052 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 22:14:54:1454 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 22:14:54:1454 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 22:14:54:1454 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 22:23:11:2311 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 22:23:11:2311 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 22:25:47:2547 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 22:25:47:2547 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-09 22:52:02:522 [31merror[39m: [31m401 - Not authorized, token failed - /api/services - POST - 127.0.0.1[39m
+2025-05-09 22:52:02:522 [31merror[39m: [31m401 - Not authorized, token failed - /api/professionals/99543ebc-cd0e-4692-b5f4-357802ffe6e9 - PUT - 127.0.0.1[39m
+2025-05-09 22:52:02:522 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-09 23:00:21:021 [31merror[39m: [31m500 - [39m
+[31mInvalid `prisma.service.create()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\serviceRepository.ts:57:27[39m
+
+[31m  54 },[39m
+[31m  55 [39m
+[31m  56 async create(data: Prisma.ServiceCreateInput): Promise<Service> {[39m
+[31m→ 57   return prisma.service.create({[39m
+[31m         data: {[39m
+[31m           name: "Corte de Cabelo Masculino",[39m
+[31m           description: "asd",[39m
+[31m           price: new Prisma.Decimal("123"),[39m
+[31m           duration: "60",[39m
+[31m           image: undefined,[39m
+[31m           category: {[39m
+[31m             connect: {[39m
+[31m               id: 45[39m
+[31m             }[39m
+[31m           },[39m
+[31m       +   company: {[39m
+[31m       +     create: CompanyCreateWithoutServicesInput | CompanyUncheckedCreateWithoutServicesInput,[39m
+[31m       +     connectOrCreate: CompanyCreateOrConnectWithoutServicesInput,[39m
+[31m       +     connect: CompanyWhereUniqueInput[39m
+[31m       +   }[39m
+[31m         }[39m
+[31m       })[39m
+
+[31mArgument `company` is missing. - /api/services - POST - 127.0.0.1[39m
+2025-05-09 23:01:44:144 [31merror[39m: [31m500 - [39m
+[31mInvalid `prisma.service.create()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\serviceRepository.ts:57:27[39m
+
+[31m  54 },[39m
+[31m  55 [39m
+[31m  56 async create(data: Prisma.ServiceCreateInput): Promise<Service> {[39m
+[31m→ 57   return prisma.service.create({[39m
+[31m         data: {[39m
+[31m           name: "Corte de Cabelo Masculino",[39m
+[31m           description: "asd",[39m
+[31m           price: new Prisma.Decimal("123"),[39m
+[31m           duration: "60",[39m
+[31m           image: undefined,[39m
+[31m           category: {[39m
+[31m             connect: {[39m
+[31m               id: 45[39m
+[31m             }[39m
+[31m           },[39m
+[31m       +   company: {[39m
+[31m       +     create: CompanyCreateWithoutServicesInput | CompanyUncheckedCreateWithoutServicesInput,[39m
+[31m       +     connectOrCreate: CompanyCreateOrConnectWithoutServicesInput,[39m
+[31m       +     connect: CompanyWhereUniqueInput[39m
+[31m       +   }[39m
+[31m         }[39m
+[31m       })[39m
+
+[31mArgument `company` is missing. - /api/services - POST - 127.0.0.1[39m
+2025-05-09 23:02:59:259 [31merror[39m: [31m500 - [39m
+[31mInvalid `prisma.service.create()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\serviceRepository.ts:57:27[39m
+
+[31m  54 },[39m
+[31m  55 [39m
+[31m  56 async create(data: Prisma.ServiceCreateInput): Promise<Service> {[39m
+[31m→ 57   return prisma.service.create({[39m
+[31m         data: {[39m
+[31m           name: "Corte de Cabelo Masculino",[39m
+[31m           description: "asd",[39m
+[31m           price: new Prisma.Decimal("123"),[39m
+[31m           duration: "60",[39m
+[31m           image: undefined,[39m
+[31m           category: {[39m
+[31m             connect: {[39m
+[31m               id: 45[39m
+[31m             }[39m
+[31m           },[39m
+[31m       +   company: {[39m
+[31m       +     create: CompanyCreateWithoutServicesInput | CompanyUncheckedCreateWithoutServicesInput,[39m
+[31m       +     connectOrCreate: CompanyCreateOrConnectWithoutServicesInput,[39m
+[31m       +     connect: CompanyWhereUniqueInput[39m
+[31m       +   }[39m
+[31m         }[39m
+[31m       })[39m
+
+[31mArgument `company` is missing. - /api/services - POST - 127.0.0.1[39m
+2025-05-09 23:27:43:2743 [31merror[39m: [31m500 - [39m
+[31mInvalid `prisma.service.create()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\serviceRepository.ts:57:27[39m
+
+[31m  54 },[39m
+[31m  55 [39m
+[31m  56 async create(data: Prisma.ServiceCreateInput): Promise<Service> {[39m
+[31m→ 57   return prisma.service.create({[39m
+[31m         data: {[39m
+[31m           name: "Corte de Cabelo Masculino",[39m
+[31m           description: "asd",[39m
+[31m           price: new Prisma.Decimal("123"),[39m
+[31m           duration: "60",[39m
+[31m           image: undefined,[39m
+[31m           category: {[39m
+[31m             connect: {[39m
+[31m               id: 49[39m
+[31m             }[39m
+[31m           },[39m
+[31m       +   company: {[39m
+[31m       +     create: CompanyCreateWithoutServicesInput | CompanyUncheckedCreateWithoutServicesInput,[39m
+[31m       +     connectOrCreate: CompanyCreateOrConnectWithoutServicesInput,[39m
+[31m       +     connect: CompanyWhereUniqueInput[39m
+[31m       +   }[39m
+[31m         }[39m
+[31m       })[39m
+
+[31mArgument `company` is missing. - /api/services - POST - 127.0.0.1[39m
+2025-05-09 23:28:45:2845 [31merror[39m: [31m500 - [39m
+[31mInvalid `prisma.service.create()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\serviceRepository.ts:57:27[39m
+
+[31m  54 },[39m
+[31m  55 [39m
+[31m  56 async create(data: Prisma.ServiceCreateInput): Promise<Service> {[39m
+[31m→ 57   return prisma.service.create({[39m
+[31m         data: {[39m
+[31m           name: "Corte de Cabelo Masculino",[39m
+[31m           description: "asd",[39m
+[31m           price: new Prisma.Decimal("123"),[39m
+[31m           duration: "60",[39m
+[31m           image: undefined,[39m
+[31m           category: {[39m
+[31m             connect: {[39m
+[31m               id: 49[39m
+[31m             }[39m
+[31m           },[39m
+[31m       +   company: {[39m
+[31m       +     create: CompanyCreateWithoutServicesInput | CompanyUncheckedCreateWithoutServicesInput,[39m
+[31m       +     connectOrCreate: CompanyCreateOrConnectWithoutServicesInput,[39m
+[31m       +     connect: CompanyWhereUniqueInput[39m
+[31m       +   }[39m
+[31m         }[39m
+[31m       })[39m
+
+[31mArgument `company` is missing. - /api/services - POST - 127.0.0.1[39m
+2025-05-09 23:29:46:2946 [31merror[39m: [31m500 - [39m
+[31mInvalid `prisma.service.create()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\serviceRepository.ts:65:27[39m
+
+[31m  62   // Defensive: delete if undefined[39m
+[31m  63   delete (cleanData as any).company;[39m
+[31m  64 }[39m
+[31m→ 65 return prisma.service.create({[39m
+[31m       data: {[39m
+[31m         name: "Corte de Cabelo Masculino",[39m
+[31m         description: "asd",[39m
+[31m         price: new Prisma.Decimal("123"),[39m
+[31m         duration: "60",[39m
+[31m         image: undefined,[39m
+[31m         category: {[39m
+[31m           connect: {[39m
+[31m             id: 49[39m
+[31m           }[39m
+[31m         },[39m
+[31m     +   company: {[39m
+[31m     +     create: CompanyCreateWithoutServicesInput | CompanyUncheckedCreateWithoutServicesInput,[39m
+[31m     +     connectOrCreate: CompanyCreateOrConnectWithoutServicesInput,[39m
+[31m     +     connect: CompanyWhereUniqueInput[39m
+[31m     +   }[39m
+[31m       }[39m
+[31m     })[39m
+
+[31mArgument `company` is missing. - /api/services - POST - 127.0.0.1[39m
+2025-05-09 23:30:53:3053 [31merror[39m: [31m500 - [39m
+[31mInvalid `prisma.service.create()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\serviceRepository.ts:62:27[39m
+
+[31m  59 if (!cleanData.company) {[39m
+[31m  60   delete (cleanData as any).company;[39m
+[31m  61 }[39m
+[31m→ 62 return prisma.service.create({[39m
+[31m       data: {[39m
+[31m         name: "Corte de Cabelo Masculino",[39m
+[31m         description: "asd",[39m
+[31m         price: new Prisma.Decimal("123"),[39m
+[31m         duration: "60",[39m
+[31m         image: undefined,[39m
+[31m         category: {[39m
+[31m           connect: {[39m
+[31m             id: 49[39m
+[31m           }[39m
+[31m         },[39m
+[31m     +   company: {[39m
+[31m     +     create: CompanyCreateWithoutServicesInput | CompanyUncheckedCreateWithoutServicesInput,[39m
+[31m     +     connectOrCreate: CompanyCreateOrConnectWithoutServicesInput,[39m
+[31m     +     connect: CompanyWhereUniqueInput[39m
+[31m     +   }[39m
+[31m       }[39m
+[31m     })[39m
+
+[31mArgument `company` is missing. - /api/services - POST - 127.0.0.1[39m
+2025-05-09 23:31:53:3153 [31merror[39m: [31m500 - [39m
+[31mInvalid `prisma.service.create()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\serviceRepository.ts:63:27[39m
+
+[31m  60   delete cleanData.company;[39m
+[31m  61 }[39m
+[31m  62 // Do NOT add companyId at all for professionals (it is handled by the relation, not as a direct field)[39m
+[31m→ 63 return prisma.service.create({[39m
+[31m       data: {[39m
+[31m         name: "Corte de Cabelo Masculino",[39m
+[31m         description: "asd",[39m
+[31m         price: new Prisma.Decimal("123"),[39m
+[31m         duration: "60",[39m
+[31m         image: undefined,[39m
+[31m         category: {[39m
+[31m           connect: {[39m
+[31m             id: 49[39m
+[31m           }[39m
+[31m         },[39m
+[31m     +   company: {[39m
+[31m     +     create: CompanyCreateWithoutServicesInput | CompanyUncheckedCreateWithoutServicesInput,[39m
+[31m     +     connectOrCreate: CompanyCreateOrConnectWithoutServicesInput,[39m
+[31m     +     connect: CompanyWhereUniqueInput[39m
+[31m     +   }[39m
+[31m       }[39m
+[31m     })[39m
+
+[31mArgument `company` is missing. - /api/services - POST - 127.0.0.1[39m
+2025-05-09 23:32:30:3230 [31merror[39m: [31m500 - [39m
+[31mInvalid `prisma.service.create()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\serviceRepository.ts:63:27[39m
+
+[31m  60   delete cleanData.company;[39m
+[31m  61 }[39m
+[31m  62 // Do NOT add companyId at all for professionals (it is handled by the relation, not as a direct field)[39m
+[31m→ 63 return prisma.service.create({[39m
+[31m       data: {[39m
+[31m         name: "Corte de Cabelo Masculino",[39m
+[31m         description: "asd",[39m
+[31m         price: new Prisma.Decimal("123"),[39m
+[31m         duration: "60",[39m
+[31m         image: undefined,[39m
+[31m         category: {[39m
+[31m           connect: {[39m
+[31m             id: 49[39m
+[31m           }[39m
+[31m         },[39m
+[31m     +   company: {[39m
+[31m     +     create: CompanyCreateWithoutServicesInput | CompanyUncheckedCreateWithoutServicesInput,[39m
+[31m     +     connectOrCreate: CompanyCreateOrConnectWithoutServicesInput,[39m
+[31m     +     connect: CompanyWhereUniqueInput[39m
+[31m     +   }[39m
+[31m       }[39m
+[31m     })[39m
+
+[31mArgument `company` is missing. - /api/services - POST - 127.0.0.1[39m
+2025-05-09 23:56:05:565 [31merror[39m: [31m401 - Not authorized, token failed - /api/professionals/me - GET - 127.0.0.1[39m
+2025-05-09 23:56:05:565 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-10 00:17:28:1728 [31merror[39m: [31m401 - Not authorized, token failed - /api/professionals/me - GET - 127.0.0.1[39m
+2025-05-10 00:17:28:1728 [31merror[39m: [31m401 - Not authorized, token failed - /api/professionals/me - GET - 127.0.0.1[39m
+2025-05-10 00:17:28:1728 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-10 00:55:15:5515 [31merror[39m: [31m401 - Not authorized, token failed - /api/professionals/me - GET - 127.0.0.1[39m
+2025-05-10 00:55:15:5515 [31merror[39m: [31m401 - Not authorized, token failed - /api/professionals/me - GET - 127.0.0.1[39m
+2025-05-10 00:55:15:5515 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-10 01:11:00:110 [31merror[39m: [31m401 - Not authorized, token failed - /api/professionals/me - GET - 127.0.0.1[39m
+2025-05-10 01:11:00:110 [31merror[39m: [31m401 - Not authorized, token failed - /api/professionals/me - GET - 127.0.0.1[39m
+2025-05-10 01:11:00:110 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-10 01:16:35:1635 [31merror[39m: [31m500 - [39m
+[31mInvalid `tx.professional.create()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\controllers\professionalController.ts:167:59[39m
+
+[31m  164 const { prisma } = require("../lib/prisma");[39m
+[31m  165 const newProfessional = await prisma.$transaction(async (tx: any) => {[39m
+[31m  166   // Create professional[39m
+[31m→ 167   const createdProfessional = await tx.professional.create([39m
+[31mThe change you are trying to make would violate the required relation 'ProfessionalToUser' between the `Professional` and `User` models. - /api/professionals - POST - 127.0.0.1[39m
+2025-05-10 01:18:11:1811 [31merror[39m: [31m500 - [39m
+[31mInvalid `tx.professional.create()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\controllers\professionalController.ts:167:59[39m
+
+[31m  164 const { prisma } = require("../lib/prisma");[39m
+[31m  165 const newProfessional = await prisma.$transaction(async (tx: any) => {[39m
+[31m  166   // Create professional[39m
+[31m→ 167   const createdProfessional = await tx.professional.create([39m
+[31mThe change you are trying to make would violate the required relation 'ProfessionalToUser' between the `Professional` and `User` models. - /api/professionals - POST - 127.0.0.1[39m
+2025-05-10 01:18:35:1835 [31merror[39m: [31m500 - [39m
+[31mInvalid `tx.professional.create()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\controllers\professionalController.ts:167:59[39m
+
+[31m  164 const { prisma } = require("../lib/prisma");[39m
+[31m  165 const newProfessional = await prisma.$transaction(async (tx: any) => {[39m
+[31m  166   // Create professional[39m
+[31m→ 167   const createdProfessional = await tx.professional.create([39m
+[31mThe change you are trying to make would violate the required relation 'ProfessionalToUser' between the `Professional` and `User` models. - /api/professionals - POST - 127.0.0.1[39m
+2025-05-10 01:19:55:1955 [31merror[39m: [31m500 - [39m
+[31mInvalid `tx.professional.create()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\controllers\professionalController.ts:167:59[39m
+
+[31m  164 const { prisma } = require("../lib/prisma");[39m
+[31m  165 const newProfessional = await prisma.$transaction(async (tx: any) => {[39m
+[31m  166   // Create professional[39m
+[31m→ 167   const createdProfessional = await tx.professional.create([39m
+[31mThe change you are trying to make would violate the required relation 'ProfessionalToUser' between the `Professional` and `User` models. - /api/professionals - POST - 127.0.0.1[39m
+2025-05-10 01:21:20:2120 [31merror[39m: [31m500 - [39m
+[31mInvalid `tx.professional.create()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\controllers\professionalController.ts:167:59[39m
+
+[31m  164 const { prisma } = require("../lib/prisma");[39m
+[31m  165 const newProfessional = await prisma.$transaction(async (tx: any) => {[39m
+[31m  166   // Create professional[39m
+[31m→ 167   const createdProfessional = await tx.professional.create([39m
+[31mThe change you are trying to make would violate the required relation 'ProfessionalToUser' between the `Professional` and `User` models. - /api/professionals - POST - 127.0.0.1[39m
+2025-05-10 01:21:45:2145 [31merror[39m: [31m500 - [39m
+[31mInvalid `tx.professional.create()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\controllers\professionalController.ts:167:59[39m
+
+[31m  164 const { prisma } = require("../lib/prisma");[39m
+[31m  165 const newProfessional = await prisma.$transaction(async (tx: any) => {[39m
+[31m  166   // Create professional[39m
+[31m→ 167   const createdProfessional = await tx.professional.create([39m
+[31mThe change you are trying to make would violate the required relation 'ProfessionalToUser' between the `Professional` and `User` models. - /api/professionals - POST - 127.0.0.1[39m
+2025-05-10 01:32:13:3213 [31merror[39m: [31m401 - Not authorized, token failed - /api/professionals/undefined - PUT - 127.0.0.1[39m
+2025-05-10 01:32:13:3213 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-10 02:05:22:522 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-10 02:05:22:522 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-10 02:05:22:522 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-10 10:05:42:542 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-10 10:05:42:542 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-10 10:05:42:542 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-10 10:06:14:614 [31merror[39m: [31m500 - [39m
+[31mInvalid `tx.professionalExperience.createMany()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\professionalRepository.ts:152:43[39m
+
+[31m  149 if (experiencesData !== undefined) {[39m
+[31m  150   await tx.professionalExperience.deleteMany({ where: { professionalId: id } });[39m
+[31m  151   if (experiencesData.length > 0) {[39m
+[31m→ 152     await tx.professionalExperience.createMany({[39m
+[31m            data: [[39m
+[31m              {[39m
+[31m                title: "Cavalo",[39m
+[31m                companyName: "No Exercito",[39m
+[31m                startDate: "2025-05",[39m
+[31m                endDate: "2025-11",[39m
+[31m                description: "teste",[39m
+[31m                professionalId: "99543ebc-cd0e-4692-b5f4-357802ffe6e9"[39m
+[31m              }[39m
+[31m            ][39m
+[31m          })[39m
+
+[31mInvalid value for argument `startDate`: premature end of input. Expected ISO-8601 DateTime. - /api/professionals/me - PUT - 127.0.0.1[39m
+2025-05-10 10:06:19:619 [31merror[39m: [31m500 - [39m
+[31mInvalid `tx.professionalExperience.createMany()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\professionalRepository.ts:152:43[39m
+
+[31m  149 if (experiencesData !== undefined) {[39m
+[31m  150   await tx.professionalExperience.deleteMany({ where: { professionalId: id } });[39m
+[31m  151   if (experiencesData.length > 0) {[39m
+[31m→ 152     await tx.professionalExperience.createMany({[39m
+[31m            data: [[39m
+[31m              {[39m
+[31m                title: "Cavalo",[39m
+[31m                companyName: "No Exercito",[39m
+[31m                startDate: "2025-05",[39m
+[31m                endDate: "2025-11",[39m
+[31m                description: "teste",[39m
+[31m                professionalId: "99543ebc-cd0e-4692-b5f4-357802ffe6e9"[39m
+[31m              }[39m
+[31m            ][39m
+[31m          })[39m
+
+[31mInvalid value for argument `startDate`: premature end of input. Expected ISO-8601 DateTime. - /api/professionals/me - PUT - 127.0.0.1[39m
+2025-05-10 10:22:16:2216 [31merror[39m: [31m401 - Not authorized, token failed - /api/professionals/me - GET - 127.0.0.1[39m
+2025-05-10 10:22:16:2216 [31merror[39m: [31m401 - Not authorized, token failed - /api/professionals/me - GET - 127.0.0.1[39m
+2025-05-10 10:22:16:2216 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-10 10:55:03:553 [31merror[39m: [31m401 - Not authorized, token failed - /api/professionals/me - GET - 127.0.0.1[39m
+2025-05-10 10:55:03:553 [31merror[39m: [31m401 - Not authorized, token failed - /api/professionals/me - GET - 127.0.0.1[39m
+2025-05-10 10:55:03:553 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-10 11:15:11:1511 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-10 11:15:11:1511 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-10 11:15:11:1511 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-10 11:16:51:1651 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-10 11:16:51:1651 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m

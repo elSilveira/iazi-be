@@ -10,7 +10,6 @@ const professionalValidators_1 = require("../validators/professionalValidators")
 const serviceValidators_1 = require("../validators/serviceValidators");
 const validationMiddleware_1 = require("../middlewares/validationMiddleware"); // Corrected import
 const asyncHandler_1 = __importDefault(require("../utils/asyncHandler")); // Corrected import
-const companyController_1 = require("../controllers/companyController");
 const professionalAuthMiddleware_1 = require("../middlewares/professionalAuthMiddleware");
 const router = (0, express_1.Router)();
 /**
@@ -89,6 +88,39 @@ router.get("/", (0, asyncHandler_1.default)(professionalController_1.getAllProfe
  *         description: Erro interno do servidor.
  */
 router.get("/me", authMiddleware_1.authMiddleware, (0, asyncHandler_1.default)(professionalController_1.getMyProfessionalHandler));
+/**
+ * @swagger
+ * /api/professionals/me:
+ *   put:
+ *     summary: Atualiza o perfil profissional do usuário autenticado
+ *     tags: [Professionals]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ProfessionalUpdateInput'
+ *     responses:
+ *       200:
+ *         description: Perfil profissional atualizado com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Professional'
+ *       400:
+ *         description: Erro de validação nos dados da requisição.
+ *       401:
+ *         description: Não autorizado (token inválido ou ausente).
+ *       403:
+ *         description: Acesso negado (usuário não é dono do perfil ou admin).
+ *       404:
+ *         description: Perfil profissional não encontrado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.put("/me", authMiddleware_1.authMiddleware, ...professionalValidators_1.updateMyProfessionalValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(require("../controllers/professionalController").updateMyProfessionalHandler));
 /**
  * @swagger
  * /api/professionals/{id}:
@@ -225,8 +257,7 @@ validationMiddleware_1.validateRequest, // Corrected
  *       500:
  *         description: Erro interno do servidor.
  */
-router.delete("/:id", companyController_1.checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
-professionalValidators_1.professionalIdValidator[0], // Pass the single middleware function directly
+router.delete("/:id", professionalValidators_1.professionalIdValidator[0], // Pass the single middleware function directly
 validationMiddleware_1.validateRequest, // Corrected
 (0, asyncHandler_1.default)(professionalController_1.deleteProfessionalHandler));
 /**
@@ -265,7 +296,10 @@ validationMiddleware_1.validateRequest, // Corrected
  *       500:
  *         description: Erro interno do servidor.
  */
-router.post("/:professionalId/services", companyController_1.checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware (checks based on professionalId)
+router.post("/:professionalId/services", authMiddleware_1.authMiddleware, (req, res, next) => {
+    req.params.id = req.params.professionalId; // For compatibility with the middleware
+    next();
+}, professionalAuthMiddleware_1.checkProfessionalOwnerOrAdminMiddleware, // Allow professional owner or admin
 ...professionalValidators_1.professionalServiceAssociationValidator, // Spread validation middlewares
 validationMiddleware_1.validateRequest, // Corrected
 (0, asyncHandler_1.default)(professionalController_1.addServiceToProfessionalHandler));
@@ -308,9 +342,14 @@ validationMiddleware_1.validateRequest, // Corrected
  *       500:
  *         description: Erro interno do servidor.
  */
-router.delete("/:professionalId/services/:serviceId", companyController_1.checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware (checks based on professionalId)
+router.delete("/:professionalId/services/:serviceId", authMiddleware_1.authMiddleware, (req, res, next) => {
+    req.params.id = req.params.professionalId; // For compatibility with the middleware
+    next();
+}, professionalAuthMiddleware_1.checkProfessionalOwnerOrAdminMiddleware, // Allow professional owner or admin
 professionalValidators_1.professionalIdValidator[0], // Pass the single middleware function directly
 serviceValidators_1.serviceIdValidator[0], // Pass the single middleware function directly
 validationMiddleware_1.validateRequest, // Corrected
 (0, asyncHandler_1.default)(professionalController_1.removeServiceFromProfessionalHandler));
+// Get all services for the authenticated professional
+router.get("/me/services", authMiddleware_1.authMiddleware, (0, asyncHandler_1.default)(require("../controllers/professionalController").getMyProfessionalServicesHandler));
 exports.default = router;

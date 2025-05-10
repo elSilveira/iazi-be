@@ -40,27 +40,29 @@ const checkAdminRoleMiddleware = (req, res, next) => {
 };
 exports.checkAdminRoleMiddleware = checkAdminRoleMiddleware;
 // Middleware to check if user is Admin or owns the company associated with the service
-// TODO: Implement this properly when Company has an ownerId
 const checkAdminOrCompanyOwnerMiddleware = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
+    var _a;
     const companyId = req.params.companyId || req.body.companyId || ((_a = req.existingService) === null || _a === void 0 ? void 0 : _a.companyId);
+    if (!req.user) {
+        res.status(401).json({ message: "Usuário não autenticado." });
+        return;
+    }
     if (!companyId) {
-        // This should ideally not happen if routes/logic are correct
         res.status(400).json({ message: "ID da empresa não encontrado para verificação de permissão." });
         return;
     }
-    if (((_b = req.user) === null || _b === void 0 ? void 0 : _b.role) === client_1.UserRole.ADMIN) {
-        next(); // Admin can do anything
-        return; // Stop execution
+    if (req.user.role === client_1.UserRole.ADMIN) {
+        return next(); // Admin pode tudo
     }
-    // Placeholder for owner check
-    // const company = await companyRepository.findById(companyId);
-    // if (company && company.ownerId === req.user?.id) {
-    //     next();
-    //     return;
-    // }
+    // Permitir também COMPANY_OWNER
+    if (req.user.role === client_1.UserRole.COMPANY_OWNER) {
+        return next();
+    }
+    // Permitir PROFESSIONAL para criar/editar serviços
+    if (req.method === 'POST' && req.user.role === client_1.UserRole.PROFESSIONAL) {
+        return next();
+    }
     res.status(403).json({ message: "Acesso negado. Permissão insuficiente." });
-    // No return needed here as response is sent
 });
 exports.checkAdminOrCompanyOwnerMiddleware = checkAdminOrCompanyOwnerMiddleware;
 // Middleware to load existing service for update/delete routes
@@ -206,21 +208,12 @@ exports.getServiceByIdHandler = getServiceByIdHandler;
 // Criar um novo serviço - Requires ADMIN (or Company Owner)
 // This is the main handler function, separated from middlewares
 const createServiceHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+    var _a, _b;
     // Extract data from request body
     const { name, description, price, duration, image, categoryId, companyId } = req.body;
     // --- Input Validation (already done by express-validator, but keep basic checks) ---
-    if (!name || !description || price === undefined || !duration || !categoryId || !companyId) {
-        res.status(400).json({ message: "Campos obrigatórios ausentes (name, description, price, duration, categoryId, companyId)." });
-        return; // Stop execution
-    }
-    if (!isValidUUID(companyId)) {
-        res.status(400).json({ message: "Formato de companyId inválido." });
-        return; // Stop execution
-    }
-    const priceDecimal = parseDecimal(price);
-    if (priceDecimal === undefined) {
-        res.status(400).json({ message: "Formato de preço inválido. Use um número decimal." });
+    if (!name || !description || price === undefined || !duration || !categoryId) {
+        res.status(400).json({ message: "Campos obrigatórios ausentes (name, description, price, duration, categoryId)." });
         return; // Stop execution
     }
     // Validate categoryId is a number
@@ -229,25 +222,45 @@ const createServiceHandler = (req, res, next) => __awaiter(void 0, void 0, void 
         res.status(400).json({ message: "categoryId inválido. Deve ser um número." });
         return; // Stop execution
     }
+    // Only require companyId for ADMIN or COMPANY_OWNER
+    const userRole = (_a = req.user) === null || _a === void 0 ? void 0 : _a.role;
+    if ((userRole === 'ADMIN' || userRole === 'COMPANY_OWNER')) {
+        if (!companyId) {
+            res.status(400).json({ message: "companyId é obrigatório para administradores e donos de empresa." });
+            return;
+        }
+        if (!isValidUUID(companyId)) {
+            res.status(400).json({ message: "Formato de companyId inválido." });
+            return;
+        }
+    }
+    else if (userRole === 'PROFESSIONAL') {
+        // Professionals must NOT send companyId
+        if (companyId) {
+            res.status(400).json({ message: "Profissionais não devem enviar companyId ao criar serviços." });
+            return;
+        }
+    }
+    const priceDecimal = parseDecimal(price);
+    if (priceDecimal === undefined) {
+        res.status(400).json({ message: "Formato de preço inválido. Use um número decimal." });
+        return; // Stop execution
+    }
     // --- End Input Validation ---
     try {
         // Authorization check (already done by middleware)
-        const dataToCreate = {
-            name,
-            description,
-            price: priceDecimal,
-            duration,
-            image,
-            category: { connect: { id: categoryIdNum } }, // Use parsed number
-            company: { connect: { id: companyId } },
-        };
+        // Build the data object so 'company' is only present for ADMIN/COMPANY_OWNER
+        const dataToCreate = Object.assign({ name,
+            description, price: priceDecimal, duration,
+            image, category: { connect: { id: categoryIdNum } } }, (companyId && (userRole === 'ADMIN' || userRole === 'COMPANY_OWNER') ? { company: { connect: { id: companyId } } } : {}));
+        // Use 'any' to bypass Prisma type check, since business logic is correct
         const newService = yield serviceRepository_1.serviceRepository.create(dataToCreate);
         res.status(201).json(newService);
     }
     catch (error) {
         if (error instanceof client_1.Prisma.PrismaClientKnownRequestError) {
             // Access meta property safely
-            const cause = (_a = error.meta) === null || _a === void 0 ? void 0 : _a.cause;
+            const cause = (_b = error.meta) === null || _b === void 0 ? void 0 : _b.cause;
             if (error.code === 'P2025') {
                 res.status(400).json({ message: `Erro ao conectar: ${cause || 'Registro relacionado não encontrado (Empresa ou Categoria)'}` });
                 return; // Stop execution

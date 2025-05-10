@@ -356,6 +356,38 @@ describe("POST /api/professionals", () => {
       .send({ ...newProfessionalData, companyId: nonExistentId });
     expect(res.statusCode).toEqual(400); // P2025 handled as 400
   });
+
+  it("should update user role to PROFESSIONAL after creating a professional profile", async () => {
+    // Create a new user with USER role
+    const tempUser = await prisma.user.create({
+      data: {
+        name: "Temp User For Prof Role Test",
+        email: `tempuser-profrole-${Date.now()}@test.com`,
+        password: "hashedpassword",
+        role: UserRole.USER,
+        points: 0,
+        slug: `tempuser-profrole-${Date.now()}`
+      }
+    });
+    const tempToken = generateToken(tempUser.id, tempUser.role);
+    // Create a professional profile for this user
+    const profRes = await request(app)
+      .post("/api/professionals")
+      .set("Authorization", `Bearer ${tempToken}`)
+      .send({
+        name: "Temp Professional",
+        role: "Test Role",
+        companyId: testCompanyId1
+      });
+    expect(profRes.statusCode).toEqual(201);
+    // Fetch the user from DB and check role
+    const updatedUser = await prisma.user.findUnique({ where: { id: tempUser.id } });
+    expect(updatedUser).toBeDefined();
+    expect(updatedUser!.role).toBe("PROFESSIONAL");
+    // Cleanup
+    await prisma.professional.deleteMany({ where: { userId: tempUser.id } });
+    await prisma.user.delete({ where: { id: tempUser.id } });
+  });
 });
 
 // --- PUT Tests (Admin Only) ---

@@ -64,8 +64,14 @@ exports.serviceRepository = {
     },
     create(data) {
         return __awaiter(this, void 0, void 0, function* () {
+            // Remove 'company' property if it is not present or not needed
+            const cleanData = Object.assign({}, data);
+            if (typeof cleanData.company === 'undefined') {
+                delete cleanData.company;
+            }
+            // Do NOT add companyId at all for professionals (it is handled by the relation, not as a direct field)
             return prisma_1.prisma.service.create({
-                data,
+                data: cleanData,
             });
         });
     },

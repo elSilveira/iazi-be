@@ -2,6 +2,7 @@
 import { Request, Response, NextFunction } from "express";
 import { professionalRepository } from "../repositories/professionalRepository";
 import { Prisma, UserRole } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 
 interface AuthenticatedUser {
   id: string;
@@ -20,6 +21,26 @@ const isValidUUID = (uuid: string): boolean => {
   const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
   return uuidRegex.test(uuid);
 };
+
+// Helper to parse YYYY-MM or YYYY-MM-DD to Date (UTC, first day of month if day missing)
+function parseToDateOrKeepUndefined(input?: string): Date | string {
+  if (!input) return new Date('1970-01-01T00:00:00.000Z'); // fallback to epoch (never null/undefined)
+  if (/^\d{4}-\d{2}$/.test(input)) {
+    return new Date(input + '-01T00:00:00.000Z');
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(input)) {
+    return new Date(input + 'T00:00:00.000Z');
+  }
+  // If already a Date or ISO string, just return
+  return input;
+}
+
+// Helper to normalize education/educations to always return 'educations' as array
+function normalizeEducations(professional: any) {
+  if (Array.isArray(professional.educations)) return professional.educations;
+  if (Array.isArray(professional.education)) return professional.education;
+  return [];
+}
 
 export const getAllProfessionalsHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { 
@@ -95,7 +116,8 @@ export const getProfessionalByIdHandler = async (req: Request, res: Response, ne
       res.status(404).json({ message: "Profissional não encontrado" });
       return;
     }
-    res.json(professional);
+    const educations = normalizeEducations(professional);
+    res.json({ ...professional, educations });
   } catch (error) {
     console.error(`Erro ao buscar profissional ${id}:`, error);
     next(error);
@@ -134,8 +156,8 @@ export const createProfessionalHandler = async (req: Request, res: Response, nex
       const experiencesData = Array.isArray(experiences) ? experiences.map((exp: any) => ({
         title: exp.title,
         companyName: exp.companyName,
-        startDate: exp.startDate,
-        endDate: exp.endDate,
+        startDate: parseToDateOrKeepUndefined(exp.startDate),
+        endDate: parseToDateOrKeepUndefined(exp.endDate),
         description: exp.description,
       })) : (experiences === undefined ? undefined : []);
       // Map educations
@@ -143,8 +165,8 @@ export const createProfessionalHandler = async (req: Request, res: Response, nex
         institution: edu.institutionName,
         degree: edu.degree,
         fieldOfStudy: edu.fieldOfStudy,
-        startDate: edu.startDate,
-        endDate: edu.endDate,
+        startDate: parseToDateOrKeepUndefined(edu.startDate),
+        endDate: parseToDateOrKeepUndefined(edu.endDate),
         description: edu.description,
       })) : (educations === undefined ? undefined : []);
       // Map availability
@@ -158,15 +180,55 @@ export const createProfessionalHandler = async (req: Request, res: Response, nex
         imageUrl: p.imageUrl,
         description: p.description,
       })) : (portfolioItems === undefined ? undefined : []);
-      const newProfessional = await professionalRepository.create(
-          dataToCreate,
-          serviceIds,
-          experiencesData,
-          educationsData,
-          availabilityData,
-          portfolioData
-      );
-      res.status(201).json(newProfessional);
+
+      // ATOMIC: Create professional and update user role in the same transaction
+      const { prisma } = require("../lib/prisma");
+      const newProfessional = await prisma.$transaction(async (tx: any) => {
+        // Create professional
+        const createdProfessional = await tx.professional.create({ data: dataToCreate });
+        // Update user role to PROFESSIONAL
+        await tx.user.update({
+          where: { id: authUser.id },
+          data: { role: "PROFESSIONAL" },
+        });
+        // Create related data (services, experiences, etc.)
+        if (serviceIds && serviceIds.length > 0) {
+          const serviceConnections = serviceIds.map((serviceId: string) => ({
+            professionalId: createdProfessional.id,
+            serviceId: serviceId,
+          }));
+          await tx.professionalService.createMany({
+            data: serviceConnections,
+            skipDuplicates: true,
+          });
+        }
+        if (experiencesData && experiencesData.length > 0) {
+          await tx.professionalExperience.createMany({
+            data: experiencesData.map((exp: any) => ({ ...exp, professionalId: createdProfessional.id })),
+          });
+        }
+        if (educationsData && educationsData.length > 0) {
+          await tx.professionalEducation.createMany({
+            data: educationsData.map((edu: any) => ({ ...edu, professionalId: createdProfessional.id })),
+          });
+        }
+        if (availabilityData && availabilityData.length > 0) {
+          await tx.professionalAvailabilitySlot.createMany({
+            data: availabilityData.map((slot: any) => ({ ...slot, professionalId: createdProfessional.id })),
+          });
+        }
+        if (portfolioData && portfolioData.length > 0) {
+          await tx.professionalPortfolioItem.createMany({
+            data: portfolioData.map((item: any) => ({ ...item, professionalId: createdProfessional.id })),
+          });
+        }
+        // Return the full professional with details
+        return tx.professional.findUniqueOrThrow({
+          where: { id: createdProfessional.id },
+          include: professionalRepository.includeDetails,
+        });
+      });
+      res.status(201).json({ ...newProfessional, educations: normalizeEducations(newProfessional) });
     } catch (error) {
       console.error("Erro ao criar profissional:", error);
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -223,8 +285,8 @@ export const updateProfessionalHandler = async (req: Request, res: Response, nex
       const experiencesData = Array.isArray(experiences) ? experiences.map((exp: any) => ({
         title: exp.title,
         companyName: exp.companyName,
-        startDate: exp.startDate,
-        endDate: exp.endDate,
+        startDate: parseToDateOrKeepUndefined(exp.startDate),
+        endDate: parseToDateOrKeepUndefined(exp.endDate),
         description: exp.description,
       })) : undefined;
       // Map educations
@@ -232,8 +294,8 @@ export const updateProfessionalHandler = async (req: Request, res: Response, nex
         institution: edu.institutionName,
         degree: edu.degree,
         fieldOfStudy: edu.fieldOfStudy,
-        startDate: edu.startDate,
-        endDate: edu.endDate,
+        startDate: parseToDateOrKeepUndefined(edu.startDate),
+        endDate: parseToDateOrKeepUndefined(edu.endDate),
         description: edu.description,
       })) : undefined;
       // Map availability
@@ -256,7 +318,7 @@ export const updateProfessionalHandler = async (req: Request, res: Response, nex
           availabilityData,
           portfolioData
       );
-      res.json(updatedProfessional);
+      res.json({ ...updatedProfessional, educations: normalizeEducations(updatedProfessional) });
     } catch (error) {
       console.error(`Erro ao atualizar profissional ${id}:`, error);
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
@@ -289,26 +351,170 @@ export const addServiceToProfessionalHandler = async (req: Request, res: Respons
     return;
 };
 
-export const removeServiceFromProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const removeServiceFromProfessionalHandler = async (req: Request, res: Response, next: Function): Promise<void> => {
     const { professionalId, serviceId } = req.params;
     res.status(501).json({ message: "Not Implemented" });
     return;
 };
 
 export const getMyProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ message: "Usuário não autenticado." });
+      return;
+    }
+    const professional = await professionalRepository.findByUserId(userId);
+    if (!professional) {
+      res.status(404).json({ message: "Perfil profissional não encontrado." });
+      return;
+    }
+    // Map the join table to a flat array of service objects
+    const flatServices = (professional.services || []).map((ps: any) => ps.service);
+
+    // Always return 'educations' (plural) for array
+    const educations = normalizeEducations(professional);
+
+    // Determine userRole based on professional/company presence
+    let userRole = 'USER';
+    if (professional.companyId) {
+      userRole = 'COMPANY';
+    } else if (professional.id) {
+      userRole = 'PROFESSIONAL';
+    }
+
+    res.json({ ...professional, services: flatServices, educations, userRole });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get all services for the authenticated professional
+export const getMyProfessionalServicesHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ message: "Usuário não autenticado." });
+      return;
+    }
+    // Find the professional profile for this user
+    const professional = await professionalRepository.findByUserId(userId);
+    if (!professional) {
+      res.status(404).json({ message: "Perfil profissional não encontrado." });
+      return;
+    }
+    // Get all services linked to this professional (via join table)
+    const services = await prisma.service.findMany({
+      where: {
+        professionals: {
+          some: { professionalId: professional.id }
+        }
+      },
+      include: { category: true, company: true }
+    });
+    res.json(services);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateMyProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const authUser = req.user as AuthenticatedUser;
   if (!authUser || !authUser.id) {
     res.status(401).json({ message: "Usuário não autenticado." });
     return;
   }
   try {
+    // Find professional profile by userId
     const professional = await professionalRepository.findByUserId(authUser.id);
     if (!professional) {
-      res.status(404).json({ message: "Perfil profissional não encontrado para este usuário." });
+      res.status(404).json({ message: "Perfil profissional não encontrado." });
       return;
     }
-    res.json(professional);
+    // Only allow owner or admin
+    if (professional.userId !== authUser.id && authUser.role !== 'ADMIN' && authUser.role !== 'COMPANY_OWNER') {
+      res.status(403).json({ message: "Acesso negado." });
+      return;
+    }
+    // Use the same update logic as updateProfessionalHandler
+    const {
+      name, role, image, coverImage, bio, phone, companyId,
+      experiences, educations, services, availability, portfolioItems,
+      avatar, // ignorar se vier
+      ...dataToUpdateFromRequest
+    } = req.body;
+    const updatePayload: Prisma.ProfessionalUpdateInput = {
+      ...dataToUpdateFromRequest,
+      name,
+      role,
+      image,
+      coverImage,
+      bio,
+      phone,
+    };
+    if ('companyId' in updatePayload) delete (updatePayload as any).companyId;
+    if ('userId' in updatePayload) delete (updatePayload as any).userId;
+    if ('avatar' in updatePayload) delete (updatePayload as any).avatar;
+    // Map services to serviceIds
+    const serviceIds = req.body.hasOwnProperty('services') ? (Array.isArray(services) ? services.map((s: any) => s.serviceId) : []) : undefined;
+    // Map experiences
+    const experiencesData = req.body.hasOwnProperty('experiences') ? (Array.isArray(experiences) ? experiences.map((exp: any) => ({
+      title: exp.title,
+      companyName: exp.companyName,
+      startDate: parseToDateOrKeepUndefined(exp.startDate),
+      endDate: parseToDateOrKeepUndefined(exp.endDate),
+      description: exp.description,
+    })) : []) : undefined;
+    // Map educations
+    const educationsData = req.body.hasOwnProperty('educations') ? (Array.isArray(educations) ? educations.map((edu: any) => ({
+      institution: edu.institutionName,
+      degree: edu.degree,
+      fieldOfStudy: edu.fieldOfStudy,
+      startDate: parseToDateOrKeepUndefined(edu.startDate),
+      endDate: parseToDateOrKeepUndefined(edu.endDate),
+      description: edu.description,
+    })) : []) : undefined;
+    // Map availability
+    const availabilityData = req.body.hasOwnProperty('availability') ? (Array.isArray(availability) ? availability.map((a: any) => ({
+      dayOfWeek: a.day_of_week,
+      startTime: a.start_time,
+      endTime: a.end_time,
+    })) : []) : undefined;
+    // Map portfolio
+    const portfolioData = req.body.hasOwnProperty('portfolioItems') ? (Array.isArray(portfolioItems) ? portfolioItems.map((p: any) => ({
+      imageUrl: p.imageUrl,
+      description: p.description,
+    })) : []) : undefined;
+    const updatedProfessional = await professionalRepository.update(
+      professional.id,
+      updatePayload,
+      serviceIds,
+      experiencesData,
+      educationsData,
+      availabilityData,
+      portfolioData
+    );
+    // Re-fetch to ensure fresh join data
+    const freshProfessional = await professionalRepository.findByUserId(authUser.id);
+    if (!freshProfessional) {
+      res.status(404).json({ message: "Perfil profissional não encontrado após atualização." });
+      return;
+    }
+    const flatServices = (freshProfessional.services || []).map((ps: any) => ps.service);
+    const educationsArr = normalizeEducations(freshProfessional);
+    let userRole = 'USER';
+    if (freshProfessional.companyId) {
+      userRole = 'COMPANY';
+    } else if (freshProfessional.id) {
+      userRole = 'PROFESSIONAL';
+    }
+    res.json({ ...freshProfessional, services: flatServices, educations: educationsArr, userRole });
   } catch (error) {
+    console.error(`Erro ao atualizar perfil profissional do próprio usuário:`, error);
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      res.status(404).json({ message: `Erro ao atualizar: ${error.meta?.cause || 'Profissional não encontrado ou registro relacionado ausente'}` });
+      return;
+    }
     next(error);
   }
 };

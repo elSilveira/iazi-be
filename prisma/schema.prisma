@@ -109,7 +109,7 @@ model Service {
   duration      String
   categoryId    Int                   @map("category_id")
   image         String?
-  companyId     String                @map("company_id")
+  companyId     String?               @map("company_id") // Made optional
   createdAt     DateTime              @default(now()) @map("created_at")
   updatedAt     DateTime              @updatedAt @map("updated_at")
   price         Decimal
@@ -117,7 +117,7 @@ model Service {
   professionals ProfessionalService[]
   reviews       Review[]
   category      Category              @relation(fields: [categoryId], references: [id])
-  company       Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company       Company?              @relation(fields: [companyId], references: [id], onDelete: Cascade) // Made optional
 
   @@unique([name, companyId])
   @@index([name])

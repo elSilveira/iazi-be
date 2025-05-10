@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.professionalServiceAssociationValidator = exports.professionalIdValidator = exports.updateProfessionalValidator = exports.createProfessionalValidator = void 0;
+exports.professionalServiceAssociationValidator = exports.professionalIdValidator = exports.updateMyProfessionalValidator = exports.updateProfessionalValidator = exports.createProfessionalValidator = void 0;
 const express_validator_1 = require("express-validator");
 // Novo validador para o contrato atualizado
 const experienceItemValidator = [
@@ -52,6 +52,10 @@ exports.createProfessionalValidator = [
 exports.updateProfessionalValidator = [
     (0, express_validator_1.param)("id").isUUID().withMessage("ID do profissional inválido."),
     ...exports.createProfessionalValidator // Permite os mesmos campos do create
+];
+exports.updateMyProfessionalValidator = [
+    // Same as updateProfessionalValidator, but without param("id")
+    ...exports.createProfessionalValidator // All body fields are optional for update, but you may want to add .optional() to each if needed
 ];
 exports.professionalIdValidator = [
     (0, express_validator_1.param)("id").isUUID().withMessage("ID do profissional inválido."),

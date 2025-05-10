@@ -20,13 +20,35 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getMyProfessionalHandler = exports.removeServiceFromProfessionalHandler = exports.addServiceToProfessionalHandler = exports.deleteProfessionalHandler = exports.updateProfessionalHandler = exports.createProfessionalHandler = exports.getProfessionalByIdHandler = exports.getAllProfessionalsHandler = void 0;
+exports.updateMyProfessionalHandler = exports.getMyProfessionalServicesHandler = exports.getMyProfessionalHandler = exports.removeServiceFromProfessionalHandler = exports.addServiceToProfessionalHandler = exports.deleteProfessionalHandler = exports.updateProfessionalHandler = exports.createProfessionalHandler = exports.getProfessionalByIdHandler = exports.getAllProfessionalsHandler = void 0;
 const professionalRepository_1 = require("../repositories/professionalRepository");
 const client_1 = require("@prisma/client");
+const prisma_1 = require("../lib/prisma");
 const isValidUUID = (uuid) => {
     const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
     return uuidRegex.test(uuid);
 };
+// Helper to parse YYYY-MM or YYYY-MM-DD to Date (UTC, first day of month if day missing)
+function parseToDateOrKeepUndefined(input) {
+    if (!input)
+        return new Date('1970-01-01T00:00:00.000Z'); // fallback to epoch (never null/undefined)
+    if (/^\d{4}-\d{2}$/.test(input)) {
+        return new Date(input + '-01T00:00:00.000Z');
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(input)) {
+        return new Date(input + 'T00:00:00.000Z');
+    }
+    // If already a Date or ISO string, just return
+    return input;
+}
+// Helper to normalize education/educations to always return 'educations' as array
+function normalizeEducations(professional) {
+    if (Array.isArray(professional.educations))
+        return professional.educations;
+    if (Array.isArray(professional.education))
+        return professional.education;
+    return [];
+}
 const getAllProfessionalsHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { companyId, q, role, serviceId, city, state, minRating, sort, page = "1", limit = "10" } = req.query;
     const pageNum = parseInt(page, 10);
@@ -108,7 +130,8 @@ const getProfessionalByIdHandler = (req, res, next) => __awaiter(void 0, void 0,
             res.status(404).json({ message: "Profissional não encontrado" });
             return;
         }
-        res.json(professional);
+        const educations = normalizeEducations(professional);
+        res.json(Object.assign(Object.assign({}, professional), { educations }));
     }
     catch (error) {
         console.error(`Erro ao buscar profissional ${id}:`, error);
@@ -141,8 +164,8 @@ const createProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, 
         const experiencesData = Array.isArray(experiences) ? experiences.map((exp) => ({
             title: exp.title,
             companyName: exp.companyName,
-            startDate: exp.startDate,
-            endDate: exp.endDate,
+            startDate: parseToDateOrKeepUndefined(exp.startDate),
+            endDate: parseToDateOrKeepUndefined(exp.endDate),
             description: exp.description,
         })) : (experiences === undefined ? undefined : []);
         // Map educations
@@ -150,8 +173,8 @@ const createProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, 
             institution: edu.institutionName,
             degree: edu.degree,
             fieldOfStudy: edu.fieldOfStudy,
-            startDate: edu.startDate,
-            endDate: edu.endDate,
+            startDate: parseToDateOrKeepUndefined(edu.startDate),
+            endDate: parseToDateOrKeepUndefined(edu.endDate),
             description: edu.description,
         })) : (educations === undefined ? undefined : []);
         // Map availability
@@ -165,8 +188,54 @@ const createProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, 
             imageUrl: p.imageUrl,
             description: p.description,
         })) : (portfolioItems === undefined ? undefined : []);
-        const newProfessional = yield professionalRepository_1.professionalRepository.create(dataToCreate, serviceIds, experiencesData, educationsData, availabilityData, portfolioData);
-        res.status(201).json(newProfessional);
+        // ATOMIC: Create professional and update user role in the same transaction
+        const { prisma } = require("../lib/prisma");
+        const newProfessional = yield prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+            // Create professional
+            const createdProfessional = yield tx.professional.create({ data: dataToCreate });
+            // Update user role to PROFESSIONAL
+            yield tx.user.update({
+                where: { id: authUser.id },
+                data: { role: "PROFESSIONAL" },
+            });
+            // Create related data (services, experiences, etc.)
+            if (serviceIds && serviceIds.length > 0) {
+                const serviceConnections = serviceIds.map((serviceId) => ({
+                    professionalId: createdProfessional.id,
+                    serviceId: serviceId,
+                }));
+                yield tx.professionalService.createMany({
+                    data: serviceConnections,
+                    skipDuplicates: true,
+                });
+            }
+            if (experiencesData && experiencesData.length > 0) {
+                yield tx.professionalExperience.createMany({
+                    data: experiencesData.map((exp) => (Object.assign(Object.assign({}, exp), { professionalId: createdProfessional.id }))),
+                });
+            }
+            if (educationsData && educationsData.length > 0) {
+                yield tx.professionalEducation.createMany({
+                    data: educationsData.map((edu) => (Object.assign(Object.assign({}, edu), { professionalId: createdProfessional.id }))),
+                });
+            }
+            if (availabilityData && availabilityData.length > 0) {
+                yield tx.professionalAvailabilitySlot.createMany({
+                    data: availabilityData.map((slot) => (Object.assign(Object.assign({}, slot), { professionalId: createdProfessional.id }))),
+                });
+            }
+            if (portfolioData && portfolioData.length > 0) {
+                yield tx.professionalPortfolioItem.createMany({
+                    data: portfolioData.map((item) => (Object.assign(Object.assign({}, item), { professionalId: createdProfessional.id }))),
+                });
+            }
+            // Return the full professional with details
+            return tx.professional.findUniqueOrThrow({
+                where: { id: createdProfessional.id },
+                include: professionalRepository_1.professionalRepository.includeDetails,
+            });
+        }));
+        res.status(201).json(Object.assign(Object.assign({}, newProfessional), { educations: normalizeEducations(newProfessional) }));
     }
     catch (error) {
         console.error("Erro ao criar profissional:", error);
@@ -221,8 +290,8 @@ const updateProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, 
         const experiencesData = Array.isArray(experiences) ? experiences.map((exp) => ({
             title: exp.title,
             companyName: exp.companyName,
-            startDate: exp.startDate,
-            endDate: exp.endDate,
+            startDate: parseToDateOrKeepUndefined(exp.startDate),
+            endDate: parseToDateOrKeepUndefined(exp.endDate),
             description: exp.description,
         })) : undefined;
         // Map educations
@@ -230,8 +299,8 @@ const updateProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, 
             institution: edu.institutionName,
             degree: edu.degree,
             fieldOfStudy: edu.fieldOfStudy,
-            startDate: edu.startDate,
-            endDate: edu.endDate,
+            startDate: parseToDateOrKeepUndefined(edu.startDate),
+            endDate: parseToDateOrKeepUndefined(edu.endDate),
             description: edu.description,
         })) : undefined;
         // Map availability
@@ -246,7 +315,7 @@ const updateProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, 
             description: p.description,
         })) : undefined;
         const updatedProfessional = yield professionalRepository_1.professionalRepository.update(id, updatePayload, serviceIds, experiencesData, educationsData, availabilityData, portfolioData);
-        res.json(updatedProfessional);
+        res.json(Object.assign(Object.assign({}, updatedProfessional), { educations: normalizeEducations(updatedProfessional) }));
     }
     catch (error) {
         console.error(`Erro ao atualizar profissional ${id}:`, error);
@@ -289,21 +358,157 @@ const removeServiceFromProfessionalHandler = (req, res, next) => __awaiter(void 
 });
 exports.removeServiceFromProfessionalHandler = removeServiceFromProfessionalHandler;
 const getMyProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const authUser = req.user;
-    if (!authUser || !authUser.id) {
-        res.status(401).json({ message: "Usuário não autenticado." });
-        return;
-    }
+    var _a;
     try {
-        const professional = yield professionalRepository_1.professionalRepository.findByUserId(authUser.id);
-        if (!professional) {
-            res.status(404).json({ message: "Perfil profissional não encontrado para este usuário." });
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+        if (!userId) {
+            res.status(401).json({ message: "Usuário não autenticado." });
             return;
         }
-        res.json(professional);
+        const professional = yield professionalRepository_1.professionalRepository.findByUserId(userId);
+        if (!professional) {
+            res.status(404).json({ message: "Perfil profissional não encontrado." });
+            return;
+        }
+        // Map the join table to a flat array of service objects
+        const flatServices = (professional.services || []).map((ps) => ps.service);
+        // Always return 'educations' (plural) for array
+        const educations = normalizeEducations(professional);
+        // Determine userRole based on professional/company presence
+        let userRole = 'USER';
+        if (professional.companyId) {
+            userRole = 'COMPANY';
+        }
+        else if (professional.id) {
+            userRole = 'PROFESSIONAL';
+        }
+        res.json(Object.assign(Object.assign({}, professional), { services: flatServices, educations, userRole }));
     }
     catch (error) {
         next(error);
     }
 });
 exports.getMyProfessionalHandler = getMyProfessionalHandler;
+// Get all services for the authenticated professional
+const getMyProfessionalServicesHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+        if (!userId) {
+            res.status(401).json({ message: "Usuário não autenticado." });
+            return;
+        }
+        // Find the professional profile for this user
+        const professional = yield professionalRepository_1.professionalRepository.findByUserId(userId);
+        if (!professional) {
+            res.status(404).json({ message: "Perfil profissional não encontrado." });
+            return;
+        }
+        // Get all services linked to this professional (via join table)
+        const services = yield prisma_1.prisma.service.findMany({
+            where: {
+                professionals: {
+                    some: { professionalId: professional.id }
+                }
+            },
+            include: { category: true, company: true }
+        });
+        res.json(services);
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.getMyProfessionalServicesHandler = getMyProfessionalServicesHandler;
+const updateMyProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    const authUser = req.user;
+    if (!authUser || !authUser.id) {
+        res.status(401).json({ message: "Usuário não autenticado." });
+        return;
+    }
+    try {
+        // Find professional profile by userId
+        const professional = yield professionalRepository_1.professionalRepository.findByUserId(authUser.id);
+        if (!professional) {
+            res.status(404).json({ message: "Perfil profissional não encontrado." });
+            return;
+        }
+        // Only allow owner or admin
+        if (professional.userId !== authUser.id && authUser.role !== 'ADMIN' && authUser.role !== 'COMPANY_OWNER') {
+            res.status(403).json({ message: "Acesso negado." });
+            return;
+        }
+        // Use the same update logic as updateProfessionalHandler
+        const _b = req.body, { name, role, image, coverImage, bio, phone, companyId, experiences, educations, services, availability, portfolioItems, avatar } = _b, // ignorar se vier
+        dataToUpdateFromRequest = __rest(_b, ["name", "role", "image", "coverImage", "bio", "phone", "companyId", "experiences", "educations", "services", "availability", "portfolioItems", "avatar"]);
+        const updatePayload = Object.assign(Object.assign({}, dataToUpdateFromRequest), { name,
+            role,
+            image,
+            coverImage,
+            bio,
+            phone });
+        if ('companyId' in updatePayload)
+            delete updatePayload.companyId;
+        if ('userId' in updatePayload)
+            delete updatePayload.userId;
+        if ('avatar' in updatePayload)
+            delete updatePayload.avatar;
+        // Map services to serviceIds
+        const serviceIds = req.body.hasOwnProperty('services') ? (Array.isArray(services) ? services.map((s) => s.serviceId) : []) : undefined;
+        // Map experiences
+        const experiencesData = req.body.hasOwnProperty('experiences') ? (Array.isArray(experiences) ? experiences.map((exp) => ({
+            title: exp.title,
+            companyName: exp.companyName,
+            startDate: parseToDateOrKeepUndefined(exp.startDate),
+            endDate: parseToDateOrKeepUndefined(exp.endDate),
+            description: exp.description,
+        })) : []) : undefined;
+        // Map educations
+        const educationsData = req.body.hasOwnProperty('educations') ? (Array.isArray(educations) ? educations.map((edu) => ({
+            institution: edu.institutionName,
+            degree: edu.degree,
+            fieldOfStudy: edu.fieldOfStudy,
+            startDate: parseToDateOrKeepUndefined(edu.startDate),
+            endDate: parseToDateOrKeepUndefined(edu.endDate),
+            description: edu.description,
+        })) : []) : undefined;
+        // Map availability
+        const availabilityData = req.body.hasOwnProperty('availability') ? (Array.isArray(availability) ? availability.map((a) => ({
+            dayOfWeek: a.day_of_week,
+            startTime: a.start_time,
+            endTime: a.end_time,
+        })) : []) : undefined;
+        // Map portfolio
+        const portfolioData = req.body.hasOwnProperty('portfolioItems') ? (Array.isArray(portfolioItems) ? portfolioItems.map((p) => ({
+            imageUrl: p.imageUrl,
+            description: p.description,
+        })) : []) : undefined;
+        const updatedProfessional = yield professionalRepository_1.professionalRepository.update(professional.id, updatePayload, serviceIds, experiencesData, educationsData, availabilityData, portfolioData);
+        // Re-fetch to ensure fresh join data
+        const freshProfessional = yield professionalRepository_1.professionalRepository.findByUserId(authUser.id);
+        if (!freshProfessional) {
+            res.status(404).json({ message: "Perfil profissional não encontrado após atualização." });
+            return;
+        }
+        const flatServices = (freshProfessional.services || []).map((ps) => ps.service);
+        const educationsArr = normalizeEducations(freshProfessional);
+        let userRole = 'USER';
+        if (freshProfessional.companyId) {
+            userRole = 'COMPANY';
+        }
+        else if (freshProfessional.id) {
+            userRole = 'PROFESSIONAL';
+        }
+        res.json(Object.assign(Object.assign({}, freshProfessional), { services: flatServices, educations: educationsArr, userRole }));
+    }
+    catch (error) {
+        console.error(`Erro ao atualizar perfil profissional do próprio usuário:`, error);
+        if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+            res.status(404).json({ message: `Erro ao atualizar: ${((_a = error.meta) === null || _a === void 0 ? void 0 : _a.cause) || 'Profissional não encontrado ou registro relacionado ausente'}` });
+            return;
+        }
+        next(error);
+    }
+});
+exports.updateMyProfessionalHandler = updateMyProfessionalHandler;

@@ -5,7 +5,6 @@ import {
   createServiceHandler,
   updateServiceHandler,
   deleteServiceHandler,
-  checkAdminRoleMiddleware,
   checkAdminOrCompanyOwnerMiddleware,
   loadExistingServiceMiddleware
 } from "../controllers/serviceController";
@@ -16,6 +15,7 @@ import {
 } from "../validators/serviceValidators";
 import { validateRequest } from "../middlewares/validationMiddleware"; // Corrected import
 import asyncHandler from "../utils/asyncHandler"; // Corrected import
+import { authMiddleware } from "../middlewares/authMiddleware";
 
 const router = Router();
 
@@ -33,7 +33,27 @@ router.get(
 // POST / - Create a new service
 router.post(
   "/", 
-  checkAdminRoleMiddleware, // Apply auth middleware
+  authMiddleware, // Require authentication
+  async (req, res, next) => {
+    // Permitir ADMIN, COMPANY_OWNER ou qualquer usuário com perfil profissional
+    const allowedRoles = ["ADMIN", "COMPANY_OWNER"];
+    if (!req.user) {
+      res.status(401).json({ message: "Usuário não autenticado." });
+      return;
+    }
+    // Se for ADMIN ou COMPANY_OWNER, pode criar
+    if (allowedRoles.includes(String(req.user.role).toUpperCase())) {
+      return next();
+    }
+    // Para qualquer usuário autenticado, verificar se possui perfil profissional
+    const professionalRepository = require("../repositories/professionalRepository").professionalRepository;
+    const professional = await professionalRepository.findByUserId(req.user.id);
+    if (professional) {
+      req.body.professionalId = professional.id;
+      return next();
+    }
+    res.status(403).json({ message: `Acesso negado. Apenas profissionais (com perfil criado), empresas ou administradores podem criar serviços. Seu role: ${req.user.role}` });
+  },
   ...createServiceValidator, // Spread validation middlewares
   validateRequest, // Corrected: Use validateRequest
   asyncHandler(createServiceHandler)

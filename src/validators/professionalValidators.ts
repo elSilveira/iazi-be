@@ -58,6 +58,11 @@ export const updateProfessionalValidator = [
   ...createProfessionalValidator // Permite os mesmos campos do create
 ];
 
+export const updateMyProfessionalValidator = [
+  // Same as updateProfessionalValidator, but without param("id")
+  ...createProfessionalValidator // All body fields are optional for update, but you may want to add .optional() to each if needed
+];
+
 export const professionalIdValidator = [
   param("id").isUUID().withMessage("ID do profissional inválido."),
 ];

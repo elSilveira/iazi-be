@@ -9,3 +9,4 @@ Coding standards, domain knowledge, and preferences that AI should follow.
 - Act as professional and experienced developer.
 - Follow the best practices and coding standards.
 - Keep your code clean and organized.
+- avoid running automated tests by now.

@@ -10,7 +10,7 @@ export const validateRequest = (req: Request, res: Response, next: NextFunction)
       message: err.msg,
       value: err.value
     }));
-    res.status(422).json({ message: "Erro de validação", errors: errorDetails });
+    res.status(400).json({ message: "Erro de validação", errors: errorDetails });
     return;
   }
   next();

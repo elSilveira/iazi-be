@@ -302,6 +302,28 @@ async function main() {
   }
   console.log("Services created and linked.");
 
+  // --- Create Additional Services for All Categories ---
+  for (const catName of Object.keys(createdCategories)) {
+    if (!Object.keys(createdServices).some(s => s.toLowerCase().includes(catName.toLowerCase()))) {
+      const extraService = await prisma.service.create({
+        data: {
+          name: `Serviço de ${catName}`,
+          description: `Serviço de demonstração para a categoria ${catName}`,
+          price: parsePrice("R$ 80,00"),
+          duration: "60min",
+          categoryId: createdCategories[catName].id,
+          companyId: companyVintage.id,
+          image: null,
+          createdAt: pastDate(20),
+          updatedAt: pastDate(2),
+        }
+      });
+      createdServices[extraService.name] = { id: extraService.id, createdAt: extraService.createdAt, updatedAt: extraService.updatedAt };
+      console.log(`   - Serviço extra para categoria ${catName} criado (ID: ${extraService.id})`);
+    }
+  }
+  console.log("Serviços adicionais criados para todas as categorias.");
+
   // --- Create Sample Appointments ---
   const corteServiceId = createdServices["Corte de Cabelo"].id;
   const joaoSilvaId = createdProfessionals["João Silva"].id;
@@ -355,8 +377,8 @@ async function main() {
       title: "Barbeiro Pleno",
       companyName: "Barbearia TopCorte",
       description: "Responsável por cortes masculinos e barba.",
-      startDate: pastDate(3 * 365), 
-      endDate: pastDate(1 * 365),   
+      startDate: pastDate(3 * 365), // Date object, not string
+      endDate: pastDate(1 * 365),   // Date object, not string
       isCurrent: false,
       professionalId: joaoSilvaId,
       createdAt: pastDate(3 * 365),

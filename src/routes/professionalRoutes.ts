@@ -13,13 +13,13 @@ import { authMiddleware } from "../middlewares/authMiddleware"; // Import basic 
 import { 
   createProfessionalValidator, 
   updateProfessionalValidator, 
+  updateMyProfessionalValidator, // <-- add this import
   professionalIdValidator,
   professionalServiceAssociationValidator
 } from "../validators/professionalValidators";
 import { serviceIdValidator } from "../validators/serviceValidators";
 import { validateRequest } from "../middlewares/validationMiddleware"; // Corrected import
 import asyncHandler from "../utils/asyncHandler"; // Corrected import
-import { checkAdminOrCompanyOwnerMiddleware } from "../controllers/companyController";
 import { checkProfessionalOwnerOrAdminMiddleware } from "../middlewares/professionalAuthMiddleware";
 import { professionalRepository } from "../repositories/professionalRepository";
 
@@ -104,6 +104,46 @@ router.get("/", asyncHandler(getAllProfessionalsHandler));
  *         description: Erro interno do servidor.
  */
 router.get("/me", authMiddleware, asyncHandler(getMyProfessionalHandler));
+
+/**
+ * @swagger
+ * /api/professionals/me:
+ *   put:
+ *     summary: Atualiza o perfil profissional do usuário autenticado
+ *     tags: [Professionals]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ProfessionalUpdateInput'
+ *     responses:
+ *       200:
+ *         description: Perfil profissional atualizado com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Professional'
+ *       400:
+ *         description: Erro de validação nos dados da requisição.
+ *       401:
+ *         description: Não autorizado (token inválido ou ausente).
+ *       403:
+ *         description: Acesso negado (usuário não é dono do perfil ou admin).
+ *       404:
+ *         description: Perfil profissional não encontrado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.put(
+  "/me",
+  authMiddleware,
+  ...updateMyProfessionalValidator,
+  validateRequest,
+  asyncHandler(require("../controllers/professionalController").updateMyProfessionalHandler)
+);
 
 /**
  * @swagger
@@ -255,7 +295,6 @@ router.put(
  */
 router.delete(
   "/:id", 
-  checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware
   professionalIdValidator[0], // Pass the single middleware function directly
   validateRequest, // Corrected
   asyncHandler(deleteProfessionalHandler)
@@ -299,7 +338,12 @@ router.delete(
  */
 router.post(
   "/:professionalId/services", 
-  checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware (checks based on professionalId)
+  authMiddleware,
+  (req, res, next) => {
+    req.params.id = req.params.professionalId; // For compatibility with the middleware
+    next();
+  },
+  checkProfessionalOwnerOrAdminMiddleware, // Allow professional owner or admin
   ...professionalServiceAssociationValidator, // Spread validation middlewares
   validateRequest, // Corrected
   asyncHandler(addServiceToProfessionalHandler)
@@ -346,11 +390,23 @@ router.post(
  */
 router.delete(
   "/:professionalId/services/:serviceId", 
-  checkAdminOrCompanyOwnerMiddleware, // Apply auth middleware (checks based on professionalId)
+  authMiddleware,
+  (req, res, next) => {
+    req.params.id = req.params.professionalId; // For compatibility with the middleware
+    next();
+  },
+  checkProfessionalOwnerOrAdminMiddleware, // Allow professional owner or admin
   professionalIdValidator[0], // Pass the single middleware function directly
   serviceIdValidator[0],      // Pass the single middleware function directly
   validateRequest, // Corrected
   asyncHandler(removeServiceFromProfessionalHandler)
+);
+
+// Get all services for the authenticated professional
+router.get(
+  "/me/services",
+  authMiddleware,
+  asyncHandler(require("../controllers/professionalController").getMyProfessionalServicesHandler)
 );
 
 export default router;
