@@ -135,6 +135,26 @@ const options = {
                     },
                     required: ['professionalId', 'serviceId'],
                 },
+                ProfessionalServiceWithJoinFields: {
+                    type: 'object',
+                    description: 'Serviço vinculado a um profissional, incluindo campos do join (preço, descrição, agenda)',
+                    properties: {
+                        id: { type: 'string', format: 'uuid', description: 'ID do serviço' },
+                        name: { type: 'string', description: 'Nome do serviço' },
+                        description: { type: 'string', description: 'Descrição do serviço' },
+                        price: { type: 'string', nullable: true, description: 'Preço específico deste profissional para este serviço (opcional)' },
+                        schedule: { type: 'array', items: { type: 'object' }, nullable: true, description: 'Agenda estruturada (JSON)' },
+                        duration: { type: 'string', description: 'Duração do serviço (ex: "45min")' },
+                        categoryId: { type: 'integer', description: 'ID da categoria do serviço' },
+                        image: { type: 'string', format: 'url', nullable: true, description: 'URL da imagem do serviço' },
+                        companyId: { type: 'string', format: 'uuid', description: 'ID da empresa que oferece o serviço' },
+                        createdAt: { type: 'string', format: 'date-time', description: 'Data de criação' },
+                        updatedAt: { type: 'string', format: 'date-time', description: 'Data da última atualização' },
+                        professionalId: { type: 'string', format: 'uuid', description: 'ID do profissional' },
+                        professionalServiceDescription: { type: 'string', nullable: true, description: 'Descrição do vínculo profissional-serviço' },
+                    },
+                    required: ['id', 'name', 'description', 'duration', 'categoryId', 'companyId', 'createdAt', 'updatedAt', 'professionalId'],
+                },
                 Appointment: {
                     type: 'object',
                     properties: {
@@ -323,6 +343,19 @@ const options = {
                     }
                 },
                 ProfessionalUpdateInput: { $ref: '#/components/schemas/ProfessionalCreateInput' },
+                ProfessionalListResponse: {
+                    type: 'object',
+                    properties: {
+                        data: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/Professional' }
+                        },
+                        total: { type: 'integer', description: 'Total de profissionais encontrados' },
+                        page: { type: 'integer', description: 'Página atual' },
+                        limit: { type: 'integer', description: 'Limite de itens por página' }
+                    },
+                    required: ['data', 'total', 'page', 'limit']
+                },
                 // ... outros inputs ...
             },
             securitySchemes: {

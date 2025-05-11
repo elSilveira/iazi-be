@@ -455,7 +455,7 @@ const getMyProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, v
     }
 });
 exports.getMyProfessionalHandler = getMyProfessionalHandler;
-// GET /api/professionals/me/services - List all services for the authenticated professional (with join fields)
+// GET /api/professionals/services - List all services for the authenticated professional (with join fields)
 const getMyProfessionalServicesHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
@@ -570,7 +570,7 @@ const updateMyProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0
     }
 });
 exports.updateMyProfessionalHandler = updateMyProfessionalHandler;
-// POST /api/professionals/me/services - Link a service to the authenticated professional (with price, schedule, description)
+// POST /api/professionals/services - Link a service to the authenticated professional (with price, schedule, description)
 const addServiceToMyProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
@@ -620,7 +620,7 @@ const addServiceToMyProfessionalHandler = (req, res, next) => __awaiter(void 0, 
     }
 });
 exports.addServiceToMyProfessionalHandler = addServiceToMyProfessionalHandler;
-// DELETE /api/professionals/me/services/:serviceId - Unlink a service from the authenticated professional
+// DELETE /api/professionals/services/:serviceId - Unlink a service from the authenticated professional
 const removeServiceFromMyProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {

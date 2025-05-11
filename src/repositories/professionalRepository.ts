@@ -19,7 +19,7 @@ export const professionalRepository = {
     services: { include: { service: true } },
     company: { include: { address: true } },
     experiences: true, // Maps to ProfessionalExperience model
-    education: true,   // Maps to ProfessionalEducation model
+    education: true,   // Correct: Prisma expects 'education' (singular)
     availability: true, // Maps to ProfessionalAvailabilitySlot model
     portfolio: true,    // Maps to ProfessionalPortfolioItem model
   } as const,
@@ -60,13 +60,11 @@ export const professionalRepository = {
   },
 
   async findByUserId(userId: string): Promise<ProfessionalWithDetails | null> {
-    console.log('DEBUG professionalRepository.findByUserId userId:', userId);
-    const result = await prisma.professional.findUnique({
+    // Removed debug logs for production cleanliness
+    return prisma.professional.findUnique({
       where: { userId },
       include: this.includeDetails,
     });
-    console.log('DEBUG professionalRepository.findByUserId result:', result);
-    return result;
   },
 
   async create(

@@ -558,3 +558,140 @@
 2025-05-11 09:44:17:4417 [31merror[39m: [31m401 - Credenciais inválidas - /api/auth/login - POST - 127.0.0.1[39m
 2025-05-11 10:31:12:3112 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
 2025-05-11 10:31:12:3112 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-11 13:59:56:5956 [31merror[39m: [31m500 - [39m
+[31mInvalid `prisma.professional.findMany()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\professionalRepository.ts:40:32[39m
+
+[31m  37   skip: number,[39m
+[31m  38   take: number[39m
+[31m  39 ): Promise<ProfessionalWithDetails[]> {[39m
+[31m→ 40   return prisma.professional.findMany({[39m
+[31m         where: {},[39m
+[31m         orderBy: {[39m
+[31m           name: "asc"[39m
+[31m         },[39m
+[31m         skip: 0,[39m
+[31m         take: 10,[39m
+[31m         include: {[39m
+[31m           services: {[39m
+[31m             include: {[39m
+[31m               service: true[39m
+[31m             }[39m
+[31m           },[39m
+[31m           company: {[39m
+[31m             include: {[39m
+[31m               address: true[39m
+[31m             }[39m
+[31m           },[39m
+[31m           experiences: true,[39m
+[31m           educations: true,[39m
+[31m           ~~~~~~~~~~[39m
+[31m           availability: true,[39m
+[31m           portfolio: true,[39m
+[31m       ?   scheduledAppointments?: true,[39m
+[31m       ?   education?: true,[39m
+[31m       ?   user?: true,[39m
+[31m       ?   reviews?: true,[39m
+[31m       ?   scheduleBlocks?: true[39m
+[31m         }[39m
+[31m       })[39m
+
+[31mUnknown field `educations` for include statement on model `Professional`. Available options are marked with ?. - /api/professionals?page=1&limit=10 - GET - 127.0.0.1[39m
+2025-05-11 14:07:33:733 [31merror[39m: [31m500 - [39m
+[31mInvalid `prisma.professional.findUnique()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\professionalRepository.ts:64:32[39m
+
+[31m  61 [39m
+[31m  62 async findByUserId(userId: string): Promise<ProfessionalWithDetails | null> {[39m
+[31m  63   // Removed debug logs for production cleanliness[39m
+[31m→ 64   return prisma.professional.findUnique({[39m
+[31m         where: {[39m
+[31m           userId: "61f39a34-cd6f-40ab-8043-89707754336c"[39m
+[31m         },[39m
+[31m         include: {[39m
+[31m           services: {[39m
+[31m             include: {[39m
+[31m               service: true[39m
+[31m             }[39m
+[31m           },[39m
+[31m           company: {[39m
+[31m             include: {[39m
+[31m               address: true[39m
+[31m             }[39m
+[31m           },[39m
+[31m           experiences: true,[39m
+[31m           educations: true,[39m
+[31m           ~~~~~~~~~~[39m
+[31m           availability: true,[39m
+[31m           portfolio: true,[39m
+[31m       ?   scheduledAppointments?: true,[39m
+[31m       ?   education?: true,[39m
+[31m       ?   user?: true,[39m
+[31m       ?   reviews?: true,[39m
+[31m       ?   scheduleBlocks?: true[39m
+[31m         }[39m
+[31m       })[39m
+
+[31mUnknown field `educations` for include statement on model `Professional`. Available options are marked with ?. - /api/professionals/services - GET - 127.0.0.1[39m
+2025-05-11 14:07:34:734 [31merror[39m: [31m500 - [39m
+[31mInvalid `prisma.professional.findUnique()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\professionalRepository.ts:64:32[39m
+
+[31m  61 [39m
+[31m  62 async findByUserId(userId: string): Promise<ProfessionalWithDetails | null> {[39m
+[31m  63   // Removed debug logs for production cleanliness[39m
+[31m→ 64   return prisma.professional.findUnique({[39m
+[31m         where: {[39m
+[31m           userId: "61f39a34-cd6f-40ab-8043-89707754336c"[39m
+[31m         },[39m
+[31m         include: {[39m
+[31m           services: {[39m
+[31m             include: {[39m
+[31m               service: true[39m
+[31m             }[39m
+[31m           },[39m
+[31m           company: {[39m
+[31m             include: {[39m
+[31m               address: true[39m
+[31m             }[39m
+[31m           },[39m
+[31m           experiences: true,[39m
+[31m           educations: true,[39m
+[31m           ~~~~~~~~~~[39m
+[31m           availability: true,[39m
+[31m           portfolio: true,[39m
+[31m       ?   scheduledAppointments?: true,[39m
+[31m       ?   education?: true,[39m
+[31m       ?   user?: true,[39m
+[31m       ?   reviews?: true,[39m
+[31m       ?   scheduleBlocks?: true[39m
+[31m         }[39m
+[31m       })[39m
+
+[31mUnknown field `educations` for include statement on model `Professional`. Available options are marked with ?. - /api/professionals/services - GET - 127.0.0.1[39m
+2025-05-11 14:14:12:1412 [31merror[39m: [31m500 - [39m
+[31mInvalid `prisma.professionalService.create()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\serviceRepository.ts:105:38[39m
+
+[31m  102 [39m
+[31m  103 // Link a professional to a service (with price, schedule, description)[39m
+[31m  104 async linkProfessionalToService(professionalId: string, serviceId: string, price?: string, schedule?: string, description?: string): Promise<void> {[39m
+[31m→ 105   await prisma.professionalService.create({[39m
+[31m          data: {[39m
+[31m            professionalId: "4cef0cc9-111f-4858-b89a-03fbd0f4e1b0",[39m
+[31m            serviceId: "67ac5cb9-5d06-402a-9955-86cc7943c666",[39m
+[31m            price: 99,[39m
+[31m                   ~~[39m
+[31m            schedule: [[39m
+[31m              {[39m
+[31m                dayOfWeek: "MONDAY",[39m
+[31m                startTime: "09:00",[39m
+[31m                endTime: "17:00"[39m
+[31m              }[39m
+[31m            ],[39m
+[31m            description: "poio"[39m
+[31m          }[39m
+[31m        })[39m
+
+[31mArgument `price`: Invalid value provided. Expected String or Null, provided Int. - /api/professionals/services - POST - 127.0.0.1[39m
+2025-05-11 15:24:47:2447 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m

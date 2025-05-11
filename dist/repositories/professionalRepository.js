@@ -17,7 +17,7 @@ exports.professionalRepository = {
         services: { include: { service: true } },
         company: { include: { address: true } },
         experiences: true, // Maps to ProfessionalExperience model
-        education: true, // Maps to ProfessionalEducation model
+        educations: true, // Maps to ProfessionalEducation model (should be plural)
         availability: true, // Maps to ProfessionalAvailabilitySlot model
         portfolio: true, // Maps to ProfessionalPortfolioItem model
     },
@@ -57,13 +57,11 @@ exports.professionalRepository = {
     },
     findByUserId(userId) {
         return __awaiter(this, void 0, void 0, function* () {
-            console.log('DEBUG professionalRepository.findByUserId userId:', userId);
-            const result = yield prisma_1.prisma.professional.findUnique({
+            // Removed debug logs for production cleanliness
+            return prisma_1.prisma.professional.findUnique({
                 where: { userId },
                 include: this.includeDetails,
             });
-            console.log('DEBUG professionalRepository.findByUserId result:', result);
-            return result;
         });
     },
     create(data, serviceIds, experiencesData, educationsData, availabilityData, portfolioData) {

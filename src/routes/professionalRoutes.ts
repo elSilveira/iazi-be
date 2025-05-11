@@ -32,7 +32,26 @@ const router = Router();
  *   description: Gerenciamento de profissionais
  */
 
-// ... (Swagger definitions remain the same) ...
+// Register /services routes at the very top to guarantee no param route can match first
+router.get(
+  "/services",
+  authMiddleware,
+  asyncHandler(require("../controllers/professionalController").getMyProfessionalServicesHandler)
+);
+
+router.post(
+  "/services",
+  authMiddleware,
+  asyncHandler(require("../controllers/professionalController").addServiceToMyProfessionalHandler)
+);
+
+router.delete(
+  "/services/:serviceId",
+  authMiddleware,
+  serviceIdValidator[0],
+  validateRequest,
+  asyncHandler(require("../controllers/professionalController").removeServiceFromMyProfessionalHandler)
+);
 
 /**
  * @swagger
@@ -402,26 +421,56 @@ router.delete(
   asyncHandler(removeServiceFromProfessionalHandler)
 );
 
-// Get all services for the authenticated professional
-router.get(
-  "/services",
-  authMiddleware,
-  asyncHandler(require("../controllers/professionalController").getMyProfessionalServicesHandler)
-);
-
-router.post(
-  "/services",
-  authMiddleware,
-  asyncHandler(require("../controllers/professionalController").addServiceToMyProfessionalHandler)
-);
-
-router.delete(
-  "/services/:serviceId",
-  authMiddleware,
-  serviceIdValidator[0],
-  validateRequest,
-  asyncHandler(require("../controllers/professionalController").removeServiceFromMyProfessionalHandler)
-);
+/**
+ * @swagger
+ * /api/professionals/services:
+ *   get:
+ *     summary: Lista todos os serviços do profissional autenticado (com campos de vínculo)
+ *     tags: [Professionals, Services]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de serviços vinculados ao profissional autenticado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/ProfessionalServiceWithJoinFields'
+ *       401:
+ *         description: Não autorizado.
+ *       404:
+ *         description: Perfil profissional não encontrado.
+ *       500:
+ *         description: Erro interno do servidor.
+ *   post:
+ *     summary: Vincula um serviço ao profissional autenticado (com preço, descrição, agenda)
+ *     tags: [Professionals, Services]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ProfessionalServiceAssociationInput'
+ *     responses:
+ *       201:
+ *         description: Serviço vinculado com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ProfessionalServiceWithJoinFields'
+ *       400:
+ *         description: Erro de validação.
+ *       401:
+ *         description: Não autorizado.
+ *       404:
+ *         description: Perfil profissional ou serviço não encontrado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
 
 export default router;
 
