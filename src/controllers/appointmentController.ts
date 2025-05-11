@@ -436,6 +436,17 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
     }
 };
 
+// Utility: Check if user is the professional or (future: company admin/owner)
+async function isProfessionalOrCompanyAdmin(user: { id: string; role: UserRole }, appointment: AppointmentWithDetails): Promise<boolean> {
+  if (!user || !appointment) return false;
+  // Check if user is the professional (by userId on Professional)
+  if (appointment.professional && appointment.professional.userId && appointment.professional.userId === user.id) {
+    return true;
+  }
+  // Future: Add company admin/owner logic here if schema supports it
+  return false;
+}
+
 // Atualizar status de um agendamento (confirmar, cancelar, concluir)
 export const updateAppointmentStatus = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
     const { id } = req.params;
@@ -453,8 +464,7 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
     }
 
     try {
-        // Use the corrected payload type
-        const appointment: AppointmentWithDetails | null = await appointmentRepository.findById(id); // Fetch details needed for logic/logging
+        const appointment: AppointmentWithDetails | null = await appointmentRepository.findById(id);
         if (!appointment) {
             return res.status(404).json({ message: 'Agendamento não encontrado' });
         }
@@ -463,10 +473,9 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
         const newStatus = status as AppointmentStatus;
         const isAdmin = user?.role === UserRole.ADMIN;
         const isOwner = appointment.userId === user?.id;
-        // TODO: Add check if user is the professional or company owner based on refined auth logic
-        const isProfessionalOrCompanyAdmin = false; // Placeholder
+        // Implement real check for professional or company admin
+        const isProfOrCompanyAdmin = await isProfessionalOrCompanyAdmin(user, appointment);
 
-        // --- Authorization & Status Transition Logic ---
         let allowed = false;
         let activityType: string | null = null;
         let activityMessage: string | null = null;
@@ -474,8 +483,7 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
 
         switch (newStatus) {
             case AppointmentStatus.CONFIRMED:
-                // Allow Admin or Professional/Company Admin to confirm
-                if ((isAdmin || isProfessionalOrCompanyAdmin) && currentStatus === AppointmentStatus.PENDING) {
+                if ((isAdmin || isProfOrCompanyAdmin) && currentStatus === AppointmentStatus.PENDING) {
                     allowed = true;
                     activityType = "APPOINTMENT_CONFIRMED";
                     activityMessage = `Seu agendamento de ${appointment.service?.name || 'serviço desconhecido'} para ${format(appointment.date, "dd/MM/yyyy 'às' HH:mm")} foi confirmado.`;
@@ -484,12 +492,9 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
             case AppointmentStatus.CANCELLED:
                 const now = new Date();
                 const hoursUntilAppointment = differenceInHours(appointment.date, now);
-                
-                // Allow Admin or Professional/Company Admin to cancel anytime
-                if (isAdmin || isProfessionalOrCompanyAdmin) {
-                    allowed = true; 
+                if (isAdmin || isProfOrCompanyAdmin) {
+                    allowed = true;
                 } else if (isOwner && (currentStatus === AppointmentStatus.PENDING || currentStatus === AppointmentStatus.CONFIRMED)) {
-                    // Allow owner to cancel with sufficient notice
                     if (hoursUntilAppointment >= MIN_CANCELLATION_HOURS) {
                         allowed = true;
                     } else {
@@ -502,28 +507,16 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
                 }
                 break;
             case AppointmentStatus.COMPLETED:
-                // Allow Admin or Professional/Company Admin to mark as completed
-                if ((isAdmin || isProfessionalOrCompanyAdmin) && currentStatus === AppointmentStatus.CONFIRMED) {
+                if ((isAdmin || isProfOrCompanyAdmin) && currentStatus === AppointmentStatus.CONFIRMED) {
                     allowed = true;
                     activityType = "APPOINTMENT_COMPLETED";
                     activityMessage = `Seu agendamento de ${appointment.service?.name || 'serviço desconhecido'} em ${format(appointment.date, "dd/MM/yyyy 'às' HH:mm")} foi concluído.`;
                     gamificationEvent = GamificationEventType.APPOINTMENT_COMPLETED;
                 }
                 break;
-            // case AppointmentStatus.NO_SHOW: // This status is not defined in the current schema
-            //   // Only Admin or Professional?
-            //   if (isAdmin && currentStatus === AppointmentStatus.CONFIRMED) {
-            //     allowed = true;
-            //     activityType = "APPOINTMENT_NO_SHOW";
-            //     activityMessage = `Você não compareceu ao agendamento de ${appointment.service?.name || 'serviço desconhecido'} em ${format(appointment.date, "dd/MM/yyyy \'às\' HH:mm")}.`;
-            //     // Consider gamification penalty?
-            //   }
-            //   break;
-             case AppointmentStatus.PENDING:
-                // Allow Admin to revert from CANCELLED (example)
-                if (isAdmin && currentStatus === AppointmentStatus.CANCELLED) { 
+            case AppointmentStatus.PENDING:
+                if (isAdmin && currentStatus === AppointmentStatus.CANCELLED) {
                     allowed = true;
-                    // Log this specific action?
                 }
                 break;
         }
@@ -531,37 +524,21 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
         if (!allowed) {
             return res.status(403).json({ message: `Transição de status inválida de ${currentStatus} para ${newStatus} ou permissão insuficiente.` });
         }
-        // --- End Authorization & Status Transition Logic ---
 
-        // Use the specific update method from the repository if it exists and is appropriate
-        // Otherwise, use the generic update method
-        // Assuming updateStatus exists and takes (id, status)
         const updatedAppointment = await appointmentRepository.updateStatus(id, newStatus);
-        // If updateStatus doesn't exist or returns the wrong type, use:
-        // const updatedAppointment = await appointmentRepository.update(id, { status: newStatus });
-
-        // --- ACTIVITY LOG, NOTIFICATION & GAMIFICATION ---
         try {
             if (activityType && activityMessage) {
                 await logActivity(appointment.userId, activityType, activityMessage, {
                     id: id,
                     type: "Appointment"
                 });
-                // Notify user about the status change
-                // await createNotification(appointment.userId, activityType, {
-                //     message: activityMessage,
-                //     relatedEntityId: id
-                // });
             }
             if (gamificationEvent) {
                 await gamificationService.triggerEvent(appointment.userId, gamificationEvent, { relatedEntityId: id });
             }
         } catch (logError) {
             console.error("Error logging activity, sending notification, or triggering gamification:", logError);
-            // Don't fail the request
         }
-        // --- END ACTIVITY LOG, NOTIFICATION & GAMIFICATION ---
-
         return res.json(updatedAppointment);
     } catch (error) {
         console.error(`Erro ao atualizar status do agendamento ${id}:`, error);

@@ -78,7 +78,7 @@ describe('Auth Controller', () => {
 
             expect(userRepository.findByEmail).toHaveBeenCalledWith('new@example.com');
             expect(bcrypt.hash).toHaveBeenCalledWith('password123', 10);
-            expect(userRepository.create).toHaveBeenCalledWith({ email: 'new@example.com', password: hashedPassword, name: 'New User', avatar: undefined });
+            expect(userRepository.create).toHaveBeenCalledWith({ email: 'new@example.com', password: hashedPassword, name: 'New User', avatar: undefined, slug: 'new-user' });
             expect(jwt.sign).toHaveBeenCalledTimes(2);
             expect(jwt.sign).toHaveBeenCalledWith({ userId: newUser.id, email: newUser.email }, testJwtSecret, { expiresIn: testAccessTokenExpiration });
             expect(jwt.sign).toHaveBeenCalledWith({ userId: newUser.id }, testRefreshSecret, { expiresIn: testRefreshTokenExpiration });
@@ -87,7 +87,14 @@ describe('Auth Controller', () => {
                 message: 'Usuário registrado com sucesso',
                 accessToken,
                 refreshToken: refreshTokenVal,
-                user: { id: 'uuid-1', email: 'new@example.com', name: 'New User', avatar: null, createdAt: expect.any(Date), updatedAt: expect.any(Date) },
+                user: {
+                  id: 'uuid-1',
+                  email: 'new@example.com',
+                  name: 'New User',
+                  avatar: null,
+                  createdAt: expect.any(Date),
+                  updatedAt: expect.any(Date),
+                },
             });
             expect(mockNext).not.toHaveBeenCalled();
         });
@@ -171,7 +178,22 @@ describe('Auth Controller', () => {
                 message: 'Login bem-sucedido',
                 accessToken,
                 refreshToken: refreshTokenVal,
-                user: { id: 'uuid-3', email: 'test@example.com', name: 'Test User', avatar: null, createdAt: expect.any(Date), updatedAt: expect.any(Date) },
+                user: {
+                  id: 'uuid-3',
+                  email: 'test@example.com',
+                  name: 'Test User',
+                  avatar: null,
+                  bio: undefined,
+                  phone: undefined,
+                  slug: undefined,
+                  role: undefined,
+                  professionalId: null,
+                  isProfessional: false,
+                  hasCompany: undefined,
+                  isAdmin: false,
+                  createdAt: expect.any(Date),
+                  updatedAt: expect.any(Date),
+                },
             });
             expect(mockNext).not.toHaveBeenCalled();
         });

@@ -2,8 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const authController_1 = require("../controllers/authController"); // Importa refreshToken
+const inviteController_1 = require("../controllers/inviteController");
 const authValidators_1 = require("../validators/authValidators");
 const validationMiddleware_1 = require("../middlewares/validationMiddleware");
+const authMiddleware_1 = require("../middlewares/authMiddleware");
 const router = (0, express_1.Router)();
 /**
  * @swagger
@@ -112,4 +114,35 @@ router.post("/login", authValidators_1.loginValidator, validationMiddleware_1.va
  *         description: Erro interno do servidor.
  */
 router.post("/refresh", authController_1.refreshToken); // Não precisa de validação específica aqui, o controller verifica o token
+/**
+ * @swagger
+ * /api/invites:
+ *   post:
+ *     summary: Gera um código de convite (apenas para administradores)
+ *     tags: [Invites]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email: { type: string, format: email, description: 'Email do usuário a ser convidado' }
+ *     responses:
+ *       201:
+ *         description: Código de convite gerado com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 inviteCode: { type: string, description: 'Código de convite' }
+ *       400:
+ *         description: Erro de validação.
+ *       401:
+ *         description: Não autorizado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.post("/invites", authMiddleware_1.authMiddleware, inviteController_1.generateInvite);
 exports.default = router;

@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { login, register, refreshToken } from "../controllers/authController"; // Importa refreshToken
+import { generateInvite } from "../controllers/inviteController";
 import { registerValidator, loginValidator } from "../validators/authValidators";
 import { validateRequest } from '../middlewares/validationMiddleware';
-
+import { authMiddleware } from "../middlewares/authMiddleware";
 
 const router = Router();
 
@@ -115,6 +116,38 @@ router.post("/login", loginValidator, validateRequest, login);
  *         description: Erro interno do servidor.
  */
 router.post("/refresh", refreshToken); // Não precisa de validação específica aqui, o controller verifica o token
+
+/**
+ * @swagger
+ * /api/invites:
+ *   post:
+ *     summary: Gera um código de convite (apenas para administradores)
+ *     tags: [Invites]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email: { type: string, format: email, description: 'Email do usuário a ser convidado' }
+ *     responses:
+ *       201:
+ *         description: Código de convite gerado com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 inviteCode: { type: string, description: 'Código de convite' }
+ *       400:
+ *         description: Erro de validação.
+ *       401:
+ *         description: Não autorizado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.post("/invites", authMiddleware, generateInvite);
 
 export default router;
 

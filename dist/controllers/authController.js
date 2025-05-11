@@ -8,17 +8,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __rest = (this && this.__rest) || function (s, e) {
-    var t = {};
-    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
-        t[p] = s[p];
-    if (s != null && typeof Object.getOwnPropertySymbols === "function")
-        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
-            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
-                t[p[i]] = s[p[i]];
-        }
-    return t;
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -28,6 +17,7 @@ const userRepository_1 = require("../repositories/userRepository");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken")); // Import Secret and SignOptions types
 const gamificationService_1 = require("../services/gamificationService"); // Import gamification service and event types
+const prisma_1 = require("../lib/prisma");
 // Carregar segredos e configurações de forma segura das variáveis de ambiente
 const JWT_SECRET = process.env.JWT_SECRET;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET;
@@ -68,6 +58,7 @@ function generateUniqueUserSlug(base) {
 }
 // Função de Login
 const login = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     const { email, password } = req.body;
     try {
         const user = yield userRepository_1.userRepository.findByEmail(email);
@@ -89,28 +80,32 @@ const login = (req, res, next) => __awaiter(void 0, void 0, void 0, function* ()
         const accessToken = jsonwebtoken_1.default.sign({ userId: user.id, email: user.email }, JWT_SECRET, accessTokenOptions);
         // Gerar Refresh Token
         const refreshToken = jsonwebtoken_1.default.sign({ userId: user.id }, REFRESH_TOKEN_SECRET, refreshTokenOptions);
-        // TODO: Consider storing the refresh token securely (e.g., in DB or Redis) for better revocation control
-        const { password: _ } = user, userWithoutPassword = __rest(user, ["password"]);
         // Compose user/me-like payload
         const isProfessional = !!user.professional;
         const hasCompany = yield userRepository_1.userRepository.hasCompany(user.id);
         const isAdmin = user.role === 'ADMIN';
         res.json({
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            avatar: user.avatar,
-            bio: user.bio,
-            phone: user.phone,
-            slug: user.slug,
-            role: user.role,
-            professionalId: user.professional ? user.professional.id : null,
-            isProfessional,
-            hasCompany,
-            isAdmin,
+            message: 'Login bem-sucedido',
             accessToken,
-            refreshToken
+            refreshToken,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                avatar: (_a = user.avatar) !== null && _a !== void 0 ? _a : null,
+                bio: user.bio,
+                phone: user.phone,
+                slug: user.slug,
+                role: user.role,
+                professionalId: user.professional ? user.professional.id : null,
+                isProfessional,
+                hasCompany,
+                isAdmin,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt,
+            }
         });
+        return next();
     }
     catch (error) {
         next(error);
@@ -119,8 +114,19 @@ const login = (req, res, next) => __awaiter(void 0, void 0, void 0, function* ()
 exports.login = login;
 // Função de Registro
 const register = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const { email, password, name, avatar } = req.body;
+    var _a;
+    const { email, password, name, avatar, inviteCode } = req.body;
     try {
+        if (!inviteCode) {
+            res.status(400).json({ message: "Código de convite obrigatório para registro." });
+            return next();
+        }
+        // Check invite code validity
+        const invite = yield prisma_1.prisma.inviteCode.findUnique({ where: { code: inviteCode } });
+        if (!invite || invite.used) {
+            res.status(400).json({ message: "Código de convite inválido ou já utilizado." });
+            return next();
+        }
         const existingUser = yield userRepository_1.userRepository.findByEmail(email);
         if (existingUser) {
             const error = new Error("Email já cadastrado");
@@ -144,7 +150,11 @@ const register = (req, res, next) => __awaiter(void 0, void 0, void 0, function*
         gamificationService_1.gamificationService.triggerEvent(newUser.id, gamificationService_1.GamificationEventType.USER_REGISTERED)
             .catch(err => console.error("Gamification event trigger failed for USER_REGISTERED:", err));
         // --- GAMIFICATION INTEGRATION END ---
-        const { password: _ } = newUser, userWithoutPassword = __rest(newUser, ["password"]);
+        // Mark invite as used
+        yield prisma_1.prisma.inviteCode.update({
+            where: { code: inviteCode },
+            data: { used: true, usedBy: email, usedAt: new Date() },
+        });
         // Definir opções de assinatura explicitamente (usando 'as any' para contornar o erro de tipo)
         const accessTokenOptions = { expiresIn: ACCESS_TOKEN_EXPIRATION };
         const refreshTokenOptions = { expiresIn: REFRESH_TOKEN_EXPIRATION };
@@ -152,13 +162,20 @@ const register = (req, res, next) => __awaiter(void 0, void 0, void 0, function*
         const accessToken = jsonwebtoken_1.default.sign({ userId: newUser.id, email: newUser.email }, JWT_SECRET, accessTokenOptions);
         // Gerar Refresh Token
         const refreshToken = jsonwebtoken_1.default.sign({ userId: newUser.id }, REFRESH_TOKEN_SECRET, refreshTokenOptions);
-        // TODO: Consider storing the refresh token securely
         res.status(201).json({
             message: "Usuário registrado com sucesso",
             accessToken,
             refreshToken, // Retornar o refresh token
-            user: userWithoutPassword
+            user: {
+                id: newUser.id,
+                email: newUser.email,
+                name: newUser.name,
+                avatar: (_a = newUser.avatar) !== null && _a !== void 0 ? _a : null,
+                createdAt: newUser.createdAt,
+                updatedAt: newUser.updatedAt,
+            }
         });
+        return next();
     }
     catch (error) {
         next(error);

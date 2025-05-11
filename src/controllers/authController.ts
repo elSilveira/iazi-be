@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import jwt, { Secret, SignOptions } from "jsonwebtoken"; // Import Secret and SignOptions types
 import { Prisma } from "@prisma/client";
 import { gamificationService, GamificationEventType } from "../services/gamificationService"; // Import gamification service and event types
+import { prisma } from "../lib/prisma";
 
 // Carregar segredos e configurações de forma segura das variáveis de ambiente
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -76,30 +77,32 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     // Gerar Refresh Token
     const refreshToken = jwt.sign({ userId: user.id }, REFRESH_TOKEN_SECRET, refreshTokenOptions);
 
-    // TODO: Consider storing the refresh token securely (e.g., in DB or Redis) for better revocation control
-
-    const { password: _, ...userWithoutPassword } = user;
-
     // Compose user/me-like payload
     const isProfessional = !!user.professional;
     const hasCompany = await userRepository.hasCompany(user.id);
     const isAdmin = user.role === 'ADMIN';
     res.json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      avatar: user.avatar,
-      bio: user.bio,
-      phone: user.phone,
-      slug: user.slug,
-      role: user.role,
-      professionalId: user.professional ? user.professional.id : null,
-      isProfessional,
-      hasCompany,
-      isAdmin,
+      message: 'Login bem-sucedido',
       accessToken,
-      refreshToken
+      refreshToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar ?? null,
+        bio: user.bio,
+        phone: user.phone,
+        slug: user.slug,
+        role: user.role,
+        professionalId: user.professional ? user.professional.id : null,
+        isProfessional,
+        hasCompany,
+        isAdmin,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      }
     });
+    return next();
 
   } catch (error) {
     next(error);
@@ -108,9 +111,20 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
 
 // Função de Registro
 export const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  const { email, password, name, avatar } = req.body;
+  const { email, password, name, avatar, inviteCode } = req.body;
 
   try {
+    if (!inviteCode) {
+      res.status(400).json({ message: "Código de convite obrigatório para registro." });
+      return next();
+    }
+    // Check invite code validity
+    const invite = await prisma.inviteCode.findUnique({ where: { code: inviteCode } });
+    if (!invite || invite.used) {
+      res.status(400).json({ message: "Código de convite inválido ou já utilizado." });
+      return next();
+    }
+
     const existingUser = await userRepository.findByEmail(email);
     if (existingUser) {
       const error: any = new Error("Email já cadastrado");
@@ -138,7 +152,11 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       .catch(err => console.error("Gamification event trigger failed for USER_REGISTERED:", err));
     // --- GAMIFICATION INTEGRATION END ---
 
-    const { password: _, ...userWithoutPassword } = newUser;
+    // Mark invite as used
+    await prisma.inviteCode.update({
+      where: { code: inviteCode },
+      data: { used: true, usedBy: email, usedAt: new Date() },
+    });
 
     // Definir opções de assinatura explicitamente (usando 'as any' para contornar o erro de tipo)
     const accessTokenOptions: SignOptions = { expiresIn: ACCESS_TOKEN_EXPIRATION as any };
@@ -150,14 +168,20 @@ export const register = async (req: Request, res: Response, next: NextFunction):
     // Gerar Refresh Token
     const refreshToken = jwt.sign({ userId: newUser.id }, REFRESH_TOKEN_SECRET, refreshTokenOptions);
 
-    // TODO: Consider storing the refresh token securely
-
     res.status(201).json({ 
       message: "Usuário registrado com sucesso", 
       accessToken,
       refreshToken, // Retornar o refresh token
-      user: userWithoutPassword 
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        avatar: newUser.avatar ?? null,
+        createdAt: newUser.createdAt,
+        updatedAt: newUser.updatedAt,
+      }
     });
+    return next();
 
   } catch (error) {
     next(error);

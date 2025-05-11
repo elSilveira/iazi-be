@@ -214,7 +214,7 @@ model ProfessionalPortfolioItem {
   imageUrl       String
   description    String?
   professionalId String       @map("professional_id")
-  createdAt      DateTime     @default(now()) @map("created_at")
+  createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt @map("updated_at")
   professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
 
@@ -424,6 +424,15 @@ model Notification {
   @@index([userId])
   @@index([isRead])
   @@map("notifications")
+}
+
+model InviteCode {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  used      Boolean  @default(false)
+  usedBy    String? 
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
 }
 
 enum UserRole {
