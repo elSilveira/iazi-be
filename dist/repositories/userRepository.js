@@ -16,6 +16,9 @@ exports.userRepository = {
         return __awaiter(this, void 0, void 0, function* () {
             return prisma_1.prisma.user.findUnique({
                 where: { email },
+                include: {
+                    professional: { select: { id: true } },
+                },
             });
         });
     },
@@ -39,6 +42,18 @@ exports.userRepository = {
             return prisma_1.prisma.user.create({
                 data,
             });
+        });
+    },
+    hasCompany(userId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const company = yield prisma_1.prisma.company.findFirst({ where: { professionals: { some: { userId } } } });
+            return !!company;
+        });
+    },
+    isCompanyOwner(userId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const company = yield prisma_1.prisma.company.findFirst({ where: { professionals: { some: { userId } }, /* add ownerId if your schema supports it */ } });
+            return !!company;
         });
     },
     // Adicionar outros métodos conforme necessário (update, delete, etc.)

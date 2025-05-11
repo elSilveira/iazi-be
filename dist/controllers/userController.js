@@ -50,7 +50,13 @@ const getUserProfile = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
         }
         // Exclude password from the response
         const { password, professional } = user, userProfile = __rest(user, ["password", "professional"]);
-        res.json(Object.assign(Object.assign({}, userProfile), { professionalId: professional ? professional.id : null }));
+        // Check roles/relations
+        const isProfessional = !!professional;
+        const hasCompany = yield userRepository_1.userRepository.hasCompany(userId);
+        const isAdmin = user.role === 'ADMIN';
+        res.json(Object.assign(Object.assign({}, userProfile), { professionalId: professional ? professional.id : null, isProfessional,
+            hasCompany,
+            isAdmin }));
     }
     catch (error) {
         next(error);

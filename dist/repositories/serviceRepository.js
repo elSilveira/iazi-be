@@ -62,6 +62,22 @@ exports.serviceRepository = {
             });
         });
     },
+    findWithProfessionals() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return prisma_1.prisma.service.findMany({
+                where: {
+                    professionals: {
+                        some: {}, // At least one professional linked
+                    },
+                },
+                include: {
+                    professionals: { include: { professional: true } },
+                    category: true,
+                    company: true,
+                },
+            });
+        });
+    },
     create(data) {
         return __awaiter(this, void 0, void 0, function* () {
             // Remove 'company' property if it is not present or not needed
@@ -93,6 +109,40 @@ exports.serviceRepository = {
             // TODO: Deletar Appointments e Reviews associados ou definir onDelete no schema?
             return prisma_1.prisma.service.delete({
                 where: { id },
+            });
+        });
+    },
+    // Link a professional to a service (with price, schedule, description)
+    linkProfessionalToService(professionalId, serviceId, price, schedule, description) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield prisma_1.prisma.professionalService.create({
+                data: { professionalId, serviceId, price, schedule, description },
+            });
+        });
+    },
+    // Unlink a professional from a service
+    unlinkProfessionalFromService(professionalId, serviceId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield prisma_1.prisma.professionalService.delete({
+                where: { professionalId_serviceId: { professionalId, serviceId } },
+            });
+        });
+    },
+    // List all professionals linked to a service
+    getProfessionalsByService(serviceId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return prisma_1.prisma.professionalService.findMany({
+                where: { serviceId },
+                include: { professional: true },
+            });
+        });
+    },
+    // List all services linked to a professional (include join fields)
+    getServicesByProfessional(professionalId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return prisma_1.prisma.professionalService.findMany({
+                where: { professionalId },
+                include: { service: true },
             });
         });
     },

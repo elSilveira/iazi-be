@@ -91,11 +91,25 @@ const login = (req, res, next) => __awaiter(void 0, void 0, void 0, function* ()
         const refreshToken = jsonwebtoken_1.default.sign({ userId: user.id }, REFRESH_TOKEN_SECRET, refreshTokenOptions);
         // TODO: Consider storing the refresh token securely (e.g., in DB or Redis) for better revocation control
         const { password: _ } = user, userWithoutPassword = __rest(user, ["password"]);
+        // Compose user/me-like payload
+        const isProfessional = !!user.professional;
+        const hasCompany = yield userRepository_1.userRepository.hasCompany(user.id);
+        const isAdmin = user.role === 'ADMIN';
         res.json({
-            message: "Login bem-sucedido",
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            avatar: user.avatar,
+            bio: user.bio,
+            phone: user.phone,
+            slug: user.slug,
+            role: user.role,
+            professionalId: user.professional ? user.professional.id : null,
+            isProfessional,
+            hasCompany,
+            isAdmin,
             accessToken,
-            refreshToken, // Retornar o refresh token
-            user: userWithoutPassword
+            refreshToken
         });
     }
     catch (error) {

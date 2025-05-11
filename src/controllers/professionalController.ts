@@ -99,7 +99,6 @@ export const getAllProfessionalsHandler = async (req: Request, res: Response, ne
       },
     });
   } catch (error) {
-    console.error("Erro ao buscar profissionais:", error);
     next(error); 
   }
 };
@@ -119,7 +118,6 @@ export const getProfessionalByIdHandler = async (req: Request, res: Response, ne
     const educations = normalizeEducations(professional);
     res.json({ ...professional, educations });
   } catch (error) {
-    console.error(`Erro ao buscar profissional ${id}:`, error);
     next(error);
   }
 };
@@ -230,7 +228,6 @@ export const createProfessionalHandler = async (req: Request, res: Response, nex
       });
       res.status(201).json({ ...newProfessional, educations: normalizeEducations(newProfessional) });
     } catch (error) {
-      console.error("Erro ao criar profissional:", error);
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
             res.status(409).json({ message: "Este usuário já possui um perfil profissional ou ocorreu um conflito de dados (ex: nome duplicado se houver restrição)." });
@@ -320,7 +317,6 @@ export const updateProfessionalHandler = async (req: Request, res: Response, nex
       );
       res.json({ ...updatedProfessional, educations: normalizeEducations(updatedProfessional) });
     } catch (error) {
-      console.error(`Erro ao atualizar profissional ${id}:`, error);
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
           res.status(404).json({ message: `Erro ao atualizar: ${error.meta?.cause || 'Profissional não encontrado ou registro relacionado ausente'}` });
           return;
@@ -335,7 +331,6 @@ export const deleteProfessionalHandler = async (req: Request, res: Response, nex
       await professionalRepository.delete(id); 
       res.status(204).send(); 
     } catch (error) {
-      console.error(`Erro ao deletar profissional ${id}:`, error);
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
           res.status(404).json({ message: `Erro ao deletar: ${error.meta?.cause || 'Profissional não encontrado'}` });
           return;
@@ -344,17 +339,84 @@ export const deleteProfessionalHandler = async (req: Request, res: Response, nex
     }
 };
 
-// Placeholder for future implementation if needed
 export const addServiceToProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const { professionalId, serviceId } = req.params;
-    res.status(501).json({ message: "Not Implemented" });
-    return;
+    const { professionalId } = req.params;
+    const { serviceId } = req.body;
+    if (!isValidUUID(professionalId) || !isValidUUID(serviceId)) {
+        res.status(400).json({ message: "IDs inválidos." });
+        return;
+    }
+    try {
+        // Check if professional exists
+        const professional = await professionalRepository.findById(professionalId);
+        if (!professional) {
+            res.status(404).json({ message: "Profissional não encontrado." });
+            return;
+        }
+        // Check if service exists
+        const service = await prisma.service.findUnique({ where: { id: serviceId } });
+        if (!service) {
+            res.status(404).json({ message: "Serviço não encontrado." });
+            return;
+        }
+        // Link professional to service (ignore duplicate error)
+        try {
+            await require("../repositories/serviceRepository").serviceRepository.linkProfessionalToService(professionalId, serviceId);
+        } catch (err: any) {
+            if (err.code !== 'P2002') throw err; // Ignore duplicate
+        }
+        // Return updated professional with pluralized arrays
+        const updatedProfessional = await professionalRepository.findById(professionalId);
+        if (!updatedProfessional) {
+            res.status(404).json({ message: "Profissional não encontrado após associação." });
+            return;
+        }
+        const flatServices = (updatedProfessional.services || []).map((ps: any) => ps.service);
+        const educations = normalizeEducations(updatedProfessional);
+        res.status(201).json({ ...updatedProfessional, services: flatServices, educations });
+    } catch (error) {
+        next(error);
+    }
 };
 
-export const removeServiceFromProfessionalHandler = async (req: Request, res: Response, next: Function): Promise<void> => {
+export const removeServiceFromProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { professionalId, serviceId } = req.params;
-    res.status(501).json({ message: "Not Implemented" });
-    return;
+    if (!isValidUUID(professionalId) || !isValidUUID(serviceId)) {
+        res.status(400).json({ message: "IDs inválidos." });
+        return;
+    }
+    try {
+        // Check if professional exists
+        const professional = await professionalRepository.findById(professionalId);
+        if (!professional) {
+            res.status(404).json({ message: "Profissional não encontrado." });
+            return;
+        }
+        // Check if service exists
+        const service = await prisma.service.findUnique({ where: { id: serviceId } });
+        if (!service) {
+            res.status(404).json({ message: "Serviço não encontrado." });
+            return;
+        }
+        // Unlink professional from service
+        await require("../repositories/serviceRepository").serviceRepository.unlinkProfessionalFromService(professionalId, serviceId);
+        // Return updated professional with pluralized arrays
+        const updatedProfessional = await professionalRepository.findById(professionalId);
+        if (!updatedProfessional) {
+            res.status(404).json({ message: "Profissional não encontrado após desassociação." });
+            return;
+        }
+        const flatServices = (updatedProfessional.services || []).map((ps: any) => ps.service);
+        const educations = normalizeEducations(updatedProfessional);
+        res.status(200).json({ ...updatedProfessional, services: flatServices, educations, message: "Serviço desassociado com sucesso" });
+    } catch (error) {
+        // If not found, return 404
+        if ((error as any)?.code === 'P2025') {
+            res.status(404).json({ message: "Associação não encontrada." });
+            return;
+        }
+        next(error);
+    }
 };
 
 export const getMyProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -389,7 +451,7 @@ export const getMyProfessionalHandler = async (req: Request, res: Response, next
   }
 };
 
-// Get all services for the authenticated professional
+// GET /api/professionals/services - List all services for the authenticated professional (with join fields)
 export const getMyProfessionalServicesHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = req.user?.id;
@@ -403,16 +465,14 @@ export const getMyProfessionalServicesHandler = async (req: Request, res: Respon
       res.status(404).json({ message: "Perfil profissional não encontrado." });
       return;
     }
-    // Get all services linked to this professional (via join table)
-    const services = await prisma.service.findMany({
-      where: {
-        professionals: {
-          some: { professionalId: professional.id }
-        }
-      },
-      include: { category: true, company: true }
-    });
-    res.json(services);
+    // Get all services linked to this professional (with join fields)
+    const services = await require("../repositories/serviceRepository").serviceRepository.getServicesByProfessional(professional.id);
+    res.json(services.map((ps: any) => ({
+      ...ps.service,
+      price: ps.price,
+      schedule: ps.schedule,
+      description: ps.description
+    })));
   } catch (error) {
     next(error);
   }
@@ -510,9 +570,90 @@ export const updateMyProfessionalHandler = async (req: Request, res: Response, n
     }
     res.json({ ...freshProfessional, services: flatServices, educations: educationsArr, userRole });
   } catch (error) {
-    console.error(`Erro ao atualizar perfil profissional do próprio usuário:`, error);
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
       res.status(404).json({ message: `Erro ao atualizar: ${error.meta?.cause || 'Profissional não encontrado ou registro relacionado ausente'}` });
+      return;
+    }
+    next(error);
+  }
+};
+
+// POST /api/professionals/services - Link a service to the authenticated professional (with price, schedule, description)
+export const addServiceToMyProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    // DEBUG: Log user context and userId
+    console.log('DEBUG addServiceToMyProfessionalHandler req.user:', req.user);
+    const userId = req.user?.id;
+    const { serviceId, price, schedule, description } = req.body;
+    if (!userId) {
+      res.status(401).json({ message: "Usuário não autenticado." });
+      return;
+    }
+    if (!isValidUUID(serviceId)) {
+      res.status(400).json({ message: "serviceId inválido." });
+      return;
+    }
+    if (schedule && !Array.isArray(schedule)) {
+      res.status(400).json({ message: "schedule deve ser um array de objetos." });
+      return;
+    }
+    // DEBUG: Log professional lookup
+    const professional = await professionalRepository.findByUserId(userId);
+    console.log('DEBUG addServiceToMyProfessionalHandler professional:', professional);
+    if (!professional) {
+      res.status(404).json({ message: "Perfil profissional não encontrado." });
+      return;
+    }
+    const service = await prisma.service.findUnique({ where: { id: serviceId } });
+    if (!service) {
+      res.status(404).json({ message: "Serviço não encontrado." });
+      return;
+    }
+    try {
+      await require("../repositories/serviceRepository").serviceRepository.linkProfessionalToService(professional.id, serviceId, price, schedule, description);
+    } catch (err: any) {
+      if (err.code !== 'P2002') throw err;
+    }
+    // Return updated professional (with pluralized arrays)
+    const updatedProfessional = await professionalRepository.findByUserId(userId);
+    const flatServices = (updatedProfessional?.services || []).map((ps: any) => ps.service);
+    const educations = normalizeEducations(updatedProfessional);
+    res.status(201).json({ ...updatedProfessional, services: flatServices, educations });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// DELETE /api/professionals/services/:serviceId - Unlink a service from the authenticated professional
+export const removeServiceFromMyProfessionalHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    const { serviceId } = req.params;
+    if (!userId || !serviceId) {
+      res.status(400).json({ message: "Usuário ou serviceId ausente." });
+      return;
+    }
+    if (!isValidUUID(serviceId)) {
+      res.status(400).json({ message: "serviceId inválido." });
+      return;
+    }
+    const professional = await professionalRepository.findByUserId(userId);
+    if (!professional) {
+      res.status(404).json({ message: "Perfil profissional não encontrado." });
+      return;
+    }
+    await require("../repositories/serviceRepository").serviceRepository.unlinkProfessionalFromService(professional.id, serviceId);
+    // Return updated list
+    const services = await require("../repositories/serviceRepository").serviceRepository.getServicesByProfessional(professional.id);
+    res.status(200).json(services.map((ps: any) => ({
+      ...ps.service,
+      price: ps.price,
+      schedule: ps.schedule,
+      description: ps.description
+    })));
+  } catch (error) {
+    if ((error as any)?.code === 'P2025') {
+      res.status(404).json({ message: "Associação não encontrada." });
       return;
     }
     next(error);

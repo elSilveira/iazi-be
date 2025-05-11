@@ -20,7 +20,7 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateMyProfessionalHandler = exports.getMyProfessionalServicesHandler = exports.getMyProfessionalHandler = exports.removeServiceFromProfessionalHandler = exports.addServiceToProfessionalHandler = exports.deleteProfessionalHandler = exports.updateProfessionalHandler = exports.createProfessionalHandler = exports.getProfessionalByIdHandler = exports.getAllProfessionalsHandler = void 0;
+exports.removeServiceFromMyProfessionalHandler = exports.addServiceToMyProfessionalHandler = exports.updateMyProfessionalHandler = exports.getMyProfessionalServicesHandler = exports.getMyProfessionalHandler = exports.removeServiceFromProfessionalHandler = exports.addServiceToProfessionalHandler = exports.deleteProfessionalHandler = exports.updateProfessionalHandler = exports.createProfessionalHandler = exports.getProfessionalByIdHandler = exports.getAllProfessionalsHandler = void 0;
 const professionalRepository_1 = require("../repositories/professionalRepository");
 const client_1 = require("@prisma/client");
 const prisma_1 = require("../lib/prisma");
@@ -113,7 +113,6 @@ const getAllProfessionalsHandler = (req, res, next) => __awaiter(void 0, void 0,
         });
     }
     catch (error) {
-        console.error("Erro ao buscar profissionais:", error);
         next(error);
     }
 });
@@ -134,7 +133,6 @@ const getProfessionalByIdHandler = (req, res, next) => __awaiter(void 0, void 0,
         res.json(Object.assign(Object.assign({}, professional), { educations }));
     }
     catch (error) {
-        console.error(`Erro ao buscar profissional ${id}:`, error);
         next(error);
     }
 });
@@ -238,7 +236,6 @@ const createProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, 
         res.status(201).json(Object.assign(Object.assign({}, newProfessional), { educations: normalizeEducations(newProfessional) }));
     }
     catch (error) {
-        console.error("Erro ao criar profissional:", error);
         if (error instanceof client_1.Prisma.PrismaClientKnownRequestError) {
             if (error.code === 'P2002') {
                 res.status(409).json({ message: "Este usuário já possui um perfil profissional ou ocorreu um conflito de dados (ex: nome duplicado se houver restrição)." });
@@ -318,7 +315,6 @@ const updateProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, 
         res.json(Object.assign(Object.assign({}, updatedProfessional), { educations: normalizeEducations(updatedProfessional) }));
     }
     catch (error) {
-        console.error(`Erro ao atualizar profissional ${id}:`, error);
         if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
             res.status(404).json({ message: `Erro ao atualizar: ${((_a = error.meta) === null || _a === void 0 ? void 0 : _a.cause) || 'Profissional não encontrado ou registro relacionado ausente'}` });
             return;
@@ -335,7 +331,6 @@ const deleteProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, 
         res.status(204).send();
     }
     catch (error) {
-        console.error(`Erro ao deletar profissional ${id}:`, error);
         if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
             res.status(404).json({ message: `Erro ao deletar: ${((_a = error.meta) === null || _a === void 0 ? void 0 : _a.cause) || 'Profissional não encontrado'}` });
             return;
@@ -344,17 +339,88 @@ const deleteProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, 
     }
 });
 exports.deleteProfessionalHandler = deleteProfessionalHandler;
-// Placeholder for future implementation if needed
 const addServiceToProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const { professionalId, serviceId } = req.params;
-    res.status(501).json({ message: "Not Implemented" });
-    return;
+    const { professionalId } = req.params;
+    const { serviceId } = req.body;
+    if (!isValidUUID(professionalId) || !isValidUUID(serviceId)) {
+        res.status(400).json({ message: "IDs inválidos." });
+        return;
+    }
+    try {
+        // Check if professional exists
+        const professional = yield professionalRepository_1.professionalRepository.findById(professionalId);
+        if (!professional) {
+            res.status(404).json({ message: "Profissional não encontrado." });
+            return;
+        }
+        // Check if service exists
+        const service = yield prisma_1.prisma.service.findUnique({ where: { id: serviceId } });
+        if (!service) {
+            res.status(404).json({ message: "Serviço não encontrado." });
+            return;
+        }
+        // Link professional to service (ignore duplicate error)
+        try {
+            yield require("../repositories/serviceRepository").serviceRepository.linkProfessionalToService(professionalId, serviceId);
+        }
+        catch (err) {
+            if (err.code !== 'P2002')
+                throw err; // Ignore duplicate
+        }
+        // Return updated professional with pluralized arrays
+        const updatedProfessional = yield professionalRepository_1.professionalRepository.findById(professionalId);
+        if (!updatedProfessional) {
+            res.status(404).json({ message: "Profissional não encontrado após associação." });
+            return;
+        }
+        const flatServices = (updatedProfessional.services || []).map((ps) => ps.service);
+        const educations = normalizeEducations(updatedProfessional);
+        res.status(201).json(Object.assign(Object.assign({}, updatedProfessional), { services: flatServices, educations }));
+    }
+    catch (error) {
+        next(error);
+    }
 });
 exports.addServiceToProfessionalHandler = addServiceToProfessionalHandler;
 const removeServiceFromProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { professionalId, serviceId } = req.params;
-    res.status(501).json({ message: "Not Implemented" });
-    return;
+    if (!isValidUUID(professionalId) || !isValidUUID(serviceId)) {
+        res.status(400).json({ message: "IDs inválidos." });
+        return;
+    }
+    try {
+        // Check if professional exists
+        const professional = yield professionalRepository_1.professionalRepository.findById(professionalId);
+        if (!professional) {
+            res.status(404).json({ message: "Profissional não encontrado." });
+            return;
+        }
+        // Check if service exists
+        const service = yield prisma_1.prisma.service.findUnique({ where: { id: serviceId } });
+        if (!service) {
+            res.status(404).json({ message: "Serviço não encontrado." });
+            return;
+        }
+        // Unlink professional from service
+        yield require("../repositories/serviceRepository").serviceRepository.unlinkProfessionalFromService(professionalId, serviceId);
+        // Return updated professional with pluralized arrays
+        const updatedProfessional = yield professionalRepository_1.professionalRepository.findById(professionalId);
+        if (!updatedProfessional) {
+            res.status(404).json({ message: "Profissional não encontrado após desassociação." });
+            return;
+        }
+        const flatServices = (updatedProfessional.services || []).map((ps) => ps.service);
+        const educations = normalizeEducations(updatedProfessional);
+        res.status(200).json(Object.assign(Object.assign({}, updatedProfessional), { services: flatServices, educations, message: "Serviço desassociado com sucesso" }));
+    }
+    catch (error) {
+        // If not found, return 404
+        if ((error === null || error === void 0 ? void 0 : error.code) === 'P2025') {
+            res.status(404).json({ message: "Associação não encontrada." });
+            return;
+        }
+        next(error);
+    }
 });
 exports.removeServiceFromProfessionalHandler = removeServiceFromProfessionalHandler;
 const getMyProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
@@ -389,7 +455,7 @@ const getMyProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, v
     }
 });
 exports.getMyProfessionalHandler = getMyProfessionalHandler;
-// Get all services for the authenticated professional
+// GET /api/professionals/me/services - List all services for the authenticated professional (with join fields)
 const getMyProfessionalServicesHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
@@ -404,16 +470,9 @@ const getMyProfessionalServicesHandler = (req, res, next) => __awaiter(void 0, v
             res.status(404).json({ message: "Perfil profissional não encontrado." });
             return;
         }
-        // Get all services linked to this professional (via join table)
-        const services = yield prisma_1.prisma.service.findMany({
-            where: {
-                professionals: {
-                    some: { professionalId: professional.id }
-                }
-            },
-            include: { category: true, company: true }
-        });
-        res.json(services);
+        // Get all services linked to this professional (with join fields)
+        const services = yield require("../repositories/serviceRepository").serviceRepository.getServicesByProfessional(professional.id);
+        res.json(services.map((ps) => (Object.assign(Object.assign({}, ps.service), { price: ps.price, schedule: ps.schedule, description: ps.description }))));
     }
     catch (error) {
         next(error);
@@ -503,7 +562,6 @@ const updateMyProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0
         res.json(Object.assign(Object.assign({}, freshProfessional), { services: flatServices, educations: educationsArr, userRole }));
     }
     catch (error) {
-        console.error(`Erro ao atualizar perfil profissional do próprio usuário:`, error);
         if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
             res.status(404).json({ message: `Erro ao atualizar: ${((_a = error.meta) === null || _a === void 0 ? void 0 : _a.cause) || 'Profissional não encontrado ou registro relacionado ausente'}` });
             return;
@@ -512,3 +570,86 @@ const updateMyProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0
     }
 });
 exports.updateMyProfessionalHandler = updateMyProfessionalHandler;
+// POST /api/professionals/me/services - Link a service to the authenticated professional (with price, schedule, description)
+const addServiceToMyProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        // DEBUG: Log user context and userId
+        console.log('DEBUG addServiceToMyProfessionalHandler req.user:', req.user);
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+        const { serviceId, price, schedule, description } = req.body;
+        if (!userId) {
+            res.status(401).json({ message: "Usuário não autenticado." });
+            return;
+        }
+        if (!isValidUUID(serviceId)) {
+            res.status(400).json({ message: "serviceId inválido." });
+            return;
+        }
+        if (schedule && !Array.isArray(schedule)) {
+            res.status(400).json({ message: "schedule deve ser um array de objetos." });
+            return;
+        }
+        // DEBUG: Log professional lookup
+        const professional = yield professionalRepository_1.professionalRepository.findByUserId(userId);
+        console.log('DEBUG addServiceToMyProfessionalHandler professional:', professional);
+        if (!professional) {
+            res.status(404).json({ message: "Perfil profissional não encontrado." });
+            return;
+        }
+        const service = yield prisma_1.prisma.service.findUnique({ where: { id: serviceId } });
+        if (!service) {
+            res.status(404).json({ message: "Serviço não encontrado." });
+            return;
+        }
+        try {
+            yield require("../repositories/serviceRepository").serviceRepository.linkProfessionalToService(professional.id, serviceId, price, schedule, description);
+        }
+        catch (err) {
+            if (err.code !== 'P2002')
+                throw err;
+        }
+        // Return updated professional (with pluralized arrays)
+        const updatedProfessional = yield professionalRepository_1.professionalRepository.findByUserId(userId);
+        const flatServices = ((updatedProfessional === null || updatedProfessional === void 0 ? void 0 : updatedProfessional.services) || []).map((ps) => ps.service);
+        const educations = normalizeEducations(updatedProfessional);
+        res.status(201).json(Object.assign(Object.assign({}, updatedProfessional), { services: flatServices, educations }));
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.addServiceToMyProfessionalHandler = addServiceToMyProfessionalHandler;
+// DELETE /api/professionals/me/services/:serviceId - Unlink a service from the authenticated professional
+const removeServiceFromMyProfessionalHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+        const { serviceId } = req.params;
+        if (!userId || !serviceId) {
+            res.status(400).json({ message: "Usuário ou serviceId ausente." });
+            return;
+        }
+        if (!isValidUUID(serviceId)) {
+            res.status(400).json({ message: "serviceId inválido." });
+            return;
+        }
+        const professional = yield professionalRepository_1.professionalRepository.findByUserId(userId);
+        if (!professional) {
+            res.status(404).json({ message: "Perfil profissional não encontrado." });
+            return;
+        }
+        yield require("../repositories/serviceRepository").serviceRepository.unlinkProfessionalFromService(professional.id, serviceId);
+        // Return updated list
+        const services = yield require("../repositories/serviceRepository").serviceRepository.getServicesByProfessional(professional.id);
+        res.status(200).json(services.map((ps) => (Object.assign(Object.assign({}, ps.service), { price: ps.price, schedule: ps.schedule, description: ps.description }))));
+    }
+    catch (error) {
+        if ((error === null || error === void 0 ? void 0 : error.code) === 'P2025') {
+            res.status(404).json({ message: "Associação não encontrada." });
+            return;
+        }
+        next(error);
+    }
+});
+exports.removeServiceFromMyProfessionalHandler = removeServiceFromMyProfessionalHandler;

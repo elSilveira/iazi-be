@@ -226,6 +226,8 @@ model ProfessionalService {
   professionalId String       @map("professional_id")
   serviceId      String       @map("service_id")
   price          String?
+  schedule       Json?        // Horários estruturados [{ dayOfWeek, startTime, endTime }]
+  description    String?      // Descrição específica do serviço para o profissional
   professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
   service        Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 

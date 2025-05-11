@@ -28,9 +28,16 @@ export const getUserProfile = async (req: Request, res: Response, next: NextFunc
     }
     // Exclude password from the response
     const { password, professional, ...userProfile } = user;
+    // Check roles/relations
+    const isProfessional = !!professional;
+    const hasCompany = await userRepository.hasCompany(userId);
+    const isAdmin = user.role === 'ADMIN';
     res.json({
       ...userProfile,
-      professionalId: professional ? professional.id : null
+      professionalId: professional ? professional.id : null,
+      isProfessional,
+      hasCompany,
+      isAdmin
     });
   } catch (error) {
     next(error);

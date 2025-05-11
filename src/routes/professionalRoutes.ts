@@ -404,9 +404,23 @@ router.delete(
 
 // Get all services for the authenticated professional
 router.get(
-  "/me/services",
+  "/services",
   authMiddleware,
   asyncHandler(require("../controllers/professionalController").getMyProfessionalServicesHandler)
+);
+
+router.post(
+  "/services",
+  authMiddleware,
+  asyncHandler(require("../controllers/professionalController").addServiceToMyProfessionalHandler)
+);
+
+router.delete(
+  "/services/:serviceId",
+  authMiddleware,
+  serviceIdValidator[0],
+  validateRequest,
+  asyncHandler(require("../controllers/professionalController").removeServiceFromMyProfessionalHandler)
 );
 
 export default router;

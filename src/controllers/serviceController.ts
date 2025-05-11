@@ -370,3 +370,13 @@ export const deleteServiceHandler = async (req: Request, res: Response, next: Ne
     }
 };
 
+// GET /api/professionals/service - List only services with professionals linked
+export const getServicesWithProfessionals = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const services = await serviceRepository.findWithProfessionals();
+    res.json(services);
+  } catch (error) {
+    next(error);
+  }
+};
+

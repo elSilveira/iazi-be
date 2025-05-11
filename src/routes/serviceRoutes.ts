@@ -79,5 +79,8 @@ router.delete(
   asyncHandler(deleteServiceHandler)
 );
 
+// GET /api/professionals/service - List only services with professionals linked
+router.get("/professionals/service", asyncHandler(require("../controllers/serviceController").getServicesWithProfessionals));
+
 export default router;
 

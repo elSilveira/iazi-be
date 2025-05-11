@@ -534,3 +534,27 @@
 2025-05-10 11:15:11:1511 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
 2025-05-10 11:16:51:1651 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
 2025-05-10 11:16:51:1651 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-10 14:29:58:2958 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-10 14:30:42:3042 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-10 14:30:42:3042 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-10 14:30:42:3042 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-10 14:36:47:3647 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-10 14:36:48:3648 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-10 14:57:27:5727 [31merror[39m: [31m401 - Not authorized, token failed - /api/users/me - GET - 127.0.0.1[39m
+2025-05-10 14:57:27:5727 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-10 15:00:10:010 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-10 15:00:12:012 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-10 15:00:12:012 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-10 15:01:44:144 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-11 09:37:39:3739 [31merror[39m: [31m500 - [39m
+[31mInvalid `tx.professional.create()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\controllers\professionalController.ts:188:59[39m
+
+[31m  185 const { prisma } = require("../lib/prisma");[39m
+[31m  186 const newProfessional = await prisma.$transaction(async (tx: any) => {[39m
+[31m  187   // Create professional[39m
+[31m→ 188   const createdProfessional = await tx.professional.create([39m
+[31mThe change you are trying to make would violate the required relation 'ProfessionalToUser' between the `Professional` and `User` models. - /api/professionals - POST - 127.0.0.1[39m
+2025-05-11 09:44:17:4417 [31merror[39m: [31m401 - Credenciais inválidas - /api/auth/login - POST - 127.0.0.1[39m
+2025-05-11 10:31:12:3112 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-11 10:31:12:3112 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m

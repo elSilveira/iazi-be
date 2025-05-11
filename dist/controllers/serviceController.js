@@ -20,7 +20,7 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteServiceHandler = exports.updateServiceHandler = exports.createServiceHandler = exports.getServiceByIdHandler = exports.getAllServicesHandler = exports.loadExistingServiceMiddleware = exports.checkAdminOrCompanyOwnerMiddleware = exports.checkAdminRoleMiddleware = void 0;
+exports.getServicesWithProfessionals = exports.deleteServiceHandler = exports.updateServiceHandler = exports.createServiceHandler = exports.getServiceByIdHandler = exports.getAllServicesHandler = exports.loadExistingServiceMiddleware = exports.checkAdminOrCompanyOwnerMiddleware = exports.checkAdminRoleMiddleware = void 0;
 const serviceRepository_1 = require("../repositories/serviceRepository");
 const client_1 = require("@prisma/client"); // Added UserRole
 // Helper function for UUID validation
@@ -358,3 +358,14 @@ const deleteServiceHandler = (req, res, next) => __awaiter(void 0, void 0, void 
     }
 });
 exports.deleteServiceHandler = deleteServiceHandler;
+// GET /api/professionals/service - List only services with professionals linked
+const getServicesWithProfessionals = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const services = yield serviceRepository_1.serviceRepository.findWithProfessionals();
+        res.json(services);
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.getServicesWithProfessionals = getServicesWithProfessionals;

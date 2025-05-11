@@ -53,6 +53,21 @@ export const serviceRepository = {
     });
   },
 
+  async findWithProfessionals(): Promise<Service[]> {
+    return prisma.service.findMany({
+      where: {
+        professionals: {
+          some: {}, // At least one professional linked
+        },
+      },
+      include: {
+        professionals: { include: { professional: true } },
+        category: true,
+        company: true,
+      },
+    });
+  },
+
   async create(data: Prisma.ServiceCreateInput): Promise<Service> {
     // Remove 'company' property if it is not present or not needed
     const cleanData: any = { ...data };
@@ -83,6 +98,36 @@ export const serviceRepository = {
      return prisma.service.delete({
        where: { id },
      });
+  },
+
+  // Link a professional to a service (with price, schedule, description)
+  async linkProfessionalToService(professionalId: string, serviceId: string, price?: string, schedule?: string, description?: string): Promise<void> {
+    await prisma.professionalService.create({
+      data: { professionalId, serviceId, price, schedule, description },
+    });
+  },
+
+  // Unlink a professional from a service
+  async unlinkProfessionalFromService(professionalId: string, serviceId: string): Promise<void> {
+    await prisma.professionalService.delete({
+      where: { professionalId_serviceId: { professionalId, serviceId } },
+    });
+  },
+
+  // List all professionals linked to a service
+  async getProfessionalsByService(serviceId: string) {
+    return prisma.professionalService.findMany({
+      where: { serviceId },
+      include: { professional: true },
+    });
+  },
+
+  // List all services linked to a professional (include join fields)
+  async getServicesByProfessional(professionalId: string) {
+    return prisma.professionalService.findMany({
+      where: { professionalId },
+      include: { service: true },
+    });
   },
 };
 

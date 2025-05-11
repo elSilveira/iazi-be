@@ -352,4 +352,6 @@ validationMiddleware_1.validateRequest, // Corrected
 (0, asyncHandler_1.default)(professionalController_1.removeServiceFromProfessionalHandler));
 // Get all services for the authenticated professional
 router.get("/me/services", authMiddleware_1.authMiddleware, (0, asyncHandler_1.default)(require("../controllers/professionalController").getMyProfessionalServicesHandler));
+router.post("/me/services", authMiddleware_1.authMiddleware, (0, asyncHandler_1.default)(require("../controllers/professionalController").addServiceToMyProfessionalHandler));
+router.delete("/me/services/:serviceId", authMiddleware_1.authMiddleware, serviceValidators_1.serviceIdValidator[0], validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(require("../controllers/professionalController").removeServiceFromMyProfessionalHandler));
 exports.default = router;

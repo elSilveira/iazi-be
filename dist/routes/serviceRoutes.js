@@ -61,4 +61,6 @@ serviceController_1.checkAdminOrCompanyOwnerMiddleware, // Then check ownership/
 serviceValidators_1.serviceIdValidator[0], // Pass the single ID validation middleware directly
 validationMiddleware_1.validateRequest, // Corrected: Use validateRequest
 (0, asyncHandler_1.default)(serviceController_1.deleteServiceHandler));
+// GET /api/professionals/service - List only services with professionals linked
+router.get("/professionals/service", (0, asyncHandler_1.default)(require("../controllers/serviceController").getServicesWithProfessionals));
 exports.default = router;

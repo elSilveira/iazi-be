@@ -80,11 +80,25 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
 
     const { password: _, ...userWithoutPassword } = user;
 
-    res.json({ 
-      message: "Login bem-sucedido", 
+    // Compose user/me-like payload
+    const isProfessional = !!user.professional;
+    const hasCompany = await userRepository.hasCompany(user.id);
+    const isAdmin = user.role === 'ADMIN';
+    res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      bio: user.bio,
+      phone: user.phone,
+      slug: user.slug,
+      role: user.role,
+      professionalId: user.professional ? user.professional.id : null,
+      isProfessional,
+      hasCompany,
+      isAdmin,
       accessToken,
-      refreshToken, // Retornar o refresh token
-      user: userWithoutPassword 
+      refreshToken
     });
 
   } catch (error) {
