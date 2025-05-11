@@ -17,7 +17,7 @@ import {
   professionalIdValidator,
   professionalServiceAssociationValidator
 } from "../validators/professionalValidators";
-import { serviceIdValidator } from "../validators/serviceValidators";
+import { serviceIdValidator, serviceIdParamValidator } from "../validators/serviceValidators";
 import { validateRequest } from "../middlewares/validationMiddleware"; // Corrected import
 import asyncHandler from "../utils/asyncHandler"; // Corrected import
 import { checkProfessionalOwnerOrAdminMiddleware } from "../middlewares/professionalAuthMiddleware";
@@ -48,7 +48,7 @@ router.post(
 router.delete(
   "/services/:serviceId",
   authMiddleware,
-  serviceIdValidator[0],
+  serviceIdParamValidator[0],
   validateRequest,
   asyncHandler(require("../controllers/professionalController").removeServiceFromMyProfessionalHandler)
 );

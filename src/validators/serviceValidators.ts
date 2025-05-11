@@ -33,3 +33,7 @@ export const serviceIdValidator = [
   param("id").isUUID().withMessage("ID do serviço inválido."),
 ];
 
+export const serviceIdParamValidator = [
+  param("serviceId").isUUID().withMessage("ID do serviço inválido."),
+];
+
