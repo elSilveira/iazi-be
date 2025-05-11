@@ -7,7 +7,7 @@ export type ProfessionalWithDetails = Prisma.ProfessionalGetPayload<{
     services: { include: { service: true } };
     company: { include: { address: true } };
     experiences: true; // Maps to ProfessionalExperience
-    education: true;   // Maps to ProfessionalEducation
+    education: true;   // Maps to ProfessionalEducation (singular, as in schema)
     availability: true; // Maps to ProfessionalAvailabilitySlot
     portfolio: true;    // Maps to ProfessionalPortfolioItem
   };

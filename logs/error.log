@@ -695,3 +695,6 @@
 
 [31mArgument `price`: Invalid value provided. Expected String or Null, provided Int. - /api/professionals/services - POST - 127.0.0.1[39m
 2025-05-11 15:24:47:2447 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-11 15:26:05:265 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-11 15:27:44:2744 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-11 15:27:44:2744 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m

@@ -17,7 +17,7 @@ exports.professionalRepository = {
         services: { include: { service: true } },
         company: { include: { address: true } },
         experiences: true, // Maps to ProfessionalExperience model
-        educations: true, // Maps to ProfessionalEducation model (should be plural)
+        education: true, // Correct: Prisma expects 'education' (singular)
         availability: true, // Maps to ProfessionalAvailabilitySlot model
         portfolio: true, // Maps to ProfessionalPortfolioItem model
     },
