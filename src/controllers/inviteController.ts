@@ -5,12 +5,11 @@ import { randomBytes } from "crypto";
 // POST /api/invites - Generate a new invite code (admin only)
 export const generateInvite = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    // Only allow admin users to generate invites
-    if (!req.user || req.user.role !== "ADMIN") {
-      res.status(403).json({ message: "Apenas administradores podem gerar convites." });
+    // Allow any authenticated user to generate invites
+    if (!req.user) {
+      res.status(401).json({ message: "Usuário não autenticado." });
       return;
     }
-    // Generate a random code
     const code = randomBytes(8).toString("hex");
     const invite = await prisma.inviteCode.create({
       data: { code },

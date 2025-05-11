@@ -537,6 +537,29 @@ const options = {
         // DELETE for company address might not be needed if it's required
       },
       // --- Include other paths defined via JSDoc in routes/*.ts ---
+      '/api/auth/invites': {
+        post: {
+          tags: ['Auth'],
+          summary: 'Gera um novo código de convite (admin, profissional ou empresa)',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            '201': {
+              description: 'Código de convite gerado com sucesso',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      code: { type: 'string', description: 'Código de convite gerado' }
+                    }
+                  }
+                }
+              }
+            },
+            '403': { description: 'Apenas administradores, empresas ou profissionais podem gerar convites.' }
+          }
+        }
+      },
     }
   },
   apis: ['./src/routes/*.ts'], // Still use this to pick up JSDoc from other routes

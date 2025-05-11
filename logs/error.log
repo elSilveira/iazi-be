@@ -699,3 +699,14 @@
 2025-05-11 15:27:44:2744 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
 2025-05-11 15:27:44:2744 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
 2025-05-11 15:45:47:4547 [31merror[39m: [31m500 - Cannot read properties of undefined (reading 'ADMIN') - /api/appointments - GET - ::ffff:127.0.0.1[39m
+2025-05-11 17:03:49:349 [31merror[39m: [31m401 - Credenciais inválidas - /api/auth/login - POST - 127.0.0.1[39m
+2025-05-11 17:04:05:45 [31merror[39m: [31m401 - Credenciais inválidas - /api/auth/login - POST - 127.0.0.1[39m
+2025-05-11 17:04:34:434 [31merror[39m: [31m500 - [39m
+[31mInvalid `tx.professional.create()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\controllers\professionalController.ts:186:59[39m
+
+[31m  183 const { prisma } = require("../lib/prisma");[39m
+[31m  184 const newProfessional = await prisma.$transaction(async (tx: any) => {[39m
+[31m  185   // Create professional[39m
+[31m→ 186   const createdProfessional = await tx.professional.create([39m
+[31mThe change you are trying to make would violate the required relation 'ProfessionalToUser' between the `Professional` and `User` models. - /api/professionals - POST - 127.0.0.1[39m
