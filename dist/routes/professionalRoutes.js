@@ -11,6 +11,8 @@ const serviceValidators_1 = require("../validators/serviceValidators");
 const validationMiddleware_1 = require("../middlewares/validationMiddleware"); // Corrected import
 const asyncHandler_1 = __importDefault(require("../utils/asyncHandler")); // Corrected import
 const professionalAuthMiddleware_1 = require("../middlewares/professionalAuthMiddleware");
+const appointmentValidators_1 = require("../validators/appointmentValidators");
+const appointmentController_1 = require("../controllers/appointmentController");
 const router = (0, express_1.Router)();
 /**
  * @swagger
@@ -19,9 +21,9 @@ const router = (0, express_1.Router)();
  *   description: Gerenciamento de profissionais
  */
 // Register /services routes at the very top to guarantee no param route can match first
-router.get("/services", authMiddleware_1.authMiddleware, (0, asyncHandler_1.default)(require("../controllers/professionalController").getMyProfessionalServicesHandler));
-router.post("/services", authMiddleware_1.authMiddleware, (0, asyncHandler_1.default)(require("../controllers/professionalController").addServiceToMyProfessionalHandler));
-router.delete("/services/:serviceId", authMiddleware_1.authMiddleware, serviceValidators_1.serviceIdValidator[0], validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(require("../controllers/professionalController").removeServiceFromMyProfessionalHandler));
+router.get("/services", authMiddleware_1.authMiddleware, (0, asyncHandler_1.default)(professionalController_1.getMyProfessionalServicesHandler));
+router.post("/services", authMiddleware_1.authMiddleware, (0, asyncHandler_1.default)(professionalController_1.addServiceToMyProfessionalHandler));
+router.delete("/services/:serviceId", authMiddleware_1.authMiddleware, serviceValidators_1.serviceIdParamValidator[0], validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(professionalController_1.removeServiceFromMyProfessionalHandler));
 /**
  * @swagger
  * /api/professionals:
@@ -123,7 +125,7 @@ router.get("/me", authMiddleware_1.authMiddleware, (0, asyncHandler_1.default)(p
  *       500:
  *         description: Erro interno do servidor.
  */
-router.put("/me", authMiddleware_1.authMiddleware, ...professionalValidators_1.updateMyProfessionalValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(require("../controllers/professionalController").updateMyProfessionalHandler));
+router.put("/me", authMiddleware_1.authMiddleware, ...professionalValidators_1.updateMyProfessionalValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(professionalController_1.updateMyProfessionalHandler));
 /**
  * @swagger
  * /api/professionals/{id}:
@@ -403,4 +405,6 @@ validationMiddleware_1.validateRequest, // Corrected
  *       500:
  *         description: Erro interno do servidor.
  */
+// GET /api/professionals/:id/availability - Disponibilidade pública para um profissional específico
+router.get("/:id/availability", appointmentValidators_1.getAvailabilityValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(appointmentController_1.getAvailability));
 exports.default = router;

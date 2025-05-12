@@ -450,3 +450,98 @@ describe("DELETE /api/professionals/:id", () => {
         expect(res.statusCode).toEqual(404);
     }));
 });
+describe("DELETE /api/professionals/services/:serviceId (authenticated professional)", () => {
+    let profUser;
+    let profToken;
+    let profProfile;
+    let service;
+    beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
+        // Create a user and professional profile
+        profUser = yield prismaClient_1.prisma.user.create({
+            data: {
+                name: "ServiceRemover",
+                email: `serviceremover-${Date.now()}@test.com`,
+                password: "hashedpassword",
+                role: client_1.UserRole.USER,
+                points: 0,
+                slug: `serviceremover-${Date.now()}`
+            }
+        });
+        profToken = generateToken(profUser.id, client_1.UserRole.USER);
+        profProfile = yield prismaClient_1.prisma.professional.create({
+            data: {
+                name: "Service Remover",
+                role: "Remover",
+                companyId: testCompanyId1,
+                userId: profUser.id
+            }
+        });
+        // Create a service and link to professional
+        service = yield prismaClient_1.prisma.service.create({
+            data: {
+                name: `Removable Service ${Date.now()}`,
+                description: "To be removed",
+                price: new library_1.Decimal("10.00"),
+                duration: "10min",
+                categoryId: (yield prismaClient_1.prisma.category.findFirst()).id,
+                companyId: testCompanyId1
+            }
+        });
+        yield prismaClient_1.prisma.professionalService.create({
+            data: { professionalId: profProfile.id, serviceId: service.id }
+        });
+    }));
+    afterAll(() => __awaiter(void 0, void 0, void 0, function* () {
+        yield prismaClient_1.prisma.professionalService.deleteMany({ where: { professionalId: profProfile.id } });
+        yield prismaClient_1.prisma.service.deleteMany({ where: { id: service.id } });
+        yield prismaClient_1.prisma.professional.deleteMany({ where: { id: profProfile.id } });
+        yield prismaClient_1.prisma.user.deleteMany({ where: { id: profUser.id } });
+    }));
+    it("should allow the authenticated professional to remove a linked service", () => __awaiter(void 0, void 0, void 0, function* () {
+        // Confirm the link exists
+        let link = yield prismaClient_1.prisma.professionalService.findUnique({
+            where: { professionalId_serviceId: { professionalId: profProfile.id, serviceId: service.id } }
+        });
+        expect(link).not.toBeNull();
+        // Call the endpoint
+        const res = yield (0, supertest_1.default)(index_1.app)
+            .delete(`/api/professionals/services/${service.id}`)
+            .set("Authorization", `Bearer ${profToken}`);
+        expect(res.statusCode).toBe(204);
+        // Confirm the link is removed
+        link = yield prismaClient_1.prisma.professionalService.findUnique({
+            where: { professionalId_serviceId: { professionalId: profProfile.id, serviceId: service.id } }
+        });
+        expect(link).toBeNull();
+    }));
+    it("should return 404 if the professional profile does not exist for the user", () => __awaiter(void 0, void 0, void 0, function* () {
+        // Create a new user without a professional profile
+        const orphanUser = yield prismaClient_1.prisma.user.create({
+            data: {
+                name: "Orphan",
+                email: `orphan-${Date.now()}@test.com`,
+                password: "hashedpassword",
+                role: client_1.UserRole.USER,
+                points: 0,
+                slug: `orphan-${Date.now()}`
+            }
+        });
+        const orphanToken = generateToken(orphanUser.id, client_1.UserRole.USER);
+        const res = yield (0, supertest_1.default)(index_1.app)
+            .delete(`/api/professionals/services/${service.id}`)
+            .set("Authorization", `Bearer ${orphanToken}`);
+        expect(res.statusCode).toBe(404);
+        yield prismaClient_1.prisma.user.delete({ where: { id: orphanUser.id } });
+    }));
+    it("should return 400 for invalid serviceId format", () => __awaiter(void 0, void 0, void 0, function* () {
+        const res = yield (0, supertest_1.default)(index_1.app)
+            .delete(`/api/professionals/services/invalid-id-format`)
+            .set("Authorization", `Bearer ${profToken}`);
+        expect(res.statusCode).toBe(400);
+    }));
+    it("should return 401 if not authenticated", () => __awaiter(void 0, void 0, void 0, function* () {
+        const res = yield (0, supertest_1.default)(index_1.app)
+            .delete(`/api/professionals/services/${service.id}`);
+        expect(res.statusCode).toBe(401);
+    }));
+});

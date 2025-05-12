@@ -486,15 +486,33 @@ exports.updateAppointmentStatus = updateAppointmentStatus;
 // Obter horários disponíveis para um serviço/profissional em uma data específica
 const getAvailability = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const { date, serviceId, professionalId, companyId } = req.query;
+    const { date, serviceId, professionalId: queryProfessionalId, companyId } = req.query;
+    let professionalId = queryProfessionalId;
     if (!date || typeof date !== 'string') {
         return res.status(400).json({ message: "Parâmetro 'date' (YYYY-MM-DD) é obrigatório." });
     }
     if (!serviceId || typeof serviceId !== 'string' || !isValidUUID(serviceId)) {
         return res.status(400).json({ message: "Parâmetro 'serviceId' (UUID) é obrigatório." });
     }
+    // If called via /api/professionals/:id/availability, use req.params.id as professionalId
+    if (!professionalId && req.params && req.params.id && typeof req.params.id === 'string' && isValidUUID(req.params.id)) {
+        professionalId = req.params.id;
+    }
+    // If neither professionalId nor companyId is provided, try to use authenticated user's professionalId
     if (!professionalId && !companyId) {
-        return res.status(400).json({ message: "É necessário fornecer 'professionalId' ou 'companyId'." });
+        if (req.user && req.user.id) {
+            // Try to find professional profile for this user
+            const prof = yield professionalRepository_1.professionalRepository.findByUserId(req.user.id);
+            if (prof) {
+                professionalId = prof.id;
+            }
+            else {
+                return res.status(400).json({ message: "É necessário fornecer 'professionalId' ou 'companyId', ou o usuário autenticado não possui perfil profissional." });
+            }
+        }
+        else {
+            return res.status(400).json({ message: "É necessário fornecer 'professionalId' ou 'companyId'." });
+        }
     }
     if (professionalId && (typeof professionalId !== 'string' || !isValidUUID(professionalId))) {
         return res.status(400).json({ message: "Formato de 'professionalId' inválido." });

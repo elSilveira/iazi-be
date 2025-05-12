@@ -26,9 +26,8 @@ const router = (0, express_1.Router)();
  *   description: Gerenciamento de agendamentos
  */
 // ... (Swagger definitions remain the same) ...
-// --- Rota Pública (ou com autenticação opcional?) para Disponibilidade ---
-// TODO: Implementar e documentar a rota /availability se a função getAppointmentAvailability for exportada
-// router.get("/availability", getAvailabilityValidator, validateRequest, asyncHandler(getAppointmentAvailability)); // Comentado pois a função não está exportada
+// --- Rota Pública para Disponibilidade ---
+router.get("/availability", appointmentValidators_1.getAvailabilityValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(require("../controllers/appointmentController").getAvailability));
 // --- Rotas Protegidas --- 
 router.use((0, asyncHandler_1.default)(authMiddleware_1.authMiddleware)); // Corrected: Use authMiddleware wrapped with asyncHandler
 /**

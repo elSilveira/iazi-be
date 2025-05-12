@@ -130,7 +130,14 @@ const getProfessionalByIdHandler = (req, res, next) => __awaiter(void 0, void 0,
             return;
         }
         const educations = normalizeEducations(professional);
-        res.json(Object.assign(Object.assign({}, professional), { educations }));
+        // Map services to always include service name
+        const services = (professional.services || []).map((ps) => {
+            if (ps.service) {
+                return Object.assign(Object.assign(Object.assign({}, ps), { name: ps.service.name }), ps.service);
+            }
+            return ps;
+        });
+        res.json(Object.assign(Object.assign({}, professional), { services, educations }));
     }
     catch (error) {
         next(error);

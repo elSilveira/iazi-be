@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.serviceIdValidator = exports.updateServiceValidator = exports.createServiceValidator = void 0;
+exports.serviceIdParamValidator = exports.serviceIdValidator = exports.updateServiceValidator = exports.createServiceValidator = void 0;
 const express_validator_1 = require("express-validator");
 exports.createServiceValidator = [
     (0, express_validator_1.body)("name").trim().notEmpty().withMessage("O nome do serviço é obrigatório."),
@@ -31,4 +31,7 @@ exports.updateServiceValidator = [
 ];
 exports.serviceIdValidator = [
     (0, express_validator_1.param)("id").isUUID().withMessage("ID do serviço inválido."),
+];
+exports.serviceIdParamValidator = [
+    (0, express_validator_1.param)("serviceId").isUUID().withMessage("ID do serviço inválido."),
 ];
