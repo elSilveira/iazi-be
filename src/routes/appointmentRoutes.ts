@@ -31,9 +31,8 @@ const router = Router();
 
 // ... (Swagger definitions remain the same) ...
 
-// --- Rota Pública (ou com autenticação opcional?) para Disponibilidade ---
-// TODO: Implementar e documentar a rota /availability se a função getAppointmentAvailability for exportada
-// router.get("/availability", getAvailabilityValidator, validateRequest, asyncHandler(getAppointmentAvailability)); // Comentado pois a função não está exportada
+// --- Rota Pública para Disponibilidade ---
+router.get("/availability", getAvailabilityValidator, validateRequest, asyncHandler(require("../controllers/appointmentController").getAvailability));
 
 // --- Rotas Protegidas --- 
 router.use(asyncHandler(authMiddleware)); // Corrected: Use authMiddleware wrapped with asyncHandler

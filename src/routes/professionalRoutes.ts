@@ -7,7 +7,11 @@ import {
   deleteProfessionalHandler,
   addServiceToProfessionalHandler,
   removeServiceFromProfessionalHandler,
-  getMyProfessionalHandler
+  getMyProfessionalHandler,
+  getMyProfessionalServicesHandler,
+  addServiceToMyProfessionalHandler,
+  removeServiceFromMyProfessionalHandler,
+  updateMyProfessionalHandler
 } from "../controllers/professionalController";
 import { authMiddleware } from "../middlewares/authMiddleware"; // Import basic auth middleware
 import { 
@@ -22,6 +26,8 @@ import { validateRequest } from "../middlewares/validationMiddleware"; // Correc
 import asyncHandler from "../utils/asyncHandler"; // Corrected import
 import { checkProfessionalOwnerOrAdminMiddleware } from "../middlewares/professionalAuthMiddleware";
 import { professionalRepository } from "../repositories/professionalRepository";
+import { getAvailabilityValidator } from "../validators/appointmentValidators";
+import { getAvailability } from "../controllers/appointmentController";
 
 const router = Router();
 
@@ -36,13 +42,13 @@ const router = Router();
 router.get(
   "/services",
   authMiddleware,
-  asyncHandler(require("../controllers/professionalController").getMyProfessionalServicesHandler)
+  asyncHandler(getMyProfessionalServicesHandler)
 );
 
 router.post(
   "/services",
   authMiddleware,
-  asyncHandler(require("../controllers/professionalController").addServiceToMyProfessionalHandler)
+  asyncHandler(addServiceToMyProfessionalHandler)
 );
 
 router.delete(
@@ -50,7 +56,7 @@ router.delete(
   authMiddleware,
   serviceIdParamValidator[0],
   validateRequest,
-  asyncHandler(require("../controllers/professionalController").removeServiceFromMyProfessionalHandler)
+  asyncHandler(removeServiceFromMyProfessionalHandler)
 );
 
 /**
@@ -161,7 +167,7 @@ router.put(
   authMiddleware,
   ...updateMyProfessionalValidator,
   validateRequest,
-  asyncHandler(require("../controllers/professionalController").updateMyProfessionalHandler)
+  asyncHandler(updateMyProfessionalHandler)
 );
 
 /**
@@ -471,6 +477,14 @@ router.delete(
  *       500:
  *         description: Erro interno do servidor.
  */
+
+// GET /api/professionals/:id/availability - Disponibilidade pública para um profissional específico
+router.get(
+  "/:id/availability",
+  getAvailabilityValidator,
+  validateRequest,
+  asyncHandler(getAvailability)
+);
 
 export default router;
 

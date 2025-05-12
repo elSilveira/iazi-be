@@ -116,7 +116,14 @@ export const getProfessionalByIdHandler = async (req: Request, res: Response, ne
       return;
     }
     const educations = normalizeEducations(professional);
-    res.json({ ...professional, educations });
+    // Map services to always include service name
+    const services = (professional.services || []).map((ps: any) => {
+      if (ps.service) {
+        return { ...ps, name: ps.service.name, ...ps.service };
+      }
+      return ps;
+    });
+    res.json({ ...professional, services, educations });
   } catch (error) {
     next(error);
   }
