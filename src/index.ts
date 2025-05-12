@@ -18,6 +18,7 @@ import userRouter from './routes/userRoutes';
 import categoryRouter from './routes/categoryRoutes';
 import notificationRouter from './routes/notificationRoutes'; // Added notification routes
 import gamificationRouter from './routes/gamificationRoutes'; // Added gamification routes
+import searchRoutes from './routes/searchRoutes';
 
 import { setupSwagger } from './swagger';
 
@@ -85,6 +86,7 @@ app.use('/api/users', userRouter);
 app.use('/api/categories', categoryRouter);
 app.use('/api/notifications', notificationRouter);
 app.use('/api/gamification', gamificationRouter);
+app.use('/api/search', searchRoutes);
 
 import { errorMiddleware } from './middlewares/errorMiddleware'; // Importar o middleware de erro
 app.use(errorMiddleware); // Usar o middleware de erro global

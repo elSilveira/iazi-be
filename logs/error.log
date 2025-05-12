@@ -710,3 +710,5 @@
 [31m  185   // Create professional[39m
 [31m→ 186   const createdProfessional = await tx.professional.create([39m
 [31mThe change you are trying to make would violate the required relation 'ProfessionalToUser' between the `Professional` and `User` models. - /api/professionals - POST - 127.0.0.1[39m
+2025-05-12 00:41:46:4146 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-12 00:41:46:4146 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
