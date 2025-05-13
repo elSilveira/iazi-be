@@ -173,12 +173,12 @@ describe("Appointment Controller Helpers", () => {
             expect(isAvailable).toBe(false);
             expect(appointmentRepository.findMany).not.toHaveBeenCalled();
             expect(scheduleBlockRepository.findMany).not.toHaveBeenCalled();
-        });
-
-        it("should return false if there is a conflicting appointment", async () => {
+        });        it("should return false if there is a conflicting appointment", async () => {
             const conflictingAppt: Appointment = {
                 id: "appt-789",
-                date: new Date("2024-05-06T14:30:00.000Z"), // Starts during the requested slot
+                startTime: new Date("2024-05-06T14:30:00.000Z"), // Starts during the requested slot
+                endTime: new Date("2024-05-06T15:30:00.000Z"), // Ends an hour later
+                companyId: null, // Added this field
                 status: AppointmentStatus.CONFIRMED,
                 userId: "user-xyz",
                 serviceId: "serv-abc",

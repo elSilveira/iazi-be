@@ -73,6 +73,7 @@ model Company {
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
   address         CompanyAddress?
+  appointments    Appointment[]
   professionals   Professional[]
   reviews         Review[]
   services        Service[]
@@ -238,10 +239,12 @@ model ProfessionalService {
 
 model Appointment {
   id             String            @id @default(uuid())
-  date           DateTime
+  startTime      DateTime          @map("start_time")
+  endTime        DateTime          @map("end_time")
   userId         String            @map("user_id")
   serviceId      String            @map("service_id")
   professionalId String?           @map("professional_id")
+  companyId      String?           @map("company_id")
   notes          String?
   createdAt      DateTime          @default(now()) @map("created_at")
   updatedAt      DateTime          @updatedAt @map("updated_at")
@@ -249,11 +252,14 @@ model Appointment {
   professional   Professional?     @relation("ProfessionalAppointments", fields: [professionalId], references: [id])
   service        Service           @relation(fields: [serviceId], references: [id])
   user           User              @relation(fields: [userId], references: [id])
+  company        Company?          @relation(fields: [companyId], references: [id])
 
   @@index([userId])
   @@index([serviceId])
   @@index([professionalId])
-  @@index([date])
+  @@index([companyId])
+  @@index([startTime])
+  @@index([endTime])
   @@index([status])
   @@map("appointments")
 }
@@ -448,5 +454,6 @@ enum AppointmentStatus {
   CONFIRMED
   CANCELLED
   COMPLETED
+  IN_PROGRESS
   NO_SHOW
 }

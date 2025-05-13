@@ -203,7 +203,8 @@ describe("GET /api/appointments/availability", () => {
         const bookedTime = setMinutes(setHours(nextMonday, 10), 0); // 10:00
         const conflictingAppt = await prisma.appointment.create({
             data: {
-                date: bookedTime,
+                startTime: bookedTime,
+                endTime: new Date(bookedTime.getTime() + 60 * 60 * 1000), // 1 hour duration
                 userId: testUser.id,
                 serviceId: testService.id,
                 professionalId: testProfessional.id,
@@ -514,19 +515,19 @@ describe("GET /api/appointments", () => {
     beforeAll(async () => {
         // Create some appointments for testing filtering/listing
         const time1 = addHours(setMinutes(setHours(nextMonday, 13), 0), 0); // Mon 13:00
-        const time2 = addHours(setMinutes(setHours(nextTuesday, 10), 0), 0); // Tue 10:00
-        appointment1 = await prisma.appointment.create({
+        const time2 = addHours(setMinutes(setHours(nextTuesday, 10), 0), 0); // Tue 10:00        appointment1 = await prisma.appointment.create({
             data: {
-                date: time1,
+                startTime: time1,
+                endTime: addHours(time1, 1),
                 userId: testUser.id,
                 serviceId: testService.id,
                 professionalId: testProfessional.id,
                 status: AppointmentStatus.CONFIRMED,
             }
-        });
-        appointment2 = await prisma.appointment.create({
+        });        appointment2 = await prisma.appointment.create({
             data: {
-                date: time2,
+                startTime: time2,
+                endTime: addHours(time2, 1),
                 userId: testUser2.id, // Different user
                 serviceId: testService.id,
                 professionalId: testProfessional.id,

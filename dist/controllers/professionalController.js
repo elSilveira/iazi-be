@@ -20,7 +20,7 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.removeServiceFromMyProfessionalHandler = exports.addServiceToMyProfessionalHandler = exports.updateMyProfessionalHandler = exports.getMyProfessionalServicesHandler = exports.getMyProfessionalHandler = exports.removeServiceFromProfessionalHandler = exports.addServiceToProfessionalHandler = exports.deleteProfessionalHandler = exports.updateProfessionalHandler = exports.createProfessionalHandler = exports.getProfessionalByIdHandler = exports.getAllProfessionalsHandler = void 0;
+exports.getProfessionalServices = exports.removeServiceFromMyProfessionalHandler = exports.addServiceToMyProfessionalHandler = exports.updateMyProfessionalHandler = exports.getMyProfessionalServicesHandler = exports.getMyProfessionalHandler = exports.removeServiceFromProfessionalHandler = exports.addServiceToProfessionalHandler = exports.deleteProfessionalHandler = exports.updateProfessionalHandler = exports.createProfessionalHandler = exports.getProfessionalByIdHandler = exports.getAllProfessionalsHandler = void 0;
 const professionalRepository_1 = require("../repositories/professionalRepository");
 const client_1 = require("@prisma/client");
 const prisma_1 = require("../lib/prisma");
@@ -660,3 +660,61 @@ const removeServiceFromMyProfessionalHandler = (req, res, next) => __awaiter(voi
     }
 });
 exports.removeServiceFromMyProfessionalHandler = removeServiceFromMyProfessionalHandler;
+// Get services offered by a professional
+const getProfessionalServices = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { professionalId } = req.params;
+        if (!isValidUUID(professionalId)) {
+            return res.status(400).json({
+                error: {
+                    code: "VALIDATION_ERROR",
+                    message: "ID do profissional inválido",
+                    details: [
+                        {
+                            field: "professionalId",
+                            message: "O ID do profissional deve ser um UUID válido"
+                        }
+                    ]
+                }
+            });
+        }
+        // Check if professional exists
+        const professionalExists = yield prisma_1.prisma.professional.findUnique({
+            where: { id: professionalId },
+        });
+        if (!professionalExists) {
+            return res.status(404).json({
+                error: {
+                    code: "NOT_FOUND",
+                    message: "Profissional não encontrado"
+                }
+            });
+        }
+        // Get professional services
+        const professionalServices = yield prisma_1.prisma.professionalService.findMany({
+            where: { professionalId },
+            include: {
+                service: true
+            }
+        });
+        // Format response according to specifications
+        const formattedServices = professionalServices.map(ps => {
+            return {
+                id: ps.service.id,
+                name: ps.service.name,
+                description: ps.service.description,
+                price: ps.price || ps.service.price,
+                duration: ps.service.duration,
+                isActive: true // Assuming all services are active by default
+            };
+        });
+        return res.json({
+            data: formattedServices
+        });
+    }
+    catch (error) {
+        console.error("Error fetching professional services:", error);
+        next(error);
+    }
+});
+exports.getProfessionalServices = getProfessionalServices;

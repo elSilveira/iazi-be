@@ -405,6 +405,53 @@ validationMiddleware_1.validateRequest, // Corrected
  *       500:
  *         description: Erro interno do servidor.
  */
+/**
+ * @swagger
+ * /api/professionals/{professionalId}/services:
+ *   get:
+ *     summary: Obtém os serviços oferecidos por um profissional
+ *     tags: [Professionals]
+ *     parameters:
+ *       - in: path
+ *         name: professionalId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do profissional
+ *     responses:
+ *       200:
+ *         description: Lista de serviços oferecidos pelo profissional
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       name:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *                       price:
+ *                         type: number
+ *                         format: float
+ *                       duration:
+ *                         type: string
+ *                       isActive:
+ *                         type: boolean
+ *       400:
+ *         description: ID do profissional inválido
+ *       404:
+ *         description: Profissional não encontrado
+ */
+router.get("/:professionalId/services", professionalValidators_1.professionalIdValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(professionalController_1.getProfessionalServices));
 // GET /api/professionals/:id/availability - Disponibilidade pública para um profissional específico
 router.get("/:id/availability", appointmentValidators_1.getAvailabilityValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(appointmentController_1.getAvailability));
 exports.default = router;

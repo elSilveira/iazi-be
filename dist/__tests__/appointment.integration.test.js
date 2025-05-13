@@ -105,15 +105,18 @@ describe('Appointment API Integration Tests', () => {
         it('should create a new appointment successfully', () => __awaiter(void 0, void 0, void 0, function* () {
             const appointmentDate = new Date();
             appointmentDate.setDate(appointmentDate.getDate() + 1);
+            const appointmentEnd = new Date(appointmentDate.getTime() + 60 * 60 * 1000); // 1 hour later
             const appointmentData = {
-                date: appointmentDate.toISOString(),
+                startTime: appointmentDate.toISOString(),
+                endTime: appointmentEnd.toISOString(),
                 serviceId: testServiceIdUUID, // Use valid UUID
                 professionalId: testProfessionalIdUUID, // Use valid UUID
                 notes: 'Test appointment notes',
             };
             const mockCreatedAppointment = {
                 id: testAppointmentIdUUID, // Use valid UUID
-                date: appointmentDate,
+                startTime: appointmentDate,
+                endTime: appointmentEnd,
                 userId: testUserIdUUID, // Use valid UUID
                 serviceId: testServiceIdUUID, // Use valid UUID
                 professionalId: testProfessionalIdUUID, // Use valid UUID
@@ -137,7 +140,8 @@ describe('Appointment API Integration Tests', () => {
             expect(mockPrisma.appointment.create).toHaveBeenCalledTimes(1);
             expect(mockPrisma.appointment.create).toHaveBeenCalledWith({
                 data: {
-                    date: expect.any(Date),
+                    startTime: expect.any(Date),
+                    endTime: expect.any(Date),
                     notes: 'Test appointment notes',
                     user: { connect: { id: testUserIdUUID } }, // Controller gets this from req.user (mocked)
                     service: { connect: { id: testServiceIdUUID } },
@@ -148,8 +152,10 @@ describe('Appointment API Integration Tests', () => {
         it('should return 401 if no token is provided', () => __awaiter(void 0, void 0, void 0, function* () {
             const appointmentDate = new Date();
             appointmentDate.setDate(appointmentDate.getDate() + 1);
+            const appointmentEnd = new Date(appointmentDate.getTime() + 60 * 60 * 1000); // 1 hour later
             const appointmentData = {
-                date: appointmentDate.toISOString(),
+                startTime: appointmentDate.toISOString(),
+                endTime: appointmentEnd.toISOString(),
                 serviceId: testServiceIdUUID, // Use valid UUID
                 professionalId: testProfessionalIdUUID, // Use valid UUID
             };
@@ -179,8 +185,10 @@ describe('Appointment API Integration Tests', () => {
         it('should return 404 if service or professional does not exist', () => __awaiter(void 0, void 0, void 0, function* () {
             const appointmentDate = new Date();
             appointmentDate.setDate(appointmentDate.getDate() + 1);
+            const appointmentEnd = new Date(appointmentDate.getTime() + 60 * 60 * 1000); // 1 hour later
             const appointmentData = {
-                date: appointmentDate.toISOString(),
+                startTime: appointmentDate.toISOString(),
+                endTime: appointmentEnd.toISOString(),
                 serviceId: '123e4567-e89b-12d3-a456-426614174999', // Use a valid UUID format, but non-existent
                 professionalId: testProfessionalIdUUID, // Use valid UUID
             };
@@ -202,9 +210,10 @@ describe('Appointment API Integration Tests', () => {
     // --- GET /api/appointments --- //
     describe('GET /api/appointments', () => {
         it('should return a list of appointments for the authenticated user', () => __awaiter(void 0, void 0, void 0, function* () {
+            const now = new Date();
             const mockAppointments = [
-                { id: '123e4567-e89b-12d3-a456-426614174010', userId: testUserIdUUID, serviceId: 'svc-1', professionalId: 'prof-1', date: new Date(), status: 'CONFIRMED' },
-                { id: '123e4567-e89b-12d3-a456-426614174011', userId: testUserIdUUID, serviceId: 'svc-2', professionalId: 'prof-2', date: new Date(), status: 'PENDING' },
+                { id: '123e4567-e89b-12d3-a456-426614174010', userId: testUserIdUUID, serviceId: 'svc-1', professionalId: 'prof-1', startTime: now, endTime: new Date(now.getTime() + 60 * 60 * 1000), status: 'CONFIRMED' },
+                { id: '123e4567-e89b-12d3-a456-426614174011', userId: testUserIdUUID, serviceId: 'svc-2', professionalId: 'prof-2', startTime: new Date(now.getTime() + 2 * 60 * 60 * 1000), endTime: new Date(now.getTime() + 3 * 60 * 60 * 1000), status: 'PENDING' },
             ];
             mockPrisma.appointment.findMany.mockResolvedValue(mockAppointments);
             const response = yield (0, supertest_1.default)(index_1.app)
@@ -232,8 +241,9 @@ describe('Appointment API Integration Tests', () => {
         it('should return a list of appointments filtered by professionalId (even if not authenticated)', () => __awaiter(void 0, void 0, void 0, function* () {
             // The API might allow fetching appointments by professional ID without authentication
             const professionalFilterIdUUID = '123e4567-e89b-12d3-a456-426614174020'; // Use valid UUID
+            const now = new Date();
             const mockAppointments = [
-                { id: '123e4567-e89b-12d3-a456-426614174021', userId: 'user-other', serviceId: 'svc-3', professionalId: professionalFilterIdUUID, date: new Date(), status: 'CONFIRMED' },
+                { id: '123e4567-e89b-12d3-a456-426614174021', userId: 'user-other', serviceId: 'svc-3', professionalId: professionalFilterIdUUID, startTime: now, endTime: new Date(now.getTime() + 60 * 60 * 1000), status: 'CONFIRMED' },
             ];
             mockPrisma.appointment.findMany.mockResolvedValue(mockAppointments);
             const response = yield (0, supertest_1.default)(index_1.app)

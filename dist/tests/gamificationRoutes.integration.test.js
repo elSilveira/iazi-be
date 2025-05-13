@@ -166,9 +166,9 @@ describe("Gamification System", () => {
         appointmentTime.setHours(10, 0, 0, 0);
         const createResponse = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
-            .set("Authorization", `Bearer ${accessToken}`)
-            .send({
-            date: appointmentTime.toISOString(),
+            .set("Authorization", `Bearer ${accessToken}`).send({
+            startTime: appointmentTime.toISOString(),
+            endTime: new Date(appointmentTime.getTime() + 60 * 60 * 1000).toISOString(),
             serviceId: testServiceId,
             professionalId: testProfId
         });
@@ -183,7 +183,10 @@ describe("Gamification System", () => {
         // 3. Complete the appointment (by professional) - This should trigger the event
         yield prismaClient_1.prisma.appointment.update({
             where: { id: appointmentId },
-            data: { date: new Date(Date.now() - 60 * 60 * 1000) } // Set date to 1 hour ago
+            data: {
+                startTime: new Date(Date.now() - 60 * 60 * 1000), // Set startTime to 1 hour ago
+                endTime: new Date() // Set endTime to now
+            }
         });
         const completeResponse = yield (0, supertest_1.default)(index_1.app)
             .patch(`/api/appointments/${appointmentId}/status`)

@@ -11,7 +11,8 @@ export type AppointmentWithDetails = Prisma.AppointmentGetPayload<{
         services: { include: { service: true } };
       };
     };
-    user: { select: { id: true; name: true; email: true; avatar: true } };
+    company: true;
+    user: { select: { id: true; name: true; email: true; avatar: true; phone: true } };
   };
 }>;
 
@@ -25,16 +26,16 @@ export const appointmentRepository = {
         services: { include: { service: true } },
       },
     },
-    user: { select: { id: true, name: true, email: true, avatar: true } },
+    company: true,
+    user: { select: { id: true, name: true, email: true, avatar: true, phone: true } },
   } as const, // Use 'as const' for stricter type checking
-
   // Encontrar múltiplos agendamentos com base em filtros
   async findMany(filters: Prisma.AppointmentWhereInput): Promise<AppointmentWithDetails[]> {
     return prisma.appointment.findMany({
       where: filters,
       include: this.includeDetails,
       orderBy: {
-        date: "asc", // Ordenar por data
+        startTime: "asc", // Ordenar por horário de início
       },
     });
   },

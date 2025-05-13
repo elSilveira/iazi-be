@@ -1,21 +1,14 @@
 import { body, param, query } from "express-validator"; // Adicionado 'query'
 
 export const createAppointmentValidator = [
-  // Mantém a validação de criação existente...
-  body("startTime") // Mudado de 'date' para 'startTime'
-    .isISO8601().withMessage("Formato de data inválido (ISO8601 esperado).")
-    .toDate() // Converte para objeto Date para validações futuras se necessário
-    .custom((value) => {
-      if (value < new Date()) {
-        throw new Error("A data do agendamento não pode ser no passado.");
-      }
-      return true;
-    }),
-  // userId geralmente virá do token JWT, não do body
-  body("userId").isUUID().withMessage("ID do usuário inválido."), // Adicionado validação para userId (pode ser preenchido pelo controller)
   body("serviceId").isUUID().withMessage("ID do serviço inválido."),
   body("professionalId").optional({ nullable: true }).isUUID().withMessage("ID do profissional inválido."),
-  body("companyId").optional({ nullable: true }).isUUID().withMessage("ID da empresa inválido."), // Adicionado companyId
+  body("companyId").optional({ nullable: true }).isUUID().withMessage("ID da empresa inválido."),
+  body("date")
+    .notEmpty().withMessage("Campo 'date' é obrigatório.")
+    .isISO8601().withMessage("Formato de data inválido (ISO8601 esperado)."),
+  body("time").optional()
+    .matches(/^([01]\d|2[0-3]):([0-5]\d)$/).withMessage("Formato de hora inválido (HH:MM)."),
   body("notes").optional({ nullable: true }).trim(),
 ];
 

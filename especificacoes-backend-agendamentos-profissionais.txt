@@ -1,0 +1,262 @@
+# Especificações para Implementação do Backend - Agendamentos de Profissionais
+Data: 12 de maio de 2025
+
+## Visão Geral
+
+Este documento detalha as modificações necessárias no backend para dar suporte completo ao fluxo de agendamentos para profissionais no módulo de calendário profissional (rota: /profile/professional/bookings).
+
+---
+
+## 1. Endpoints Necessários
+
+### 1.1. Buscar Agendamentos do Profissional
+
+**Endpoint:** `GET /api/appointments`
+
+**Parâmetros de Consulta:**
+- `professionalId` (obrigatório): ID do profissional
+- `dateFrom` (obrigatório): Data inicial (formato YYYY-MM-DD)
+- `dateTo` (obrigatório): Data final (formato YYYY-MM-DD)
+- `include` (opcional): Entidades relacionadas a serem incluídas ("user,professional,service")
+- `status` (opcional): Filtro por status ("confirmed", "pending", "completed", "cancelled")
+- `serviceId` (opcional): Filtro por ID de serviço
+- `limit` (opcional): Limite de registros (recomendado 100-500 para visualização de calendário)
+- `sort` (opcional): Ordenação ("startTime_asc", "startTime_desc")
+
+**Resposta Esperada:**
+```json
+{
+  "data": [
+    {
+      "id": "uuid-agendamento",
+      "startTime": "2025-05-12T14:00:00Z",
+      "endTime": "2025-05-12T15:00:00Z",
+      "status": "confirmed",
+      "notes": "Observações adicionais",
+      "userId": "uuid-cliente",
+      "professionalId": "uuid-profissional",
+      "serviceId": "uuid-serviço",
+      "companyId": "uuid-empresa",
+      "user": {
+        "id": "uuid-cliente",
+        "name": "Nome do Cliente",
+        "email": "cliente@example.com",
+        "phone": "+5511999999999"
+      },
+      "professional": {
+        "id": "uuid-profissional",
+        "name": "Nome do Profissional"
+      },
+      "service": {
+        "id": "uuid-serviço",
+        "name": "Nome do Serviço",
+        "duration": "PT1H",
+        "price": 100.00
+      }
+    }
+  ],
+  "meta": {
+    "total": 42,
+    "page": 1,
+    "limit": 100
+  }
+}
+```
+
+### 1.2. Atualizar Status de Agendamento
+
+**Endpoint:** `PATCH /api/appointments/{id}/status`
+
+**Corpo da Requisição:**
+```json
+{
+  "status": "confirmed" | "pending" | "completed" | "cancelled" | "in-progress" | "no-show"
+}
+```
+
+**Resposta Esperada:**
+```json
+{
+  "id": "uuid-agendamento",
+  "status": "confirmed",
+  "updatedAt": "2025-05-12T14:30:00Z"
+}
+```
+
+### 1.3. Detalhes de um Agendamento Específico
+
+**Endpoint:** `GET /api/appointments/{id}`
+
+**Parâmetros de Consulta:**
+- `include` (opcional): Entidades relacionadas a serem incluídas ("user,professional,service")
+
+**Resposta Esperada:** Mesma estrutura do item de agendamento em 1.1
+
+### 1.4. Buscar Serviços do Profissional
+
+**Endpoint:** `GET /api/professionals/{professionalId}/services`
+
+**Resposta Esperada:**
+```json
+{
+  "data": [
+    {
+      "id": "uuid-serviço",
+      "name": "Nome do Serviço",
+      "description": "Descrição detalhada do serviço",
+      "price": 100.00,
+      "duration": "PT1H",
+      "isActive": true
+    }
+  ]
+}
+```
+
+---
+
+## 2. Modificações Necessárias no Modelo de Dados
+
+### 2.1. Modelo de Appointment (Agendamento)
+
+Atualmente, o modelo de Appointment no Swagger especifica um campo `date` único para a data e hora do agendamento. Recomendamos modificar para:
+
+**Modificações Propostas:**
+- Renomear o campo `date` para `startTime` 
+- Adicionar um campo `endTime` para o horário de término
+- Garantir que o modelo de status do agendamento seja compatível com o frontend:
+  - "confirmed" (confirmado)
+  - "pending" (pendente)
+  - "in-progress" (em andamento)
+  - "completed" (concluído)
+  - "cancelled" (cancelado)
+  - "no-show" (cliente não apareceu)
+
+**Modelo Atualizado:**
+```json
+{
+  "id": "string",
+  "startTime": "2025-05-12T14:00:00Z",
+  "endTime": "2025-05-12T15:00:00Z",
+  "status": "confirmed",
+  "notes": "string",
+  "userId": "string",
+  "professionalId": "string",
+  "serviceId": "string",
+  "companyId": "string",
+  "createdAt": "2025-05-12T12:00:00Z",
+  "updatedAt": "2025-05-12T12:00:00Z"
+}
+```
+
+---
+
+## 3. Requisitos de Autenticação e Autorização
+
+### 3.1. Contexto de Autenticação
+
+Os endpoints devem verificar as permissões do usuário autenticado:
+- Um profissional deve ter acesso apenas aos seus próprios agendamentos
+- Um administrador de empresa deve ter acesso aos agendamentos de todos os profissionais da empresa
+- Um cliente deve ter acesso apenas aos seus próprios agendamentos
+
+### 3.2. Token de Acesso
+
+O token JWT deve conter as seguintes informações relevantes:
+- `userId`: ID do usuário autenticado
+- `professionalId`: ID do profissional (se o usuário for um profissional)
+- `companyId`: ID da empresa (se o usuário for funcionário/admin de empresa)
+- `role`: Papel do usuário ("admin", "company", "professional", "user")
+
+---
+
+## 4. Problemas Identificados no Frontend
+
+### 4.1. Inconsistências de Modelo
+
+No frontend, os componentes esperam:
+- Campos `startTime` e `endTime` em vez de `date`
+- Status específicos que precisam estar alinhados com o backend
+
+### 4.2. Tratamento de Parâmetros de Consulta
+
+O componente `CalendarView` atualmente constrói uma query string com diversos parâmetros que precisam ser suportados pelo backend:
+- `companyId`
+- `dateFrom` e `dateTo`
+- `professionalId` (para filtrar por profissional específico)
+- `status` (para filtrar por status)
+- `serviceId` (para filtrar por serviço)
+
+---
+
+## 5. Mensagens de Erro e Validações
+
+### 5.1. Validações Necessárias
+
+- `startTime` deve ser anterior a `endTime`
+- `professionalId` deve ser válido e o profissional deve existir
+- `serviceId` deve ser válido e o serviço deve estar ativo
+- Não permitir agendamentos sobrepostos para o mesmo profissional
+
+### 5.2. Mensagens de Erro Padronizadas
+
+Formato recomendado para respostas de erro:
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Não foi possível criar o agendamento",
+    "details": [
+      {
+        "field": "startTime",
+        "message": "O horário de início deve ser anterior ao horário de término"
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 6. Considerações de Performance
+
+### 6.1. Otimizações Recomendadas
+
+- Implementar caching para agendamentos recentes e frequentemente acessados
+- Utilizar paginação eficiente para calendários mensais com muitos agendamentos
+- Criar índices adequados no banco de dados para as consultas por data, profissional e status
+- Implementar filtragem no nível do banco de dados em vez de memória
+
+---
+
+## 7. Cronograma de Implementação Sugerido
+
+1. **Fase 1 (1-2 dias):** Atualização do modelo de dados de Appointment
+2. **Fase 2 (2-3 dias):** Implementação dos endpoints básicos de leitura
+3. **Fase 3 (1-2 dias):** Implementação das funcionalidades de atualização de status
+4. **Fase 4 (1 dia):** Testes e ajustes finais de integração com o frontend
+
+---
+
+## 8. Exemplos de Chamadas API
+
+### 8.1. Buscar Agendamentos do Profissional para a Semana Atual
+
+```
+GET /api/appointments?professionalId=123e4567-e89b-12d3-a456-426614174000&dateFrom=2025-05-12&dateTo=2025-05-18&include=user,service&limit=100
+```
+
+### 8.2. Confirmar Agendamento
+
+```
+PATCH /api/appointments/123e4567-e89b-12d3-a456-426614174000/status
+Content-Type: application/json
+
+{
+  "status": "confirmed"
+}
+```
+
+---
+
+Documento preparado por [Equipe de Frontend]
+Contato para dúvidas: [seu-email@exemplo.com]

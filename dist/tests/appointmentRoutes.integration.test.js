@@ -200,7 +200,8 @@ describe("GET /api/appointments/availability", () => {
         const bookedTime = (0, date_fns_1.setMinutes)((0, date_fns_1.setHours)(nextMonday, 10), 0); // 10:00
         const conflictingAppt = yield prismaClient_1.prisma.appointment.create({
             data: {
-                date: bookedTime,
+                startTime: bookedTime,
+                endTime: new Date(bookedTime.getTime() + 60 * 60 * 1000), // 1 hour duration
                 userId: testUser.id,
                 serviceId: testService.id,
                 professionalId: testProfessional.id,
@@ -469,117 +470,124 @@ describe("GET /api/appointments", () => {
     beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
         // Create some appointments for testing filtering/listing
         const time1 = (0, date_fns_1.addHours)((0, date_fns_1.setMinutes)((0, date_fns_1.setHours)(nextMonday, 13), 0), 0); // Mon 13:00
-        const time2 = (0, date_fns_1.addHours)((0, date_fns_1.setMinutes)((0, date_fns_1.setHours)(nextTuesday, 10), 0), 0); // Tue 10:00
-        appointment1 = yield prismaClient_1.prisma.appointment.create({
-            data: {
-                date: time1,
-                userId: testUser.id,
-                serviceId: testService.id,
-                professionalId: testProfessional.id,
-                status: client_1.AppointmentStatus.CONFIRMED,
-            }
-        });
-        appointment2 = yield prismaClient_1.prisma.appointment.create({
-            data: {
-                date: time2,
-                userId: testUser2.id, // Different user
-                serviceId: testService.id,
-                professionalId: testProfessional.id,
-                status: client_1.AppointmentStatus.PENDING,
-            }
-        });
+        const time2 = (0, date_fns_1.addHours)((0, date_fns_1.setMinutes)((0, date_fns_1.setHours)(nextTuesday, 10), 0), 0); // Tue 10:00        appointment1 = await prisma.appointment.create({
+        data: {
+            startTime: time1,
+                endTime;
+            (0, date_fns_1.addHours)(time1, 1),
+                userId;
+            testUser.id,
+                serviceId;
+            testService.id,
+                professionalId;
+            testProfessional.id,
+                status;
+            client_1.AppointmentStatus.CONFIRMED,
+            ;
+        }
     }));
-    afterAll(() => __awaiter(void 0, void 0, void 0, function* () {
-        yield prismaClient_1.prisma.appointment.deleteMany({ where: { id: { in: [appointment1.id, appointment2.id] } } });
-    }));
-    it("should return appointments for the authenticated user by default", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(index_1.app)
-            .get("/api/appointments")
-            .set("Authorization", `Bearer ${userToken}`);
-        expect(response.status).toBe(200);
-        expect(response.body).toBeInstanceOf(Array);
-        expect(response.body.length).toBe(1);
-        expect(response.body[0].id).toBe(appointment1.id);
-        expect(response.body[0].userId).toBe(testUser.id);
-    }));
-    it("should allow admin to get all appointments", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(index_1.app)
-            .get("/api/appointments")
-            .set("Authorization", `Bearer ${adminToken}`);
-        expect(response.status).toBe(200);
-        expect(response.body).toBeInstanceOf(Array);
-        expect(response.body.length).toBeGreaterThanOrEqual(2);
-        expect(response.body.some((a) => a.id === appointment1.id)).toBe(true);
-        expect(response.body.some((a) => a.id === appointment2.id)).toBe(true);
-    }));
-    it("should allow admin to filter appointments by userId", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(index_1.app)
-            .get("/api/appointments")
-            .set("Authorization", `Bearer ${adminToken}`)
-            .query({ userId: testUser2.id });
-        expect(response.status).toBe(200);
-        expect(response.body).toBeInstanceOf(Array);
-        expect(response.body.length).toBe(1);
-        expect(response.body[0].id).toBe(appointment2.id);
-        expect(response.body[0].userId).toBe(testUser2.id);
-    }));
-    it("should deny non-admin from getting another user's appointments", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(index_1.app)
-            .get("/api/appointments")
-            .set("Authorization", `Bearer ${userToken}`)
-            .query({ userId: testUser2.id });
-        expect(response.status).toBe(403);
-    }));
-    it("should filter appointments by professionalId", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(index_1.app)
-            .get("/api/appointments")
-            .set("Authorization", `Bearer ${adminToken}`) // Admin can see all
-            .query({ professionalId: testProfessional.id });
-        expect(response.status).toBe(200);
-        expect(response.body).toBeInstanceOf(Array);
-        expect(response.body.length).toBeGreaterThanOrEqual(2);
-        expect(response.body.every((a) => a.professionalId === testProfessional.id)).toBe(true);
-    }));
-    it("should filter appointments by status", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(index_1.app)
-            .get("/api/appointments")
-            .set("Authorization", `Bearer ${adminToken}`)
-            .query({ status: client_1.AppointmentStatus.PENDING });
-        expect(response.status).toBe(200);
-        expect(response.body).toBeInstanceOf(Array);
-        expect(response.body.length).toBeGreaterThanOrEqual(1);
-        expect(response.body.every((a) => a.status === client_1.AppointmentStatus.PENDING)).toBe(true);
-        expect(response.body.some((a) => a.id === appointment2.id)).toBe(true);
-    }));
-    it("should filter appointments by date", () => __awaiter(void 0, void 0, void 0, function* () {
-        const dateString = (0, date_fns_1.formatISO)(nextMonday, { representation: 'date' });
-        const response = yield (0, supertest_1.default)(index_1.app)
-            .get("/api/appointments")
-            .set("Authorization", `Bearer ${adminToken}`)
-            .query({ date: dateString });
-        expect(response.status).toBe(200);
-        expect(response.body).toBeInstanceOf(Array);
-        expect(response.body.length).toBeGreaterThanOrEqual(1);
-        expect(response.body.every((a) => (0, date_fns_1.startOfDay)(new Date(a.date)).getTime() === nextMonday.getTime())).toBe(true);
-        expect(response.body.some((a) => a.id === appointment1.id)).toBe(true);
-    }));
-    it("should return 400 for invalid status filter", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(index_1.app)
-            .get("/api/appointments")
-            .set("Authorization", `Bearer ${adminToken}`)
-            .query({ status: "INVALID_STATUS" });
-        expect(response.status).toBe(400);
-        expect(response.body.errors[0].msg).toContain("Status inválido");
-    }));
-    it("should return 400 for invalid date filter format", () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(index_1.app)
-            .get("/api/appointments")
-            .set("Authorization", `Bearer ${adminToken}`)
-            .query({ date: "invalid-date" });
-        expect(response.status).toBe(400);
-        expect(response.body.errors[0].msg).toContain("formato YYYY-MM-DD");
-    }));
+    appointment2 = yield prismaClient_1.prisma.appointment.create({
+        data: {
+            startTime: time2,
+            endTime: (0, date_fns_1.addHours)(time2, 1),
+            userId: testUser2.id, // Different user
+            serviceId: testService.id,
+            professionalId: testProfessional.id,
+            status: client_1.AppointmentStatus.PENDING,
+        }
+    });
 });
+afterAll(() => __awaiter(void 0, void 0, void 0, function* () {
+    yield prismaClient_1.prisma.appointment.deleteMany({ where: { id: { in: [appointment1.id, appointment2.id] } } });
+}));
+it("should return appointments for the authenticated user by default", () => __awaiter(void 0, void 0, void 0, function* () {
+    const response = yield (0, supertest_1.default)(index_1.app)
+        .get("/api/appointments")
+        .set("Authorization", `Bearer ${userToken}`);
+    expect(response.status).toBe(200);
+    expect(response.body).toBeInstanceOf(Array);
+    expect(response.body.length).toBe(1);
+    expect(response.body[0].id).toBe(appointment1.id);
+    expect(response.body[0].userId).toBe(testUser.id);
+}));
+it("should allow admin to get all appointments", () => __awaiter(void 0, void 0, void 0, function* () {
+    const response = yield (0, supertest_1.default)(index_1.app)
+        .get("/api/appointments")
+        .set("Authorization", `Bearer ${adminToken}`);
+    expect(response.status).toBe(200);
+    expect(response.body).toBeInstanceOf(Array);
+    expect(response.body.length).toBeGreaterThanOrEqual(2);
+    expect(response.body.some((a) => a.id === appointment1.id)).toBe(true);
+    expect(response.body.some((a) => a.id === appointment2.id)).toBe(true);
+}));
+it("should allow admin to filter appointments by userId", () => __awaiter(void 0, void 0, void 0, function* () {
+    const response = yield (0, supertest_1.default)(index_1.app)
+        .get("/api/appointments")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .query({ userId: testUser2.id });
+    expect(response.status).toBe(200);
+    expect(response.body).toBeInstanceOf(Array);
+    expect(response.body.length).toBe(1);
+    expect(response.body[0].id).toBe(appointment2.id);
+    expect(response.body[0].userId).toBe(testUser2.id);
+}));
+it("should deny non-admin from getting another user's appointments", () => __awaiter(void 0, void 0, void 0, function* () {
+    const response = yield (0, supertest_1.default)(index_1.app)
+        .get("/api/appointments")
+        .set("Authorization", `Bearer ${userToken}`)
+        .query({ userId: testUser2.id });
+    expect(response.status).toBe(403);
+}));
+it("should filter appointments by professionalId", () => __awaiter(void 0, void 0, void 0, function* () {
+    const response = yield (0, supertest_1.default)(index_1.app)
+        .get("/api/appointments")
+        .set("Authorization", `Bearer ${adminToken}`) // Admin can see all
+        .query({ professionalId: testProfessional.id });
+    expect(response.status).toBe(200);
+    expect(response.body).toBeInstanceOf(Array);
+    expect(response.body.length).toBeGreaterThanOrEqual(2);
+    expect(response.body.every((a) => a.professionalId === testProfessional.id)).toBe(true);
+}));
+it("should filter appointments by status", () => __awaiter(void 0, void 0, void 0, function* () {
+    const response = yield (0, supertest_1.default)(index_1.app)
+        .get("/api/appointments")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .query({ status: client_1.AppointmentStatus.PENDING });
+    expect(response.status).toBe(200);
+    expect(response.body).toBeInstanceOf(Array);
+    expect(response.body.length).toBeGreaterThanOrEqual(1);
+    expect(response.body.every((a) => a.status === client_1.AppointmentStatus.PENDING)).toBe(true);
+    expect(response.body.some((a) => a.id === appointment2.id)).toBe(true);
+}));
+it("should filter appointments by date", () => __awaiter(void 0, void 0, void 0, function* () {
+    const dateString = (0, date_fns_1.formatISO)(nextMonday, { representation: 'date' });
+    const response = yield (0, supertest_1.default)(index_1.app)
+        .get("/api/appointments")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .query({ date: dateString });
+    expect(response.status).toBe(200);
+    expect(response.body).toBeInstanceOf(Array);
+    expect(response.body.length).toBeGreaterThanOrEqual(1);
+    expect(response.body.every((a) => (0, date_fns_1.startOfDay)(new Date(a.date)).getTime() === nextMonday.getTime())).toBe(true);
+    expect(response.body.some((a) => a.id === appointment1.id)).toBe(true);
+}));
+it("should return 400 for invalid status filter", () => __awaiter(void 0, void 0, void 0, function* () {
+    const response = yield (0, supertest_1.default)(index_1.app)
+        .get("/api/appointments")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .query({ status: "INVALID_STATUS" });
+    expect(response.status).toBe(400);
+    expect(response.body.errors[0].msg).toContain("Status inválido");
+}));
+it("should return 400 for invalid date filter format", () => __awaiter(void 0, void 0, void 0, function* () {
+    const response = yield (0, supertest_1.default)(index_1.app)
+        .get("/api/appointments")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .query({ date: "invalid-date" });
+    expect(response.status).toBe(400);
+    expect(response.body.errors[0].msg).toContain("formato YYYY-MM-DD");
+}));
+;
 describe("GET /api/appointments/:id", () => {
     let testAppointment;
     beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {

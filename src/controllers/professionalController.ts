@@ -667,3 +667,67 @@ export const removeServiceFromMyProfessionalHandler = async (req: Request, res: 
   }
 };
 
+// Get services offered by a professional
+export const getProfessionalServices = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+  try {
+    const { professionalId } = req.params;
+
+    if (!isValidUUID(professionalId)) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "ID do profissional inválido",
+          details: [
+            {
+              field: "professionalId",
+              message: "O ID do profissional deve ser um UUID válido"
+            }
+          ]
+        }
+      });
+    }
+
+    // Check if professional exists
+    const professionalExists = await prisma.professional.findUnique({
+      where: { id: professionalId },
+    });
+
+    if (!professionalExists) {
+      return res.status(404).json({
+        error: {
+          code: "NOT_FOUND",
+          message: "Profissional não encontrado"
+        }
+      });
+    }
+
+    // Get professional services
+    const professionalServices = await prisma.professionalService.findMany({
+      where: { professionalId },
+      include: {
+        service: true
+      }
+    });
+
+    // Format response according to specifications
+    const formattedServices = professionalServices.map(ps => {
+      return {
+        id: ps.service.id,
+        name: ps.service.name,
+        description: ps.service.description,
+        price: ps.price || ps.service.price,
+        duration: ps.service.duration,
+        isActive: true // Assuming all services are active by default
+      };
+    });
+
+    return res.json({
+      data: formattedServices
+    });
+
+  } catch (error) {
+    console.error("Error fetching professional services:", error);
+    next(error);
+  }
+};
+

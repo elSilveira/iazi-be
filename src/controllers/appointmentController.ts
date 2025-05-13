@@ -25,8 +25,9 @@ type AppointmentWithDetails = Prisma.AppointmentGetPayload<{
       include: { 
         company: true // Include company if needed for professional context
       }
-    }, 
-    user: { select: { id: true, name: true, email: true, avatar: true } }
+    },
+    company: true,
+    user: { select: { id: true, name: true, email: true, avatar: true, phone: true } }
   }
 }>
 
@@ -74,8 +75,19 @@ export const parseDuration = (durationString: string | null): number | null => {
 
 // Helper function to get working hours for a specific day
 export const getWorkingHoursForDay = (workingHoursJson: Prisma.JsonValue | null | undefined, date: Date): { start: Date, end: Date } | null => {
+    // Add debugging to track the incoming data
+    const dateFormatted = format(date, 'yyyy-MM-dd');
+    
     // Check if workingHoursJson is a valid object and not null/undefined
-    if (!workingHoursJson || typeof workingHoursJson !== 'object' || Array.isArray(workingHoursJson)) return null;
+    if (!workingHoursJson) {
+        console.log(`No working hours data provided for date ${dateFormatted}`);
+        return null;
+    }
+    
+    if (typeof workingHoursJson !== 'object' || Array.isArray(workingHoursJson)) {
+        console.log(`Working hours is not a valid object for date ${dateFormatted}`);
+        return null;
+    }
 
     const dayOfWeek = getDay(date); // 0 (Sunday) to 6 (Saturday)
     const dayKey = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"][dayOfWeek];
@@ -83,14 +95,31 @@ export const getWorkingHoursForDay = (workingHoursJson: Prisma.JsonValue | null 
     // Type assertion to treat workingHoursJson as an indexable object
     const hoursData = (workingHoursJson as { [key: string]: any })[dayKey];
 
-    if (!hoursData || typeof hoursData !== 'object' || !hoursData.start || !hoursData.end || !hoursData.isOpen) {
-        return null; // Not open or hours not defined correctly
+    if (!hoursData) {
+        console.log(`No hours data found for ${dayKey} (${dateFormatted})`);
+        return null;
+    }
+    
+    if (typeof hoursData !== 'object') {
+        console.log(`Hours data for ${dayKey} is not an object (${dateFormatted})`);
+        return null;
+    }
+    
+    // isOpen can be undefined (assume open) or explicitly true
+    if (hoursData.isOpen === false) {
+        console.log(`${dayKey} is marked as closed (isOpen: false) for ${dateFormatted}`);
+        return null;
+    }
+    
+    if (!hoursData.start || !hoursData.end) {
+        console.log(`Missing start or end time for ${dayKey} (${dateFormatted})`);
+        return null;
     }
 
     // Validate time format (HH:MM)
     const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
     if (!timeRegex.test(hoursData.start) || !timeRegex.test(hoursData.end)) {
-        console.error(`Invalid time format in working hours for ${dayKey}: start=${hoursData.start}, end=${hoursData.end}`);
+        console.error(`Invalid time format in working hours for ${dayKey} (${dateFormatted}): start=${hoursData.start}, end=${hoursData.end}`);
         return null;
     }
 
@@ -102,77 +131,70 @@ export const getWorkingHoursForDay = (workingHoursJson: Prisma.JsonValue | null 
 
     // Ensure end time is after start time
     if (endTime <= startTime) {
-        console.warn(`Working hours end time is not after start time for ${dayKey}. Adjusting end time to next day if necessary or ignoring.`);
+        console.warn(`Working hours end time is not after start time for ${dayKey} (${dateFormatted}). Adjusting end time to next day if necessary or ignoring.`);
         // Handle overnight logic if needed, or simply return null/invalid
         return null; // Or adjust endTime logic based on business rules
     }
 
+    console.log(`Working hours for ${dayKey} (${dateFormatted}): ${format(startTime, 'HH:mm')} to ${format(endTime, 'HH:mm')}`);
     return { start: startTime, end: endTime };
 };
 
 // Helper function to check availability
 export const checkAvailability = async (professionalId: string, start: Date, end: Date): Promise<boolean> => {
-    // 1. Check Professional's Working Hours
-    // Use the corrected payload type
     const professional: ProfessionalWithDetails | null = await professionalRepository.findById(professionalId);
     if (!professional) throw new Error('Profissional não encontrado para verificação de disponibilidade.');
 
-    // Use professional's specific hours, fallback to company hours if needed
+    // Determine working hours
     const workingHoursJson = professional.workingHours || professional.company?.workingHours || null;
     const workingHoursToday = getWorkingHoursForDay(workingHoursJson, start);
 
     if (!workingHoursToday) {
-        console.log(`Availability Check: No working hours defined for professional ${professionalId} on ${format(start, 'yyyy-MM-dd')}`);
-        return false; // Not working on this day
-    }
-
-    // Check if the requested slot [start, end) is within the working hours [start, end)
-    if (!isWithinInterval(start, { start: workingHoursToday.start, end: workingHoursToday.end }) ||
-        !isWithinInterval(addMinutes(end, -1), { start: workingHoursToday.start, end: workingHoursToday.end })) { // Check end-1 minute to ensure end is not exclusive
-        console.log(`Availability Check: Slot [${format(start, 'HH:mm')}, ${format(end, 'HH:mm')}) is outside working hours [${format(workingHoursToday.start, 'HH:mm')}, ${format(workingHoursToday.end, 'HH:mm')})`);
-        return false;
+        console.log(`Availability Check: No working hours defined for ${professionalId} on ${format(start,'yyyy-MM-dd')}, skipping hours check.`);
+    } else {
+        // Check if the requested slot is within working hours
+        if (!isWithinInterval(start, { start: workingHoursToday.start, end: workingHoursToday.end }) ||
+            !isWithinInterval(addMinutes(end, -1), { start: workingHoursToday.start, end: workingHoursToday.end })) {
+            console.log(`Availability Check: Slot outside working hours for ${professionalId}.`);
+            return false;
+        }
     }
 
     // 2. Check for Conflicting Appointments
     const conflictingAppointments = await appointmentRepository.findMany({
         professionalId: professionalId,
-        status: { in: [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED] },
+        status: { in: [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED, AppointmentStatus.IN_PROGRESS] },
         // Check for appointments that overlap with the requested slot [start, end)
-        // Overlap condition: (ApptStart < end) and (ApptEnd > start)
-        date: { lt: end }, // Appointments starting before the requested slot ends
-        // We need ApptEnd > start. ApptEnd = ApptDate + ApptDuration.
-        // This requires fetching duration or calculating it. Simpler: check appointments starting within the potential conflict window.
-        // Let's refine the query later if needed, for now, check appointments starting before 'end'
+        // For overlap: we need appointments where either:
+        // - The appointment starts before our end AND ends after our start, OR
+        // - The appointment starts during our slot
+        startTime: { lt: end },
+        endTime: { gt: start }
     });
 
-    for (const appt of conflictingAppointments) {
-        const apptService = await serviceRepository.findById(appt.serviceId);
-        const apptDuration = apptService ? parseDuration(apptService.duration) : 0;
-        if (apptDuration === null || apptDuration <= 0) continue; // Skip if duration is invalid
-        const apptEnd = addMinutes(appt.date, apptDuration);
-
-        // Check for overlap: (appt.date < end) and (apptEnd > start)
-        if (isBefore(appt.date, end) && isBefore(start, apptEnd)) {
-            console.log(`Availability Check: Conflict with existing appointment ${appt.id} [${format(appt.date, 'HH:mm')}, ${format(apptEnd, 'HH:mm')})`);
-            return false;
-        }
-    }
-
-    // 3. Check for Schedule Blocks
-    const conflictingBlocks = await scheduleBlockRepository.findMany({
-        where: {
-            professionalId: professionalId,
-            startTime: { lt: end },
-            endTime: { gt: start },
-        }
-    });
-
-    if (conflictingBlocks.length > 0) {
-        console.log(`Availability Check: Found ${conflictingBlocks.length} conflicting schedule blocks for professional ${professionalId} between ${format(start, 'HH:mm')} and ${format(end, 'HH:mm')}`);
+    // With the startTime and endTime fields, we can directly check for conflicts
+    // without needing to calculate end times
+    if (conflictingAppointments.length > 0) {
+        const conflictingAppointment = conflictingAppointments[0];
+        console.log(`Availability Check: Conflict with existing appointment ${conflictingAppointment.id} [${format(conflictingAppointment.startTime, 'HH:mm')}, ${format(conflictingAppointment.endTime, 'HH:mm')})`);
         return false;
     }
 
-    console.log(`Availability Check: Slot [${format(start, 'HH:mm')}, ${format(end, 'HH:mm')}) is available for professional ${professionalId}`);
+    // 3. Check for Schedule Blocks (disabled)
+    // const conflictingBlocks = await scheduleBlockRepository.findMany({
+    //     where: {
+    //         professionalId: professionalId,
+    //         startTime: { lt: end },
+    //         endTime: { gt: start },
+    //     }
+    // });
+
+    // if (conflictingBlocks.length > 0) {
+    //     console.log(`Availability Check: Found conflicting schedule blocks for professional ${professionalId}`);
+    //     return false;
+    // }
+
+    console.log(`Availability Check: Slot available for professional ${professionalId}`);
     return true; // Slot is available
 };
 
@@ -272,7 +294,9 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
             user: { connect: { id: userId } },
             service: { connect: { id: serviceId } },
             professional: { connect: { id: targetProfessionalId } },
-            date: appointmentDate,
+            startTime: appointmentDate,
+            endTime: appointmentEnd,
+            ...(companyId && { company: { connect: { id: companyId } } }),
             status: AppointmentStatus.PENDING, // Default status
             notes: notes || null,
         };
@@ -313,7 +337,7 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
 // Listar agendamentos (com filtros)
 export const listAppointments = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
     const user = req.user;
-    const { professionalId, companyId, userId: queryUserId, status, date } = req.query;
+    const { professionalId, companyId, userId: queryUserId, status, dateFrom, dateTo, serviceId, limit, sort, page = "1" } = req.query;
 
     if (!user) {
         return res.status(401).json({ message: 'Usuário não autenticado.' });
@@ -321,6 +345,14 @@ export const listAppointments = async (req: Request, res: Response, next: NextFu
 
     try {
         let filters: Prisma.AppointmentWhereInput = {};
+        const pageSize = limit ? parseInt(limit as string) : 100;
+        const currentPage = parseInt(page as string) || 1;
+        const skip = (currentPage - 1) * pageSize;
+        let orderBy: any = { startTime: 'asc' };
+
+        if (sort === 'startTime_desc') {
+            orderBy = { startTime: 'desc' };
+        }
 
         // Security: Non-admins can only see their own appointments unless querying by professional/company
         if (user.role !== UserRole.ADMIN && !professionalId && !companyId) {
@@ -333,6 +365,15 @@ export const listAppointments = async (req: Request, res: Response, next: NextFu
             }
         }
 
+        // Professional access control
+        if (user.role === UserRole.PROFESSIONAL) {
+            const professional = await professionalRepository.findByUserId(user.id);
+            if (professional) {
+                filters.professionalId = professional.id;
+            }
+        }
+
+        // Filter by professionalId
         if (professionalId && typeof professionalId === 'string') {
              if (isValidUUID(professionalId)) {
                  filters.professionalId = professionalId;
@@ -340,27 +381,57 @@ export const listAppointments = async (req: Request, res: Response, next: NextFu
                  return res.status(400).json({ message: 'Formato de professionalId inválido.' });
              }
         }
+        
+        // Filter by status
         if (status && typeof status === 'string' && status in AppointmentStatus) {
             filters.status = status as AppointmentStatus;
         }
-        if (date && typeof date === 'string') {
-            const parsedDate = parse(date, 'yyyy-MM-dd', new Date());
-            if (isValid(parsedDate)) {
-                filters.date = {
-                    gte: startOfDay(parsedDate),
-                    lt: endOfDay(parsedDate),
-                };
+        
+        // Filter by date range
+        if (dateFrom && typeof dateFrom === 'string') {
+            const parsedFromDate = parse(dateFrom as string, 'yyyy-MM-dd', new Date());
+            if (isValid(parsedFromDate)) {
+                filters.startTime = filters.startTime || {};
+                Object.assign(filters.startTime, { 
+                    gte: startOfDay(parsedFromDate),
+                });
             } else {
-                 return res.status(400).json({ message: 'Formato de data inválido. Use YYYY-MM-DD.' });
+                return res.status(400).json({ message: 'Formato de data inicial inválido. Use YYYY-MM-DD.' });
             }
         }
+        
+        if (dateTo && typeof dateTo === 'string') {
+            const parsedToDate = parse(dateTo as string, 'yyyy-MM-dd', new Date());
+            if (isValid(parsedToDate)) {
+                filters.startTime = filters.startTime || {};
+                Object.assign(filters.startTime, { 
+                    lte: endOfDay(parsedToDate),
+                });
+            } else {
+                return res.status(400).json({ message: 'Formato de data final inválido. Use YYYY-MM-DD.' });
+            }
+        }
+        
+        // Filter by serviceId
+        if (serviceId && typeof serviceId === 'string') {
+            if (isValidUUID(serviceId)) {
+                filters.serviceId = serviceId;
+            } else {
+                return res.status(400).json({ message: 'Formato de serviceId inválido.' });
+            }
+        }
+        
+        // Filter by companyId directly or through professionals
         if (companyId && typeof companyId === 'string') {
             if (!isValidUUID(companyId)) {
                  return res.status(400).json({ message: 'Formato de companyId inválido.' });
             }
-            // Filter by professionals within that company
-            // Ensure findMany takes correct parameters: filters, orderBy, skip, take
-            const professionalsInCompany = await professionalRepository.findMany({ companyId: companyId }, {}, 0, 1000); 
+            
+            // Can now filter directly by companyId
+            filters.companyId = companyId;
+            
+            // Or filter by professionals within that company for backward compatibility
+            const professionalsInCompany = await professionalRepository.findMany({ companyId: companyId }, {}, 0, 1000);
             const professionalIds = professionalsInCompany.map(p => p.id);
             if (professionalIds.length > 0) {
                 // If professionalId filter already exists, ensure it's one of the company's professionals
@@ -379,8 +450,27 @@ export const listAppointments = async (req: Request, res: Response, next: NextFu
             }
         }
 
-        const appointments = await appointmentRepository.findMany(filters);
-        return res.json(appointments);
+        // Count total matching appointments for pagination
+        const totalCount = await prisma.appointment.count({ where: filters });
+        
+        // Get paginated results with ordering
+        const appointments = await prisma.appointment.findMany({
+            where: filters,
+            include: appointmentRepository.includeDetails,
+            orderBy: orderBy,
+            skip: skip,
+            take: pageSize,
+        });
+
+        // Format response according to specification
+        return res.json({
+            data: appointments,
+            meta: {
+                total: totalCount,
+                page: currentPage,
+                limit: pageSize
+            }
+        });
 
     } catch (error) {
         console.error("Erro ao listar agendamentos:", error);
@@ -392,6 +482,7 @@ export const listAppointments = async (req: Request, res: Response, next: NextFu
 export const getAppointmentById = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
     const { id } = req.params;
     const user = req.user;
+    const { include } = req.query;
 
     if (!user) {
         return res.status(401).json({ message: 'Usuário não autenticado.' });
@@ -447,7 +538,7 @@ async function isProfessionalOrCompanyAdmin(user: { id: string; role: UserRole }
   return false;
 }
 
-// Atualizar status de um agendamento (confirmar, cancelar, concluir)
+// Atualizar status de um agendamento (confirmar, cancelar, concluir, etc.)
 export const updateAppointmentStatus = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
     const { id } = req.params;
     const { status } = req.body;
@@ -460,7 +551,18 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
         return res.status(400).json({ message: 'ID de agendamento inválido.' });
     }
     if (!status || !(status in AppointmentStatus)) {
-        return res.status(400).json({ message: 'Status inválido fornecido.' });
+        return res.status(400).json({ 
+            error: {
+                code: "VALIDATION_ERROR",
+                message: "Status inválido fornecido",
+                details: [
+                    {
+                        field: "status",
+                        message: "Status deve ser um dos valores válidos: PENDING, CONFIRMED, CANCELLED, COMPLETED, IN_PROGRESS, NO_SHOW"
+                    }
+                ]
+            }
+        });
     }
 
     try {
@@ -486,12 +588,12 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
                 if ((isAdmin || isProfOrCompanyAdmin) && currentStatus === AppointmentStatus.PENDING) {
                     allowed = true;
                     activityType = "APPOINTMENT_CONFIRMED";
-                    activityMessage = `Seu agendamento de ${appointment.service?.name || 'serviço desconhecido'} para ${format(appointment.date, "dd/MM/yyyy 'às' HH:mm")} foi confirmado.`;
+                    activityMessage = `Seu agendamento de ${appointment.service?.name || 'serviço desconhecido'} para ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} foi confirmado.`;
                 }
                 break;
             case AppointmentStatus.CANCELLED:
                 const now = new Date();
-                const hoursUntilAppointment = differenceInHours(appointment.date, now);
+                const hoursUntilAppointment = differenceInHours(appointment.startTime, now);
                 if (isAdmin || isProfOrCompanyAdmin) {
                     allowed = true;
                 } else if (isOwner && (currentStatus === AppointmentStatus.PENDING || currentStatus === AppointmentStatus.CONFIRMED)) {
@@ -503,20 +605,38 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
                 }
                 if (allowed) {
                     activityType = "APPOINTMENT_CANCELLED";
-                    activityMessage = `Seu agendamento de ${appointment.service?.name || 'serviço desconhecido'} para ${format(appointment.date, "dd/MM/yyyy 'às' HH:mm")} foi cancelado.`;
+                    activityMessage = `Seu agendamento de ${appointment.service?.name || 'serviço desconhecido'} para ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} foi cancelado.`;
                 }
                 break;
             case AppointmentStatus.COMPLETED:
-                if ((isAdmin || isProfOrCompanyAdmin) && currentStatus === AppointmentStatus.CONFIRMED) {
+                if ((isAdmin || isProfOrCompanyAdmin) && 
+                   (currentStatus === AppointmentStatus.CONFIRMED || currentStatus === AppointmentStatus.IN_PROGRESS)) {
                     allowed = true;
                     activityType = "APPOINTMENT_COMPLETED";
-                    activityMessage = `Seu agendamento de ${appointment.service?.name || 'serviço desconhecido'} em ${format(appointment.date, "dd/MM/yyyy 'às' HH:mm")} foi concluído.`;
+                    activityMessage = `Seu agendamento de ${appointment.service?.name || 'serviço desconhecido'} em ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} foi concluído.`;
                     gamificationEvent = GamificationEventType.APPOINTMENT_COMPLETED;
+                }
+                break;
+            case AppointmentStatus.IN_PROGRESS:
+                if ((isAdmin || isProfOrCompanyAdmin) && currentStatus === AppointmentStatus.CONFIRMED) {
+                    allowed = true;
+                    activityType = "APPOINTMENT_IN_PROGRESS";
+                    activityMessage = `Seu agendamento de ${appointment.service?.name || 'serviço desconhecido'} em ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} está em andamento.`;
+                }
+                break;
+            case AppointmentStatus.NO_SHOW:
+                if ((isAdmin || isProfOrCompanyAdmin) && 
+                   (currentStatus === AppointmentStatus.CONFIRMED || currentStatus === AppointmentStatus.PENDING)) {
+                    allowed = true;
+                    activityType = "APPOINTMENT_NO_SHOW";
+                    activityMessage = `O cliente não compareceu ao agendamento de ${appointment.service?.name || 'serviço desconhecido'} em ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")}.`;
                 }
                 break;
             case AppointmentStatus.PENDING:
                 if (isAdmin && currentStatus === AppointmentStatus.CANCELLED) {
                     allowed = true;
+                    activityType = "APPOINTMENT_PENDING";
+                    activityMessage = `Seu agendamento de ${appointment.service?.name || 'serviço desconhecido'} para ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} voltou para status pendente.`;
                 }
                 break;
         }
@@ -638,53 +758,42 @@ export const getAvailability = async (req: Request, res: Response, next: NextFun
         for (const prof of professionalsToCheck) {
             const profId = prof.id;
             allAvailableSlots[profId] = [];
-            // Access company safely
+            
+            // Access professional and company working hours
             const workingHoursJson = prof.workingHours || prof.company?.workingHours || null;
             const workingHoursToday = getWorkingHoursForDay(workingHoursJson, targetDate);
+            if (!workingHoursToday) {
+                continue; // Skip if not working
+            }
+            // Debug log working hours
+            console.log(`Using working hours for professional ${profId}: ${format(workingHoursToday.start, 'HH:mm')} to ${format(workingHoursToday.end, 'HH:mm')}`);
 
-            if (!workingHoursToday) continue; // Skip if not working
-
-            // Get existing appointments and blocks for this professional on this day
+            // Retrieve existing appointments and blocks
             const dayStart = startOfDay(targetDate);
             const dayEnd = endOfDay(targetDate);
             const existingAppointments = await appointmentRepository.findMany({
                 professionalId: profId,
-                status: { in: [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED] },
-                date: { gte: dayStart, lt: dayEnd },
+                status: { in: [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED, AppointmentStatus.IN_PROGRESS] },
+                startTime: { gte: dayStart, lt: dayEnd },
             });
             const scheduleBlocks = await scheduleBlockRepository.findMany({
-                where: { // Added where clause
+                where: {
                     professionalId: profId,
                     startTime: { lt: dayEnd },
                     endTime: { gt: dayStart },
                 }
             });
 
-            // Pre-fetch service durations for appointments to optimize loop
-            const appointmentServiceIds = existingAppointments.map(a => a.serviceId);
-            const appointmentServices = await serviceRepository.findMany({ id: { in: appointmentServiceIds } }, {}, 0, 9999); // Provide default args
-            const serviceDurationMap = new Map<string, number | null>();
-            appointmentServices.forEach(s => serviceDurationMap.set(s.id, parseDuration(s.duration)));
-
             // Iterate through potential slots
             let currentSlotStart = workingHoursToday.start;
             while (currentSlotStart < workingHoursToday.end) {
                 const potentialSlotEnd = addMinutes(currentSlotStart, duration);
-
-                // Check if slot END is within working hours
-                if (potentialSlotEnd > workingHoursToday.end) {
-                    break; // No more possible slots
-                }
+                if (potentialSlotEnd > workingHoursToday.end) break;
 
                 let isSlotAvailable = true;
-
-                // Check against existing appointments
+                // Check appointment conflicts
                 for (const appt of existingAppointments) {
-                    const apptDuration = serviceDurationMap.get(appt.serviceId);
-                    if (apptDuration === null || apptDuration === undefined || apptDuration <= 0) continue;
-                    const apptEnd = addMinutes(appt.date, apptDuration);
-                    // Check for overlap: (SlotStart < ApptEnd) and (SlotEnd > ApptStart)
-                    if (currentSlotStart < apptEnd && potentialSlotEnd > appt.date) {
+                    if (currentSlotStart < appt.endTime && potentialSlotEnd > appt.startTime) {
                         isSlotAvailable = false;
                         break;
                     }
@@ -693,10 +802,8 @@ export const getAvailability = async (req: Request, res: Response, next: NextFun
                     currentSlotStart = addMinutes(currentSlotStart, intervalMinutes);
                     continue;
                 }
-
-                // Check against schedule blocks
+                // Check schedule block conflicts
                 for (const block of scheduleBlocks) {
-                    // Check for overlap: (SlotStart < BlockEnd) and (SlotEnd > BlockStart)
                     if (currentSlotStart < block.endTime && potentialSlotEnd > block.startTime) {
                         isSlotAvailable = false;
                         break;
@@ -706,11 +813,8 @@ export const getAvailability = async (req: Request, res: Response, next: NextFun
                     currentSlotStart = addMinutes(currentSlotStart, intervalMinutes);
                     continue;
                 }
-
-                // If available, add to list
+                // Add available slot
                 allAvailableSlots[profId].push(format(currentSlotStart, 'HH:mm'));
-
-                // Move to the next potential slot
                 currentSlotStart = addMinutes(currentSlotStart, intervalMinutes);
             }
         }

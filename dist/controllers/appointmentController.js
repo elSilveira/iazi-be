@@ -51,20 +51,42 @@ const parseDuration = (durationString) => {
 exports.parseDuration = parseDuration;
 // Helper function to get working hours for a specific day
 const getWorkingHoursForDay = (workingHoursJson, date) => {
+    // Add debugging to track the incoming data
+    const dateFormatted = (0, date_fns_1.format)(date, 'yyyy-MM-dd');
     // Check if workingHoursJson is a valid object and not null/undefined
-    if (!workingHoursJson || typeof workingHoursJson !== 'object' || Array.isArray(workingHoursJson))
+    if (!workingHoursJson) {
+        console.log(`No working hours data provided for date ${dateFormatted}`);
         return null;
+    }
+    if (typeof workingHoursJson !== 'object' || Array.isArray(workingHoursJson)) {
+        console.log(`Working hours is not a valid object for date ${dateFormatted}`);
+        return null;
+    }
     const dayOfWeek = (0, date_fns_1.getDay)(date); // 0 (Sunday) to 6 (Saturday)
     const dayKey = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"][dayOfWeek];
     // Type assertion to treat workingHoursJson as an indexable object
     const hoursData = workingHoursJson[dayKey];
-    if (!hoursData || typeof hoursData !== 'object' || !hoursData.start || !hoursData.end || !hoursData.isOpen) {
-        return null; // Not open or hours not defined correctly
+    if (!hoursData) {
+        console.log(`No hours data found for ${dayKey} (${dateFormatted})`);
+        return null;
+    }
+    if (typeof hoursData !== 'object') {
+        console.log(`Hours data for ${dayKey} is not an object (${dateFormatted})`);
+        return null;
+    }
+    // isOpen can be undefined (assume open) or explicitly true
+    if (hoursData.isOpen === false) {
+        console.log(`${dayKey} is marked as closed (isOpen: false) for ${dateFormatted}`);
+        return null;
+    }
+    if (!hoursData.start || !hoursData.end) {
+        console.log(`Missing start or end time for ${dayKey} (${dateFormatted})`);
+        return null;
     }
     // Validate time format (HH:MM)
     const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
     if (!timeRegex.test(hoursData.start) || !timeRegex.test(hoursData.end)) {
-        console.error(`Invalid time format in working hours for ${dayKey}: start=${hoursData.start}, end=${hoursData.end}`);
+        console.error(`Invalid time format in working hours for ${dayKey} (${dateFormatted}): start=${hoursData.start}, end=${hoursData.end}`);
         return null;
     }
     const [startHour, startMinute] = hoursData.start.split(':').map(Number);
@@ -73,10 +95,11 @@ const getWorkingHoursForDay = (workingHoursJson, date) => {
     const endTime = (0, date_fns_1.setSeconds)((0, date_fns_1.setMinutes)((0, date_fns_1.setHours)(date, endHour), endMinute), 0);
     // Ensure end time is after start time
     if (endTime <= startTime) {
-        console.warn(`Working hours end time is not after start time for ${dayKey}. Adjusting end time to next day if necessary or ignoring.`);
+        console.warn(`Working hours end time is not after start time for ${dayKey} (${dateFormatted}). Adjusting end time to next day if necessary or ignoring.`);
         // Handle overnight logic if needed, or simply return null/invalid
         return null; // Or adjust endTime logic based on business rules
     }
+    console.log(`Working hours for ${dayKey} (${dateFormatted}): ${(0, date_fns_1.format)(startTime, 'HH:mm')} to ${(0, date_fns_1.format)(endTime, 'HH:mm')}`);
     return { start: startTime, end: endTime };
 };
 exports.getWorkingHoursForDay = getWorkingHoursForDay;
@@ -104,25 +127,20 @@ const checkAvailability = (professionalId, start, end) => __awaiter(void 0, void
     // 2. Check for Conflicting Appointments
     const conflictingAppointments = yield appointmentRepository_1.appointmentRepository.findMany({
         professionalId: professionalId,
-        status: { in: [client_1.AppointmentStatus.PENDING, client_1.AppointmentStatus.CONFIRMED] },
+        status: { in: [client_1.AppointmentStatus.PENDING, client_1.AppointmentStatus.CONFIRMED, client_1.AppointmentStatus.IN_PROGRESS] },
         // Check for appointments that overlap with the requested slot [start, end)
-        // Overlap condition: (ApptStart < end) and (ApptEnd > start)
-        date: { lt: end }, // Appointments starting before the requested slot ends
-        // We need ApptEnd > start. ApptEnd = ApptDate + ApptDuration.
-        // This requires fetching duration or calculating it. Simpler: check appointments starting within the potential conflict window.
-        // Let's refine the query later if needed, for now, check appointments starting before 'end'
+        // For overlap: we need appointments where either:
+        // - The appointment starts before our end AND ends after our start, OR
+        // - The appointment starts during our slot
+        startTime: { lt: end },
+        endTime: { gt: start }
     });
-    for (const appt of conflictingAppointments) {
-        const apptService = yield serviceRepository_1.serviceRepository.findById(appt.serviceId);
-        const apptDuration = apptService ? (0, exports.parseDuration)(apptService.duration) : 0;
-        if (apptDuration === null || apptDuration <= 0)
-            continue; // Skip if duration is invalid
-        const apptEnd = (0, date_fns_1.addMinutes)(appt.date, apptDuration);
-        // Check for overlap: (appt.date < end) and (apptEnd > start)
-        if ((0, date_fns_1.isBefore)(appt.date, end) && (0, date_fns_1.isBefore)(start, apptEnd)) {
-            console.log(`Availability Check: Conflict with existing appointment ${appt.id} [${(0, date_fns_1.format)(appt.date, 'HH:mm')}, ${(0, date_fns_1.format)(apptEnd, 'HH:mm')})`);
-            return false;
-        }
+    // With the startTime and endTime fields, we can directly check for conflicts
+    // without needing to calculate end times
+    if (conflictingAppointments.length > 0) {
+        const conflictingAppointment = conflictingAppointments[0];
+        console.log(`Availability Check: Conflict with existing appointment ${conflictingAppointment.id} [${(0, date_fns_1.format)(conflictingAppointment.startTime, 'HH:mm')}, ${(0, date_fns_1.format)(conflictingAppointment.endTime, 'HH:mm')})`);
+        return false;
     }
     // 3. Check for Schedule Blocks
     const conflictingBlocks = yield scheduleBlockRepository_1.scheduleBlockRepository.findMany({
@@ -212,14 +230,7 @@ const createAppointment = (req, res, next) => __awaiter(void 0, void 0, void 0, 
             return res.status(409).json({ message: 'Horário indisponível. Conflito com agendamento existente, bloqueio ou fora do horário de trabalho.' });
         }
         // --- Create Appointment ---
-        const dataToCreate = {
-            user: { connect: { id: userId } },
-            service: { connect: { id: serviceId } },
-            professional: { connect: { id: targetProfessionalId } },
-            date: appointmentDate,
-            status: client_1.AppointmentStatus.PENDING, // Default status
-            notes: notes || null,
-        };
+        const dataToCreate = Object.assign(Object.assign({ user: { connect: { id: userId } }, service: { connect: { id: serviceId } }, professional: { connect: { id: targetProfessionalId } }, startTime: appointmentDate, endTime: appointmentEnd }, (companyId && { company: { connect: { id: companyId } } })), { status: client_1.AppointmentStatus.PENDING, notes: notes || null });
         const newAppointment = yield appointmentRepository_1.appointmentRepository.create(dataToCreate);
         // --- ACTIVITY LOG & NOTIFICATION ---
         try {
@@ -255,12 +266,19 @@ exports.createAppointment = createAppointment;
 // Listar agendamentos (com filtros)
 const listAppointments = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const user = req.user;
-    const { professionalId, companyId, userId: queryUserId, status, date } = req.query;
+    const { professionalId, companyId, userId: queryUserId, status, dateFrom, dateTo, serviceId, limit, sort, page = "1" } = req.query;
     if (!user) {
         return res.status(401).json({ message: 'Usuário não autenticado.' });
     }
     try {
         let filters = {};
+        const pageSize = limit ? parseInt(limit) : 100;
+        const currentPage = parseInt(page) || 1;
+        const skip = (currentPage - 1) * pageSize;
+        let orderBy = { startTime: 'asc' };
+        if (sort === 'startTime_desc') {
+            orderBy = { startTime: 'desc' };
+        }
         // Security: Non-admins can only see their own appointments unless querying by professional/company
         if (user.role !== client_1.UserRole.ADMIN && !professionalId && !companyId) {
             filters.userId = user.id;
@@ -273,6 +291,14 @@ const listAppointments = (req, res, next) => __awaiter(void 0, void 0, void 0, f
                 return res.status(400).json({ message: 'Formato de userId inválido.' });
             }
         }
+        // Professional access control
+        if (user.role === client_1.UserRole.PROFESSIONAL) {
+            const professional = yield professionalRepository_1.professionalRepository.findByUserId(user.id);
+            if (professional) {
+                filters.professionalId = professional.id;
+            }
+        }
+        // Filter by professionalId
         if (professionalId && typeof professionalId === 'string') {
             if (isValidUUID(professionalId)) {
                 filters.professionalId = professionalId;
@@ -281,27 +307,52 @@ const listAppointments = (req, res, next) => __awaiter(void 0, void 0, void 0, f
                 return res.status(400).json({ message: 'Formato de professionalId inválido.' });
             }
         }
+        // Filter by status
         if (status && typeof status === 'string' && status in client_1.AppointmentStatus) {
             filters.status = status;
         }
-        if (date && typeof date === 'string') {
-            const parsedDate = (0, date_fns_1.parse)(date, 'yyyy-MM-dd', new Date());
-            if ((0, date_fns_1.isValid)(parsedDate)) {
-                filters.date = {
-                    gte: (0, date_fns_1.startOfDay)(parsedDate),
-                    lt: (0, date_fns_1.endOfDay)(parsedDate),
-                };
+        // Filter by date range
+        if (dateFrom && typeof dateFrom === 'string') {
+            const parsedFromDate = (0, date_fns_1.parse)(dateFrom, 'yyyy-MM-dd', new Date());
+            if ((0, date_fns_1.isValid)(parsedFromDate)) {
+                filters.startTime = filters.startTime || {};
+                Object.assign(filters.startTime, {
+                    gte: (0, date_fns_1.startOfDay)(parsedFromDate),
+                });
             }
             else {
-                return res.status(400).json({ message: 'Formato de data inválido. Use YYYY-MM-DD.' });
+                return res.status(400).json({ message: 'Formato de data inicial inválido. Use YYYY-MM-DD.' });
             }
         }
+        if (dateTo && typeof dateTo === 'string') {
+            const parsedToDate = (0, date_fns_1.parse)(dateTo, 'yyyy-MM-dd', new Date());
+            if ((0, date_fns_1.isValid)(parsedToDate)) {
+                filters.startTime = filters.startTime || {};
+                Object.assign(filters.startTime, {
+                    lte: (0, date_fns_1.endOfDay)(parsedToDate),
+                });
+            }
+            else {
+                return res.status(400).json({ message: 'Formato de data final inválido. Use YYYY-MM-DD.' });
+            }
+        }
+        // Filter by serviceId
+        if (serviceId && typeof serviceId === 'string') {
+            if (isValidUUID(serviceId)) {
+                filters.serviceId = serviceId;
+            }
+            else {
+                return res.status(400).json({ message: 'Formato de serviceId inválido.' });
+            }
+        }
+        // Filter by companyId directly or through professionals
         if (companyId && typeof companyId === 'string') {
             if (!isValidUUID(companyId)) {
                 return res.status(400).json({ message: 'Formato de companyId inválido.' });
             }
-            // Filter by professionals within that company
-            // Ensure findMany takes correct parameters: filters, orderBy, skip, take
+            // Can now filter directly by companyId
+            filters.companyId = companyId;
+            // Or filter by professionals within that company for backward compatibility
             const professionalsInCompany = yield professionalRepository_1.professionalRepository.findMany({ companyId: companyId }, {}, 0, 1000);
             const professionalIds = professionalsInCompany.map(p => p.id);
             if (professionalIds.length > 0) {
@@ -322,8 +373,25 @@ const listAppointments = (req, res, next) => __awaiter(void 0, void 0, void 0, f
                 return res.json([]);
             }
         }
-        const appointments = yield appointmentRepository_1.appointmentRepository.findMany(filters);
-        return res.json(appointments);
+        // Count total matching appointments for pagination
+        const totalCount = yield prisma_1.prisma.appointment.count({ where: filters });
+        // Get paginated results with ordering
+        const appointments = yield prisma_1.prisma.appointment.findMany({
+            where: filters,
+            include: appointmentRepository_1.appointmentRepository.includeDetails,
+            orderBy: orderBy,
+            skip: skip,
+            take: pageSize,
+        });
+        // Format response according to specification
+        return res.json({
+            data: appointments,
+            meta: {
+                total: totalCount,
+                page: currentPage,
+                limit: pageSize
+            }
+        });
     }
     catch (error) {
         console.error("Erro ao listar agendamentos:", error);
@@ -335,6 +403,7 @@ exports.listAppointments = listAppointments;
 const getAppointmentById = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     const user = req.user;
+    const { include } = req.query;
     if (!user) {
         return res.status(401).json({ message: 'Usuário não autenticado.' });
     }
@@ -386,9 +455,9 @@ function isProfessionalOrCompanyAdmin(user, appointment) {
         return false;
     });
 }
-// Atualizar status de um agendamento (confirmar, cancelar, concluir)
+// Atualizar status de um agendamento (confirmar, cancelar, concluir, etc.)
 const updateAppointmentStatus = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c;
+    var _a, _b, _c, _d, _e, _f;
     const { id } = req.params;
     const { status } = req.body;
     const user = req.user;
@@ -399,7 +468,18 @@ const updateAppointmentStatus = (req, res, next) => __awaiter(void 0, void 0, vo
         return res.status(400).json({ message: 'ID de agendamento inválido.' });
     }
     if (!status || !(status in client_1.AppointmentStatus)) {
-        return res.status(400).json({ message: 'Status inválido fornecido.' });
+        return res.status(400).json({
+            error: {
+                code: "VALIDATION_ERROR",
+                message: "Status inválido fornecido",
+                details: [
+                    {
+                        field: "status",
+                        message: "Status deve ser um dos valores válidos: PENDING, CONFIRMED, CANCELLED, COMPLETED, IN_PROGRESS, NO_SHOW"
+                    }
+                ]
+            }
+        });
     }
     try {
         const appointment = yield appointmentRepository_1.appointmentRepository.findById(id);
@@ -421,12 +501,12 @@ const updateAppointmentStatus = (req, res, next) => __awaiter(void 0, void 0, vo
                 if ((isAdmin || isProfOrCompanyAdmin) && currentStatus === client_1.AppointmentStatus.PENDING) {
                     allowed = true;
                     activityType = "APPOINTMENT_CONFIRMED";
-                    activityMessage = `Seu agendamento de ${((_a = appointment.service) === null || _a === void 0 ? void 0 : _a.name) || 'serviço desconhecido'} para ${(0, date_fns_1.format)(appointment.date, "dd/MM/yyyy 'às' HH:mm")} foi confirmado.`;
+                    activityMessage = `Seu agendamento de ${((_a = appointment.service) === null || _a === void 0 ? void 0 : _a.name) || 'serviço desconhecido'} para ${(0, date_fns_1.format)(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} foi confirmado.`;
                 }
                 break;
             case client_1.AppointmentStatus.CANCELLED:
                 const now = new Date();
-                const hoursUntilAppointment = (0, date_fns_1.differenceInHours)(appointment.date, now);
+                const hoursUntilAppointment = (0, date_fns_1.differenceInHours)(appointment.startTime, now);
                 if (isAdmin || isProfOrCompanyAdmin) {
                     allowed = true;
                 }
@@ -440,20 +520,38 @@ const updateAppointmentStatus = (req, res, next) => __awaiter(void 0, void 0, vo
                 }
                 if (allowed) {
                     activityType = "APPOINTMENT_CANCELLED";
-                    activityMessage = `Seu agendamento de ${((_b = appointment.service) === null || _b === void 0 ? void 0 : _b.name) || 'serviço desconhecido'} para ${(0, date_fns_1.format)(appointment.date, "dd/MM/yyyy 'às' HH:mm")} foi cancelado.`;
+                    activityMessage = `Seu agendamento de ${((_b = appointment.service) === null || _b === void 0 ? void 0 : _b.name) || 'serviço desconhecido'} para ${(0, date_fns_1.format)(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} foi cancelado.`;
                 }
                 break;
             case client_1.AppointmentStatus.COMPLETED:
-                if ((isAdmin || isProfOrCompanyAdmin) && currentStatus === client_1.AppointmentStatus.CONFIRMED) {
+                if ((isAdmin || isProfOrCompanyAdmin) &&
+                    (currentStatus === client_1.AppointmentStatus.CONFIRMED || currentStatus === client_1.AppointmentStatus.IN_PROGRESS)) {
                     allowed = true;
                     activityType = "APPOINTMENT_COMPLETED";
-                    activityMessage = `Seu agendamento de ${((_c = appointment.service) === null || _c === void 0 ? void 0 : _c.name) || 'serviço desconhecido'} em ${(0, date_fns_1.format)(appointment.date, "dd/MM/yyyy 'às' HH:mm")} foi concluído.`;
+                    activityMessage = `Seu agendamento de ${((_c = appointment.service) === null || _c === void 0 ? void 0 : _c.name) || 'serviço desconhecido'} em ${(0, date_fns_1.format)(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} foi concluído.`;
                     gamificationEvent = gamificationService_1.GamificationEventType.APPOINTMENT_COMPLETED;
+                }
+                break;
+            case client_1.AppointmentStatus.IN_PROGRESS:
+                if ((isAdmin || isProfOrCompanyAdmin) && currentStatus === client_1.AppointmentStatus.CONFIRMED) {
+                    allowed = true;
+                    activityType = "APPOINTMENT_IN_PROGRESS";
+                    activityMessage = `Seu agendamento de ${((_d = appointment.service) === null || _d === void 0 ? void 0 : _d.name) || 'serviço desconhecido'} em ${(0, date_fns_1.format)(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} está em andamento.`;
+                }
+                break;
+            case client_1.AppointmentStatus.NO_SHOW:
+                if ((isAdmin || isProfOrCompanyAdmin) &&
+                    (currentStatus === client_1.AppointmentStatus.CONFIRMED || currentStatus === client_1.AppointmentStatus.PENDING)) {
+                    allowed = true;
+                    activityType = "APPOINTMENT_NO_SHOW";
+                    activityMessage = `O cliente não compareceu ao agendamento de ${((_e = appointment.service) === null || _e === void 0 ? void 0 : _e.name) || 'serviço desconhecido'} em ${(0, date_fns_1.format)(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")}.`;
                 }
                 break;
             case client_1.AppointmentStatus.PENDING:
                 if (isAdmin && currentStatus === client_1.AppointmentStatus.CANCELLED) {
                     allowed = true;
+                    activityType = "APPOINTMENT_PENDING";
+                    activityMessage = `Seu agendamento de ${((_f = appointment.service) === null || _f === void 0 ? void 0 : _f.name) || 'serviço desconhecido'} para ${(0, date_fns_1.format)(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} voltou para status pendente.`;
                 }
                 break;
         }
@@ -483,6 +581,20 @@ const updateAppointmentStatus = (req, res, next) => __awaiter(void 0, void 0, vo
     }
 });
 exports.updateAppointmentStatus = updateAppointmentStatus;
+// Helper function to create default working hours (for testing/development only)
+function createDefaultWorkingHoursForDay(date) {
+    const dayOfWeek = (0, date_fns_1.getDay)(date);
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+        return {
+            start: (0, date_fns_1.setSeconds)((0, date_fns_1.setMinutes)((0, date_fns_1.setHours)(date, 10), 0), 0),
+            end: (0, date_fns_1.setSeconds)((0, date_fns_1.setMinutes)((0, date_fns_1.setHours)(date, 14), 0), 0)
+        };
+    }
+    return {
+        start: (0, date_fns_1.setSeconds)((0, date_fns_1.setMinutes)((0, date_fns_1.setHours)(date, 9), 0), 0),
+        end: (0, date_fns_1.setSeconds)((0, date_fns_1.setMinutes)((0, date_fns_1.setHours)(date, 17), 0), 0)
+    };
+}
 // Obter horários disponíveis para um serviço/profissional em uma data específica
 const getAvailability = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
@@ -563,18 +675,48 @@ const getAvailability = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
         for (const prof of professionalsToCheck) {
             const profId = prof.id;
             allAvailableSlots[profId] = [];
-            // Access company safely
-            const workingHoursJson = prof.workingHours || ((_a = prof.company) === null || _a === void 0 ? void 0 : _a.workingHours) || null;
-            const workingHoursToday = (0, exports.getWorkingHoursForDay)(workingHoursJson, targetDate);
-            if (!workingHoursToday)
+            // Access company safely with better logging
+            const professionalHours = prof.workingHours;
+            const companyHours = (_a = prof.company) === null || _a === void 0 ? void 0 : _a.workingHours;
+            console.log(`Processing availability for professional ${profId} on ${(0, date_fns_1.format)(targetDate, 'yyyy-MM-dd')}`);
+            // Use professional's specific hours, fallback to company hours if needed
+            const workingHoursJson = professionalHours || companyHours || null;
+            // If no working hours found at all
+            if (!workingHoursJson) {
+                console.log(`No working hours found for professional ${profId} or their company`);
+                // Option: Use default working hours for testing purposes
+                if (process.env.NODE_ENV === 'development' || process.env.USE_DEFAULT_HOURS === 'true') {
+                    console.log(`Using default working hours for professional ${profId} in development mode`);
+                    const defaultHours = createDefaultWorkingHoursForDay(targetDate);
+                    if (defaultHours) {
+                        console.log(`Default hours: ${(0, date_fns_1.format)(defaultHours.start, 'HH:mm')} to ${(0, date_fns_1.format)(defaultHours.end, 'HH:mm')}`);
+                    }
+                    else {
+                        console.log('Default hours not available for this day');
+                        continue;
+                    }
+                }
+                else {
+                    continue; // Skip this professional in production
+                }
+            }
+            const workingHoursToday = workingHoursJson ?
+                (0, exports.getWorkingHoursForDay)(workingHoursJson, targetDate) :
+                (process.env.NODE_ENV === 'development' || process.env.USE_DEFAULT_HOURS === 'true') ?
+                    createDefaultWorkingHoursForDay(targetDate) : null;
+            if (!workingHoursToday) {
+                console.log(`No working hours defined for professional ${profId} on ${(0, date_fns_1.format)(targetDate, 'yyyy-MM-dd')}`);
                 continue; // Skip if not working
+            }
+            // Debug log working hours being used
+            console.log(`Using working hours for professional ${profId}: ${(0, date_fns_1.format)(workingHoursToday.start, 'HH:mm')} to ${(0, date_fns_1.format)(workingHoursToday.end, 'HH:mm')}`);
             // Get existing appointments and blocks for this professional on this day
             const dayStart = (0, date_fns_1.startOfDay)(targetDate);
             const dayEnd = (0, date_fns_1.endOfDay)(targetDate);
             const existingAppointments = yield appointmentRepository_1.appointmentRepository.findMany({
                 professionalId: profId,
-                status: { in: [client_1.AppointmentStatus.PENDING, client_1.AppointmentStatus.CONFIRMED] },
-                date: { gte: dayStart, lt: dayEnd },
+                status: { in: [client_1.AppointmentStatus.PENDING, client_1.AppointmentStatus.CONFIRMED, client_1.AppointmentStatus.IN_PROGRESS] },
+                startTime: { gte: dayStart, lt: dayEnd },
             });
             const scheduleBlocks = yield scheduleBlockRepository_1.scheduleBlockRepository.findMany({
                 where: {
@@ -583,11 +725,7 @@ const getAvailability = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
                     endTime: { gt: dayStart },
                 }
             });
-            // Pre-fetch service durations for appointments to optimize loop
-            const appointmentServiceIds = existingAppointments.map(a => a.serviceId);
-            const appointmentServices = yield serviceRepository_1.serviceRepository.findMany({ id: { in: appointmentServiceIds } }, {}, 0, 9999); // Provide default args
-            const serviceDurationMap = new Map();
-            appointmentServices.forEach(s => serviceDurationMap.set(s.id, (0, exports.parseDuration)(s.duration)));
+            // No need to pre-fetch service durations since we're using startTime/endTime directly
             // Iterate through potential slots
             let currentSlotStart = workingHoursToday.start;
             while (currentSlotStart < workingHoursToday.end) {
@@ -599,12 +737,8 @@ const getAvailability = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
                 let isSlotAvailable = true;
                 // Check against existing appointments
                 for (const appt of existingAppointments) {
-                    const apptDuration = serviceDurationMap.get(appt.serviceId);
-                    if (apptDuration === null || apptDuration === undefined || apptDuration <= 0)
-                        continue;
-                    const apptEnd = (0, date_fns_1.addMinutes)(appt.date, apptDuration);
                     // Check for overlap: (SlotStart < ApptEnd) and (SlotEnd > ApptStart)
-                    if (currentSlotStart < apptEnd && potentialSlotEnd > appt.date) {
+                    if (currentSlotStart < appt.endTime && potentialSlotEnd > appt.startTime) {
                         isSlotAvailable = false;
                         break;
                     }

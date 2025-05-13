@@ -712,3 +712,14 @@
 [31mThe change you are trying to make would violate the required relation 'ProfessionalToUser' between the `Professional` and `User` models. - /api/professionals - POST - 127.0.0.1[39m
 2025-05-12 00:41:46:4146 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
 2025-05-12 00:41:46:4146 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-12 20:54:51:5451 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-12 20:54:51:5451 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-12 21:28:15:2815 [31merror[39m: [31m500 - Cannot read properties of undefined (reading 'ADMIN') - /api/appointments - GET - ::ffff:127.0.0.1[39m
+2025-05-12 21:28:20:2820 [31merror[39m: [31m401 - Not authorized, no token - /api/services - POST - ::ffff:127.0.0.1[39m
+2025-05-12 21:28:20:2820 [31merror[39m: [31m401 - Not authorized, no token - /api/professionals - POST - ::ffff:127.0.0.1[39m
+2025-05-12 21:28:21:2821 [31merror[39m: [31m401 - Not authorized, no token - /api/professionals/d25b0075-46b1-4088-ae0a-b0e9ebe7f94e - PUT - ::ffff:127.0.0.1[39m
+2025-05-12 21:48:11:4811 [31merror[39m: [31m401 - Credenciais inválidas - /api/auth/login - POST - 127.0.0.1[39m
+2025-05-12 21:49:18:4918 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-12 21:49:18:4918 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-13 00:07:04:74 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-13 00:07:04:74 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
