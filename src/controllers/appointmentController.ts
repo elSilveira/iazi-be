@@ -834,6 +834,83 @@ export const getAvailability = async (req: Request, res: Response, next: NextFun
     }
 };
 
+// New controller for professional's full schedule and open hours
+export const getProfessionalFullSchedule = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const professionalId = req.params.id;
+    const { date } = req.query;
+    if (!professionalId || !isValidUUID(professionalId)) {
+      return res.status(400).json({ message: 'ID do profissional inválido.' });
+    }
+    if (!date || typeof date !== 'string') {
+      return res.status(400).json({ message: "Parâmetro 'date' (YYYY-MM-DD) é obrigatório." });
+    }
+    const targetDate = parse(date, 'yyyy-MM-dd', new Date());
+    if (!isValid(targetDate)) {
+      return res.status(400).json({ message: "Formato de data inválido. Use YYYY-MM-DD." });
+    }
+    // Get professional and working hours
+    const professional = await professionalRepository.findById(professionalId);
+    if (!professional) {
+      return res.status(404).json({ message: 'Profissional não encontrado.' });
+    }
+    const workingHoursJson = professional.workingHours || professional.company?.workingHours || null;
+    const workingHoursToday = getWorkingHoursForDay(workingHoursJson, targetDate);
+    // Get all services for this professional
+    const services = await serviceRepository.getServicesByProfessional(professionalId);
+    // Get all appointments for this professional on the date
+    const dayStart = startOfDay(targetDate);
+    const dayEnd = endOfDay(targetDate);
+    const appointments = await appointmentRepository.findMany({
+      professionalId,
+      startTime: { gte: dayStart, lt: dayEnd },
+      status: { in: [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED, AppointmentStatus.IN_PROGRESS, AppointmentStatus.COMPLETED] },
+    });
+    // For each service, calculate all available slots and scheduled appointments
+    const allServiceSchedules: any[] = [];
+    for (const ps of services) {
+      const service = ps.service;
+      const duration = parseDuration(service.duration);
+      if (!duration || !workingHoursToday) continue;
+      const slots: string[] = [];
+      let currentSlotStart = workingHoursToday.start;
+      while (currentSlotStart < workingHoursToday.end) {
+        const potentialSlotEnd = addMinutes(currentSlotStart, duration);
+        if (potentialSlotEnd > workingHoursToday.end) break;
+        slots.push(format(currentSlotStart, 'HH:mm'));
+        currentSlotStart = addMinutes(currentSlotStart, 15);
+      }
+      // Get scheduled appointments for this service
+      const scheduled = appointments
+        .filter(a => a.serviceId === service.id)
+        .map(a => ({
+          id: a.id,
+          startTime: format(a.startTime, 'HH:mm'),
+          endTime: format(a.endTime, 'HH:mm'),
+          status: a.status,
+          userId: a.userId,
+        }));
+      allServiceSchedules.push({
+        serviceId: service.id,
+        serviceName: service.name,
+        duration: service.duration,
+        slots,
+        scheduled,
+      });
+    }
+    res.json({
+      professionalId,
+      date: format(targetDate, 'yyyy-MM-dd'),
+      openHours: workingHoursToday ? {
+        start: format(workingHoursToday.start, 'HH:mm'),
+        end: format(workingHoursToday.end, 'HH:mm'),
+      } : null,
+      services: allServiceSchedules,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 // Add missing exports if they were removed or renamed
 // Example: If getAppointmentAvailability was renamed to getAvailability
 // export { getAvailability as getAppointmentAvailability };

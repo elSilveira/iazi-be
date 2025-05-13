@@ -351,7 +351,8 @@ describe("POST /api/appointments", () => {
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
             .send({
-                date: formatISO(bookableTime),
+                startTime: bookableTime,
+                endTime: addMinutes(bookableTime, 30),
                 serviceId: testService.id,
                 professionalId: testProfessional.id,
             });
@@ -362,7 +363,7 @@ describe("POST /api/appointments", () => {
         expect(response.body.userId).toBe(testUser.id);
         expect(response.body.professionalId).toBe(testProfessional.id);
         expect(response.body.serviceId).toBe(testService.id);
-        expect(new Date(response.body.date)).toEqual(bookableTime);
+        expect(new Date(response.body.startTime)).toEqual(bookableTime);
         expect(response.body.status).toBe(AppointmentStatus.PENDING);
 
         // Check if ActivityLog and Gamification events were triggered (optional but good)
@@ -375,7 +376,8 @@ describe("POST /api/appointments", () => {
         const response = await request(app)
             .post("/api/appointments")
             .send({
-                date: formatISO(bookableTime),
+                startTime: bookableTime,
+                endTime: addMinutes(bookableTime, 30),
                 serviceId: testService.id,
                 professionalId: testProfessional.id,
             });
@@ -396,7 +398,7 @@ describe("POST /api/appointments", () => {
         const response = await request(app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
-            .send({ date: formatISO(pastDate), serviceId: testService.id, professionalId: testProfessional.id });
+            .send({ startTime: pastDate, endTime: addMinutes(pastDate, 30), serviceId: testService.id, professionalId: testProfessional.id });
         expect(response.status).toBe(400);
         expect(response.body.message).toContain("não pode ser no passado");
     });
@@ -406,7 +408,7 @@ describe("POST /api/appointments", () => {
         const response = await request(app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
-            .send({ date: formatISO(tooSoonDate), serviceId: testService.id, professionalId: testProfessional.id });
+            .send({ startTime: tooSoonDate, endTime: addMinutes(tooSoonDate, 30), serviceId: testService.id, professionalId: testProfessional.id });
         expect(response.status).toBe(400);
         expect(response.body.message).toContain("antecedência");
     });
@@ -416,7 +418,7 @@ describe("POST /api/appointments", () => {
         const response = await request(app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
-            .send({ date: formatISO(bookableTime), serviceId: invalidServiceId, professionalId: testProfessional.id });
+            .send({ startTime: bookableTime, endTime: addMinutes(bookableTime, 30), serviceId: invalidServiceId, professionalId: testProfessional.id });
         expect(response.status).toBe(404);
         expect(response.body.message).toContain("Serviço não encontrado");
     });
@@ -429,7 +431,7 @@ describe("POST /api/appointments", () => {
         const response = await request(app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
-            .send({ date: formatISO(bookableTime), serviceId: testService.id }); // Missing professionalId
+            .send({ startTime: bookableTime, endTime: addMinutes(bookableTime, 30), serviceId: testService.id }); // Missing professionalId
         
         expect(response.status).toBe(400);
         expect(response.body.message).toContain("professionalId é obrigatório");
@@ -445,7 +447,7 @@ describe("POST /api/appointments", () => {
         const response = await request(app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
-            .send({ date: formatISO(bookableTime), serviceId: otherService.id, professionalId: testProfessional.id });
+            .send({ startTime: bookableTime, endTime: addMinutes(bookableTime, 30), serviceId: otherService.id, professionalId: testProfessional.id });
         
         expect(response.status).toBe(400);
         expect(response.body.message).toContain("profissional especificado não oferece este serviço");
@@ -459,7 +461,8 @@ describe("POST /api/appointments", () => {
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
             .send({
-                date: formatISO(bookableTime),
+                startTime: bookableTime,
+                endTime: addMinutes(bookableTime, 30),
                 serviceId: testService.id,
                 professionalId: testProfessional.id,
             });
@@ -471,7 +474,8 @@ describe("POST /api/appointments", () => {
             .post("/api/appointments")
             .set("Authorization", `Bearer ${user2Token}`) // Different user
             .send({
-                date: formatISO(bookableTime),
+                startTime: bookableTime,
+                endTime: addMinutes(bookableTime, 30),
                 serviceId: testService.id,
                 professionalId: testProfessional.id,
             });
@@ -496,7 +500,8 @@ describe("POST /api/appointments", () => {
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
             .send({
-                date: formatISO(blockedTimeStart), // Try to book exactly when block starts
+                startTime: blockedTimeStart, // Try to book exactly when block starts
+                endTime: addMinutes(blockedTimeStart, 30),
                 serviceId: testService.id,
                 professionalId: testProfessional.id,
             });
@@ -515,7 +520,8 @@ describe("GET /api/appointments", () => {
     beforeAll(async () => {
         // Create some appointments for testing filtering/listing
         const time1 = addHours(setMinutes(setHours(nextMonday, 13), 0), 0); // Mon 13:00
-        const time2 = addHours(setMinutes(setHours(nextTuesday, 10), 0), 0); // Tue 10:00        appointment1 = await prisma.appointment.create({
+        const time2 = addHours(setMinutes(setHours(nextTuesday, 10), 0), 0); // Tue 10:00
+        appointment1 = await prisma.appointment.create({
             data: {
                 startTime: time1,
                 endTime: addHours(time1, 1),
@@ -524,7 +530,8 @@ describe("GET /api/appointments", () => {
                 professionalId: testProfessional.id,
                 status: AppointmentStatus.CONFIRMED,
             }
-        });        appointment2 = await prisma.appointment.create({
+        });
+        appointment2 = await prisma.appointment.create({
             data: {
                 startTime: time2,
                 endTime: addHours(time2, 1),
@@ -621,7 +628,7 @@ describe("GET /api/appointments", () => {
         expect(response.status).toBe(200);
         expect(response.body).toBeInstanceOf(Array);
         expect(response.body.length).toBeGreaterThanOrEqual(1);
-        expect(response.body.every((a: any) => startOfDay(new Date(a.date)).getTime() === nextMonday.getTime())).toBe(true);
+        expect(response.body.every((a: any) => startOfDay(new Date(a.startTime)).getTime() === nextMonday.getTime())).toBe(true);
         expect(response.body.some((a: any) => a.id === appointment1.id)).toBe(true);
     });
 
@@ -651,7 +658,8 @@ describe("GET /api/appointments/:id", () => {
         const time = addHours(setMinutes(setHours(nextMonday, 16), 0), 0); // Mon 16:00
         testAppointment = await prisma.appointment.create({
             data: {
-                date: time,
+                startTime: time,
+                endTime: addMinutes(time, 30),
                 userId: testUser.id,
                 serviceId: testService.id,
                 professionalId: testProfessional.id,
@@ -736,7 +744,8 @@ describe("PATCH /api/appointments/:id/status", () => {
         const timeConfirmed = addHours(setMinutes(setHours(nextTuesday, 14), 0), 0); // Tue 14:00
         pendingAppointment = await prisma.appointment.create({
             data: {
-                date: timePending,
+                startTime: timePending,
+                endTime: addMinutes(timePending, 30),
                 userId: testUser.id,
                 serviceId: testService.id,
                 professionalId: testProfessional.id,
@@ -745,7 +754,8 @@ describe("PATCH /api/appointments/:id/status", () => {
         });
         confirmedAppointment = await prisma.appointment.create({
             data: {
-                date: timeConfirmed,
+                startTime: timeConfirmed,
+                endTime: addMinutes(timeConfirmed, 30),
                 userId: testUser2.id,
                 serviceId: testService.id,
                 professionalId: testProfessional.id,
@@ -802,7 +812,8 @@ describe("PATCH /api/appointments/:id/status", () => {
         const soonTime = addMinutes(new Date(), 90); // 1.5 hours from now (less than MIN_CANCELLATION_HOURS = 2)
         const soonAppt = await prisma.appointment.create({
             data: {
-                date: soonTime,
+                startTime: soonTime,
+                endTime: addMinutes(soonTime, 30),
                 userId: testUser.id,
                 serviceId: testService.id,
                 professionalId: testProfessional.id,

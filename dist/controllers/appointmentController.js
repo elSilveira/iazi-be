@@ -106,23 +106,22 @@ exports.getWorkingHoursForDay = getWorkingHoursForDay;
 // Helper function to check availability
 const checkAvailability = (professionalId, start, end) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    // 1. Check Professional's Working Hours
-    // Use the corrected payload type
     const professional = yield professionalRepository_1.professionalRepository.findById(professionalId);
     if (!professional)
         throw new Error('Profissional não encontrado para verificação de disponibilidade.');
-    // Use professional's specific hours, fallback to company hours if needed
+    // Determine working hours
     const workingHoursJson = professional.workingHours || ((_a = professional.company) === null || _a === void 0 ? void 0 : _a.workingHours) || null;
     const workingHoursToday = (0, exports.getWorkingHoursForDay)(workingHoursJson, start);
     if (!workingHoursToday) {
-        console.log(`Availability Check: No working hours defined for professional ${professionalId} on ${(0, date_fns_1.format)(start, 'yyyy-MM-dd')}`);
-        return false; // Not working on this day
+        console.log(`Availability Check: No working hours defined for ${professionalId} on ${(0, date_fns_1.format)(start, 'yyyy-MM-dd')}, skipping hours check.`);
     }
-    // Check if the requested slot [start, end) is within the working hours [start, end)
-    if (!(0, date_fns_1.isWithinInterval)(start, { start: workingHoursToday.start, end: workingHoursToday.end }) ||
-        !(0, date_fns_1.isWithinInterval)((0, date_fns_1.addMinutes)(end, -1), { start: workingHoursToday.start, end: workingHoursToday.end })) { // Check end-1 minute to ensure end is not exclusive
-        console.log(`Availability Check: Slot [${(0, date_fns_1.format)(start, 'HH:mm')}, ${(0, date_fns_1.format)(end, 'HH:mm')}) is outside working hours [${(0, date_fns_1.format)(workingHoursToday.start, 'HH:mm')}, ${(0, date_fns_1.format)(workingHoursToday.end, 'HH:mm')})`);
-        return false;
+    else {
+        // Check if the requested slot is within working hours
+        if (!(0, date_fns_1.isWithinInterval)(start, { start: workingHoursToday.start, end: workingHoursToday.end }) ||
+            !(0, date_fns_1.isWithinInterval)((0, date_fns_1.addMinutes)(end, -1), { start: workingHoursToday.start, end: workingHoursToday.end })) {
+            console.log(`Availability Check: Slot outside working hours for ${professionalId}.`);
+            return false;
+        }
     }
     // 2. Check for Conflicting Appointments
     const conflictingAppointments = yield appointmentRepository_1.appointmentRepository.findMany({
@@ -142,19 +141,19 @@ const checkAvailability = (professionalId, start, end) => __awaiter(void 0, void
         console.log(`Availability Check: Conflict with existing appointment ${conflictingAppointment.id} [${(0, date_fns_1.format)(conflictingAppointment.startTime, 'HH:mm')}, ${(0, date_fns_1.format)(conflictingAppointment.endTime, 'HH:mm')})`);
         return false;
     }
-    // 3. Check for Schedule Blocks
-    const conflictingBlocks = yield scheduleBlockRepository_1.scheduleBlockRepository.findMany({
-        where: {
-            professionalId: professionalId,
-            startTime: { lt: end },
-            endTime: { gt: start },
-        }
-    });
-    if (conflictingBlocks.length > 0) {
-        console.log(`Availability Check: Found ${conflictingBlocks.length} conflicting schedule blocks for professional ${professionalId} between ${(0, date_fns_1.format)(start, 'HH:mm')} and ${(0, date_fns_1.format)(end, 'HH:mm')}`);
-        return false;
-    }
-    console.log(`Availability Check: Slot [${(0, date_fns_1.format)(start, 'HH:mm')}, ${(0, date_fns_1.format)(end, 'HH:mm')}) is available for professional ${professionalId}`);
+    // 3. Check for Schedule Blocks (disabled)
+    // const conflictingBlocks = await scheduleBlockRepository.findMany({
+    //     where: {
+    //         professionalId: professionalId,
+    //         startTime: { lt: end },
+    //         endTime: { gt: start },
+    //     }
+    // });
+    // if (conflictingBlocks.length > 0) {
+    //     console.log(`Availability Check: Found conflicting schedule blocks for professional ${professionalId}`);
+    //     return false;
+    // }
+    console.log(`Availability Check: Slot available for professional ${professionalId}`);
     return true; // Slot is available
 });
 exports.checkAvailability = checkAvailability;
@@ -581,20 +580,6 @@ const updateAppointmentStatus = (req, res, next) => __awaiter(void 0, void 0, vo
     }
 });
 exports.updateAppointmentStatus = updateAppointmentStatus;
-// Helper function to create default working hours (for testing/development only)
-function createDefaultWorkingHoursForDay(date) {
-    const dayOfWeek = (0, date_fns_1.getDay)(date);
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-        return {
-            start: (0, date_fns_1.setSeconds)((0, date_fns_1.setMinutes)((0, date_fns_1.setHours)(date, 10), 0), 0),
-            end: (0, date_fns_1.setSeconds)((0, date_fns_1.setMinutes)((0, date_fns_1.setHours)(date, 14), 0), 0)
-        };
-    }
-    return {
-        start: (0, date_fns_1.setSeconds)((0, date_fns_1.setMinutes)((0, date_fns_1.setHours)(date, 9), 0), 0),
-        end: (0, date_fns_1.setSeconds)((0, date_fns_1.setMinutes)((0, date_fns_1.setHours)(date, 17), 0), 0)
-    };
-}
 // Obter horários disponíveis para um serviço/profissional em uma data específica
 const getAvailability = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
@@ -675,42 +660,15 @@ const getAvailability = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
         for (const prof of professionalsToCheck) {
             const profId = prof.id;
             allAvailableSlots[profId] = [];
-            // Access company safely with better logging
-            const professionalHours = prof.workingHours;
-            const companyHours = (_a = prof.company) === null || _a === void 0 ? void 0 : _a.workingHours;
-            console.log(`Processing availability for professional ${profId} on ${(0, date_fns_1.format)(targetDate, 'yyyy-MM-dd')}`);
-            // Use professional's specific hours, fallback to company hours if needed
-            const workingHoursJson = professionalHours || companyHours || null;
-            // If no working hours found at all
-            if (!workingHoursJson) {
-                console.log(`No working hours found for professional ${profId} or their company`);
-                // Option: Use default working hours for testing purposes
-                if (process.env.NODE_ENV === 'development' || process.env.USE_DEFAULT_HOURS === 'true') {
-                    console.log(`Using default working hours for professional ${profId} in development mode`);
-                    const defaultHours = createDefaultWorkingHoursForDay(targetDate);
-                    if (defaultHours) {
-                        console.log(`Default hours: ${(0, date_fns_1.format)(defaultHours.start, 'HH:mm')} to ${(0, date_fns_1.format)(defaultHours.end, 'HH:mm')}`);
-                    }
-                    else {
-                        console.log('Default hours not available for this day');
-                        continue;
-                    }
-                }
-                else {
-                    continue; // Skip this professional in production
-                }
-            }
-            const workingHoursToday = workingHoursJson ?
-                (0, exports.getWorkingHoursForDay)(workingHoursJson, targetDate) :
-                (process.env.NODE_ENV === 'development' || process.env.USE_DEFAULT_HOURS === 'true') ?
-                    createDefaultWorkingHoursForDay(targetDate) : null;
+            // Access professional and company working hours
+            const workingHoursJson = prof.workingHours || ((_a = prof.company) === null || _a === void 0 ? void 0 : _a.workingHours) || null;
+            const workingHoursToday = (0, exports.getWorkingHoursForDay)(workingHoursJson, targetDate);
             if (!workingHoursToday) {
-                console.log(`No working hours defined for professional ${profId} on ${(0, date_fns_1.format)(targetDate, 'yyyy-MM-dd')}`);
                 continue; // Skip if not working
             }
-            // Debug log working hours being used
+            // Debug log working hours
             console.log(`Using working hours for professional ${profId}: ${(0, date_fns_1.format)(workingHoursToday.start, 'HH:mm')} to ${(0, date_fns_1.format)(workingHoursToday.end, 'HH:mm')}`);
-            // Get existing appointments and blocks for this professional on this day
+            // Retrieve existing appointments and blocks
             const dayStart = (0, date_fns_1.startOfDay)(targetDate);
             const dayEnd = (0, date_fns_1.endOfDay)(targetDate);
             const existingAppointments = yield appointmentRepository_1.appointmentRepository.findMany({
@@ -725,19 +683,15 @@ const getAvailability = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
                     endTime: { gt: dayStart },
                 }
             });
-            // No need to pre-fetch service durations since we're using startTime/endTime directly
             // Iterate through potential slots
             let currentSlotStart = workingHoursToday.start;
             while (currentSlotStart < workingHoursToday.end) {
                 const potentialSlotEnd = (0, date_fns_1.addMinutes)(currentSlotStart, duration);
-                // Check if slot END is within working hours
-                if (potentialSlotEnd > workingHoursToday.end) {
-                    break; // No more possible slots
-                }
+                if (potentialSlotEnd > workingHoursToday.end)
+                    break;
                 let isSlotAvailable = true;
-                // Check against existing appointments
+                // Check appointment conflicts
                 for (const appt of existingAppointments) {
-                    // Check for overlap: (SlotStart < ApptEnd) and (SlotEnd > ApptStart)
                     if (currentSlotStart < appt.endTime && potentialSlotEnd > appt.startTime) {
                         isSlotAvailable = false;
                         break;
@@ -747,9 +701,8 @@ const getAvailability = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
                     currentSlotStart = (0, date_fns_1.addMinutes)(currentSlotStart, intervalMinutes);
                     continue;
                 }
-                // Check against schedule blocks
+                // Check schedule block conflicts
                 for (const block of scheduleBlocks) {
-                    // Check for overlap: (SlotStart < BlockEnd) and (SlotEnd > BlockStart)
                     if (currentSlotStart < block.endTime && potentialSlotEnd > block.startTime) {
                         isSlotAvailable = false;
                         break;
@@ -759,9 +712,8 @@ const getAvailability = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
                     currentSlotStart = (0, date_fns_1.addMinutes)(currentSlotStart, intervalMinutes);
                     continue;
                 }
-                // If available, add to list
+                // Add available slot
                 allAvailableSlots[profId].push((0, date_fns_1.format)(currentSlotStart, 'HH:mm'));
-                // Move to the next potential slot
                 currentSlotStart = (0, date_fns_1.addMinutes)(currentSlotStart, intervalMinutes);
             }
         }

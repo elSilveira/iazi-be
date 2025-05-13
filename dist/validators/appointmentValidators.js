@@ -3,21 +3,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getAvailabilityValidator = exports.appointmentIdValidator = exports.updateAppointmentValidator = exports.createAppointmentValidator = void 0;
 const express_validator_1 = require("express-validator"); // Adicionado 'query'
 exports.createAppointmentValidator = [
-    // Mantém a validação de criação existente...
-    (0, express_validator_1.body)("startTime") // Mudado de 'date' para 'startTime'
-        .isISO8601().withMessage("Formato de data inválido (ISO8601 esperado).")
-        .toDate() // Converte para objeto Date para validações futuras se necessário
-        .custom((value) => {
-        if (value < new Date()) {
-            throw new Error("A data do agendamento não pode ser no passado.");
-        }
-        return true;
-    }),
-    // userId geralmente virá do token JWT, não do body
-    (0, express_validator_1.body)("userId").isUUID().withMessage("ID do usuário inválido."), // Adicionado validação para userId (pode ser preenchido pelo controller)
     (0, express_validator_1.body)("serviceId").isUUID().withMessage("ID do serviço inválido."),
     (0, express_validator_1.body)("professionalId").optional({ nullable: true }).isUUID().withMessage("ID do profissional inválido."),
-    (0, express_validator_1.body)("companyId").optional({ nullable: true }).isUUID().withMessage("ID da empresa inválido."), // Adicionado companyId
+    (0, express_validator_1.body)("companyId").optional({ nullable: true }).isUUID().withMessage("ID da empresa inválido."),
+    (0, express_validator_1.body)("date")
+        .notEmpty().withMessage("Campo 'date' é obrigatório.")
+        .isISO8601().withMessage("Formato de data inválido (ISO8601 esperado)."),
+    (0, express_validator_1.body)("time").optional()
+        .matches(/^([01]\d|2[0-3]):([0-5]\d)$/).withMessage("Formato de hora inválido (HH:MM)."),
     (0, express_validator_1.body)("notes").optional({ nullable: true }).trim(),
 ];
 exports.updateAppointmentValidator = [

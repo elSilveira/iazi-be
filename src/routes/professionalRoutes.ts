@@ -532,7 +532,7 @@ router.get(
   "/:id/availability",
   getAvailabilityValidator,
   validateRequest,
-  asyncHandler(getAvailability)
+  asyncHandler(require('../controllers/appointmentController').getProfessionalFullSchedule)
 );
 
 export default router;
