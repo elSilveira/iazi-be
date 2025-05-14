@@ -4,22 +4,22 @@ import { Prisma, Appointment, AppointmentStatus } from "@prisma/client";
 // Define the type for Appointment with included relations
 export type AppointmentWithDetails = Prisma.AppointmentGetPayload<{
   include: {
-    service: true;
+    services: { include: { service: true } },
     professional: {
       include: {
-        company: { include: { address: true } };
-        services: { include: { service: true } };
-      };
-    };
-    company: true;
-    user: { select: { id: true; name: true; email: true; avatar: true; phone: true } };
-  };
+        company: { include: { address: true } },
+        services: { include: { service: true } },
+      },
+    },
+    company: true,
+    user: { select: { id: true, name: true, email: true, avatar: true, phone: true } },
+  },
 }>;
 
 export const appointmentRepository = {
   // Define the include object for consistency
   includeDetails: {
-    service: true,
+    services: { include: { service: true } },
     professional: {
       include: {
         company: { include: { address: true } },

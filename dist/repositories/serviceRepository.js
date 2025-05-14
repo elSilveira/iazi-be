@@ -64,18 +64,42 @@ exports.serviceRepository = {
     },
     findWithProfessionals() {
         return __awaiter(this, void 0, void 0, function* () {
-            return prisma_1.prisma.service.findMany({
-                where: {
-                    professionals: {
-                        some: {}, // At least one professional linked
+            try {
+                return prisma_1.prisma.service.findMany({
+                    where: {
+                        // Ensure there is at least one professional linked to this service
+                        professionals: {
+                            some: {}
+                        }
                     },
-                },
-                include: {
-                    professionals: { include: { professional: true } },
-                    category: true,
-                    company: true,
-                },
-            });
+                    include: {
+                        professionals: {
+                            include: {
+                                professional: {
+                                    include: {
+                                        company: true, // Include company data for professionals
+                                        services: {
+                                            include: {
+                                                service: {
+                                                    include: {
+                                                        category: true // Include category data for other services
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        category: true,
+                        company: true,
+                    },
+                });
+            }
+            catch (error) {
+                console.error('Error fetching services with professionals:', error);
+                throw new Error('Failed to fetch services with their professionals');
+            }
         });
     },
     create(data) {

@@ -155,6 +155,7 @@ describe("Appointment Controller Helpers", () => {
             expect(scheduleBlockRepository_1.scheduleBlockRepository.findMany).not.toHaveBeenCalled();
         }));
         it("should return false if there is a conflicting appointment", () => __awaiter(void 0, void 0, void 0, function* () {
+            // Use 'as any' to add services array for test compatibility
             const conflictingAppt = {
                 id: "appt-789",
                 startTime: new Date("2024-05-06T14:30:00.000Z"), // Starts during the requested slot
@@ -162,7 +163,7 @@ describe("Appointment Controller Helpers", () => {
                 companyId: null, // Added this field
                 status: client_1.AppointmentStatus.CONFIRMED,
                 userId: "user-xyz",
-                serviceId: "serv-abc",
+                services: [{ serviceId: "serv-abc" }],
                 professionalId: professionalId,
                 notes: null,
                 createdAt: new Date(),

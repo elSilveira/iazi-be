@@ -1,0 +1,26 @@
+Search Routes API Documentation
+
+Endpoint: GET /api/search
+Summary: General search for professionals, services and companies (with relationships)
+
+Query Parameters:
+- q (string): Search term to filter results
+- category (string): Category to filter results
+- sort (string): Sorting criteria (rating, name)
+- page (integer, default: 1): Page number
+- limit (integer, default: 10): Items per page
+- type (string, enum: [all, professionals, services, companies]): Type of entity to search for
+- professionalTipo (string): Type of professional to filter
+
+Response:
+Returns a JSON object containing three arrays:
+1. professionals: List of professionals with their services
+2. services: List of services with associated professionals
+3. companies: List of companies with their services
+
+Search Logic:
+- For professionals: Filters by name, role, service categories, and professional type
+- For services: Returns services with associated professionals
+- For companies: Filters by name, description, and categories
+
+All searches support pagination and sorting options.

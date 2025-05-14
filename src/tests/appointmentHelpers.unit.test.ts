@@ -174,19 +174,20 @@ describe("Appointment Controller Helpers", () => {
             expect(appointmentRepository.findMany).not.toHaveBeenCalled();
             expect(scheduleBlockRepository.findMany).not.toHaveBeenCalled();
         });        it("should return false if there is a conflicting appointment", async () => {
-            const conflictingAppt: Appointment = {
+            // Use 'as any' to add services array for test compatibility
+            const conflictingAppt = {
                 id: "appt-789",
                 startTime: new Date("2024-05-06T14:30:00.000Z"), // Starts during the requested slot
                 endTime: new Date("2024-05-06T15:30:00.000Z"), // Ends an hour later
                 companyId: null, // Added this field
                 status: AppointmentStatus.CONFIRMED,
                 userId: "user-xyz",
-                serviceId: "serv-abc",
+                services: [{ serviceId: "serv-abc" }],
                 professionalId: professionalId,
                 notes: null,
                 createdAt: new Date(),
                 updatedAt: new Date(),
-            };
+            } as any;
             (professionalRepository.findById as jest.Mock).mockResolvedValue(mockProfessional);
             (appointmentRepository.findMany as jest.Mock).mockResolvedValue([conflictingAppt]);
             (scheduleBlockRepository.findMany as jest.Mock).mockResolvedValue([]);

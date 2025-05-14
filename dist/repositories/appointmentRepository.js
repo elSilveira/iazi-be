@@ -15,7 +15,7 @@ const client_1 = require("@prisma/client");
 exports.appointmentRepository = {
     // Define the include object for consistency
     includeDetails: {
-        service: true,
+        services: { include: { service: true } },
         professional: {
             include: {
                 company: { include: { address: true } },

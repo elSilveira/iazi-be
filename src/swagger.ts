@@ -151,20 +151,40 @@ const options = {
           },
           required: ['id', 'name', 'description', 'duration', 'categoryId', 'companyId', 'createdAt', 'updatedAt', 'professionalId'],
         },
+        AppointmentService: {
+          type: 'object',
+          properties: {
+            appointmentId: { type: 'string', format: 'uuid', description: 'ID do agendamento' },
+            serviceId: { type: 'string', format: 'uuid', description: 'ID do serviço' },
+          },
+          required: ['appointmentId', 'serviceId'],
+        },
         Appointment: {
           type: 'object',
           properties: {
             id: { type: 'string', format: 'uuid', description: 'ID único do agendamento (UUID)' },
-            date: { type: 'string', format: 'date-time', description: 'Data e hora do agendamento' },
+            startTime: { type: 'string', format: 'date-time', description: 'Data e hora de início do agendamento' },
+            endTime: { type: 'string', format: 'date-time', description: 'Data e hora de término do agendamento' },
             status: { $ref: '#/components/schemas/AppointmentStatus' },
             userId: { type: 'string', format: 'uuid', description: 'ID do usuário que agendou' },
-            serviceId: { type: 'string', format: 'uuid', description: 'ID do serviço agendado' },
             professionalId: { type: 'string', format: 'uuid', nullable: true, description: 'ID do profissional responsável (pode ser nulo se excluído)' },
+            companyId: { type: 'string', format: 'uuid', nullable: true, description: 'ID da empresa (opcional)' },
             notes: { type: 'string', nullable: true, description: 'Observações adicionais' },
-            createdAt: { type: 'string', format: 'date-time', description: 'Data de criação' },
-            updatedAt: { type: 'string', format: 'date-time', description: 'Data da última atualização' },
+            services: {
+              type: 'array',
+              description: 'Serviços agendados (pode ser múltiplos)',
+              items: {
+                type: 'object',
+                properties: {
+                  service: { $ref: '#/components/schemas/Service' }
+                }
+              }
+            },
+            professional: { $ref: '#/components/schemas/Professional', nullable: true },
+            company: { $ref: '#/components/schemas/Company', nullable: true },
+            user: { $ref: '#/components/schemas/User', nullable: true },
           },
-          required: ['id', 'date', 'status', 'userId', 'serviceId', 'createdAt', 'updatedAt'],
+          required: ['id', 'startTime', 'endTime', 'status', 'userId', 'services'],
         },
         Review: {
           type: 'object',
@@ -353,6 +373,23 @@ const options = {
             limit: { type: 'integer', description: 'Limite de itens por página' }
           },
           required: ['data', 'total', 'page', 'limit']
+        },
+        AppointmentCreateInput: {
+          type: 'object',
+          properties: {
+            professionalId: { type: 'string', format: 'uuid', description: 'ID do profissional' },
+            companyId: { type: 'string', format: 'uuid', nullable: true, description: 'ID da empresa (opcional)' },
+            date: { type: 'string', format: 'date', description: 'Data do agendamento (YYYY-MM-DD)' },
+            time: { type: 'string', description: 'Hora do agendamento (HH:mm)' },
+            serviceIds: {
+              type: 'array',
+              items: { type: 'string', format: 'uuid' },
+              description: 'IDs dos serviços a serem agendados (mínimo 1)',
+              minItems: 1
+            },
+            notes: { type: 'string', nullable: true, description: 'Observações adicionais' },
+          },
+          required: ['professionalId', 'date', 'time', 'serviceIds'],
         },
         // ... outros inputs ...
       },
@@ -557,6 +594,102 @@ const options = {
               }
             },
             '403': { description: 'Apenas administradores, empresas ou profissionais podem gerar convites.' }
+          }
+        }
+      },
+      '/api/appointments': {
+        post: {
+          summary: 'Cria um novo agendamento (multi-serviço)',
+          tags: ['Appointments'],
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/AppointmentCreateInput' }
+              }
+            }
+          },
+          responses: {
+            '201': {
+              description: 'Agendamento criado com sucesso.',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/Appointment' }
+                }
+              }
+            },
+            '400': { description: 'Erro de validação nos dados da requisição (ex: horário indisponível, dados inválidos).' },
+            '401': { description: 'Não autorizado.' },
+            '404': { description: 'Serviço, Profissional ou Empresa não encontrado(s).' },
+            '409': { description: 'Horário indisponível.' },
+            '500': { description: 'Erro interno do servidor.' }
+          }
+        },
+        get: {
+          summary: 'Lista os agendamentos do usuário autenticado (ou todos para Admin)',
+          tags: ['Appointments'],
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { in: 'query', name: 'status', schema: { $ref: '#/components/schemas/AppointmentStatus' }, description: 'Filtrar por status' },
+            { in: 'query', name: 'professionalId', schema: { type: 'string', format: 'uuid' }, description: 'Filtrar por profissional' },
+            { in: 'query', name: 'companyId', schema: { type: 'string', format: 'uuid' }, description: 'Filtrar por empresa' },
+            { in: 'query', name: 'dateFrom', schema: { type: 'string', format: 'date' }, description: 'Filtrar por data inicial (YYYY-MM-DD)' },
+            { in: 'query', name: 'dateTo', schema: { type: 'string', format: 'date' }, description: 'Filtrar por data final (YYYY-MM-DD)' },
+            { in: 'query', name: 'serviceId', schema: { type: 'string', format: 'uuid' }, description: 'Filtrar por serviço' },
+            { in: 'query', name: 'page', schema: { type: 'integer', default: 1 }, description: 'Número da página' },
+            { in: 'query', name: 'limit', schema: { type: 'integer', default: 10 }, description: 'Número de itens por página' }
+          ],
+          responses: {
+            '200': {
+              description: 'Lista de agendamentos retornada com sucesso.',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: { type: 'array', items: { $ref: '#/components/schemas/Appointment' } },
+                      meta: {
+                        type: 'object',
+                        properties: {
+                          total: { type: 'integer' },
+                          page: { type: 'integer' },
+                          limit: { type: 'integer' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '400': { description: 'Parâmetros de filtro ou paginação inválidos.' },
+            '401': { description: 'Não autorizado.' },
+            '500': { description: 'Erro interno do servidor.' }
+          }
+        }
+      },
+      '/api/appointments/{id}': {
+        get: {
+          summary: 'Obtém um agendamento específico pelo ID',
+          tags: ['Appointments'],
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'ID do agendamento' }
+          ],
+          responses: {
+            '200': {
+              description: 'Detalhes do agendamento retornados com sucesso.',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/Appointment' }
+                }
+              }
+            },
+            '400': { description: 'ID inválido.' },
+            '401': { description: 'Não autorizado.' },
+            '403': { description: 'Acesso negado (usuário não tem permissão para ver este agendamento).' },
+            '404': { description: 'Agendamento não encontrado.' },
+            '500': { description: 'Erro interno do servidor.' }
           }
         }
       },

@@ -1,0 +1,113 @@
+Frontend Update Roadmap for Multi-Service Appointments
+
+1. API Payloads and Responses
+
+Appointment Creation Payload (POST /api/appointments)
+{
+  "professionalId": "string",      // required, Professional's ID
+  "date": "YYYY-MM-DD",            // required, e.g. "2025-05-14"
+  "time": "HH:mm",                 // required, e.g. "14:00"
+  "serviceIds": ["svc1", "svc2"]   // required, array of service IDs (at least one)
+}
+
+Appointment Response (GET /api/appointments/:id and in lists)
+{
+  "id": "appointment-id",
+  "professionalId": "string",
+  "companyId": "string",
+  "userId": "string",
+  "startTime": "2025-05-14T14:00:00.000Z",
+  "endTime": "2025-05-14T15:00:00.000Z",
+  "status": "SCHEDULED",
+  "services": [
+    {
+      "service": {
+        "id": "svc1",
+        "name": "Corte",
+        "duration": 30,
+        "price": 50
+      }
+    },
+    {
+      "service": {
+        "id": "svc2",
+        "name": "Barba",
+        "duration": 30,
+        "price": 30
+      }
+    }
+  ],
+  "professional": {
+    "id": "prof-id",
+    "name": "Prof Name",
+    "company": {
+      "id": "company-id",
+      "name": "Company Name",
+      "address": {
+        "street": "Rua X",
+        "city": "Cidade Y"
+      }
+    },
+    "services": [
+      {
+        "service": {
+          "id": "svc1",
+          "name": "Corte"
+        }
+      }
+      // ...other services
+    ]
+  },
+  "company": {
+    "id": "company-id",
+    "name": "Company Name"
+  },
+  "user": {
+    "id": "user-id",
+    "name": "User Name",
+    "email": "user@email.com",
+    "avatar": "url",
+    "phone": "phone"
+  }
+}
+
+Notes:
+- The `services` field is always an array, each item has a `service` object with all details.
+- The `professional.services` array lists all services the professional offers.
+- All appointment-related endpoints now use this structure for both single and multiple services.
+
+2. UI/UX Changes
+- Change the service selection UI in the booking form to allow multiple services (multi-select dropdown, checkboxes, etc.).
+- Display all selected services in appointment details and lists (e.g., as a comma-separated list or chips).
+- Show the total duration and price, summing all selected services.
+
+3. State Management
+- Store and manage an array of selected service IDs for appointment creation.
+- Update state and selectors to handle the `services` array for each appointment.
+
+4. Validation
+- Ensure at least one service is selected before allowing appointment creation.
+- Validate that all selected services are available for the chosen professional.
+
+5. Availability and Slot Calculation
+- When calculating or displaying available slots, use the total duration of all selected services.
+- If the backend returns all possible slots, filter or highlight those that fit the combined duration.
+
+6. Error Handling
+- Handle backend errors related to invalid or unavailable services.
+- Update error messages to reflect multi-service selection.
+
+7. Testing
+- Update or add tests for:
+  - Multi-service selection and booking.
+  - Displaying multiple services in appointment lists and details.
+  - Edge cases (no services selected, unavailable combinations, etc.).
+
+8. Documentation
+- Update frontend developer documentation to describe the new API payloads, responses, and UI/UX for multi-service appointments.
+
+9. Migration
+- Refactor or remove any code that assumes a single `serviceId` or `service` in appointment objects.
+
+Summary:
+Update all frontend logic, UI, and state to support multiple services per appointment, matching the new backend contract. Test thoroughly and update documentation for the new multi-service workflow.

@@ -18,18 +18,19 @@ type ProfessionalWithDetails = Prisma.ProfessionalGetPayload<{
   }
 }>
 
+// Update AppointmentWithDetails type to include services
 type AppointmentWithDetails = Prisma.AppointmentGetPayload<{
-  include: { 
-    service: true, 
-    professional: { 
-      include: { 
-        company: true // Include company if needed for professional context
+  include: {
+    services: { include: { service: true } },
+    professional: {
+      include: {
+        company: true
       }
     },
     company: true,
     user: { select: { id: true, name: true, email: true, avatar: true, phone: true } }
   }
-}>
+}>;
 
 // Extend Express Request type to include user with role
 declare global {
@@ -202,7 +203,7 @@ export const checkAvailability = async (professionalId: string, start: Date, end
 
 // Criar um novo agendamento
 export const createAppointment = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
-    const { serviceId, professionalId, companyId, date, time, notes } = req.body;
+    const { serviceIds, professionalId, companyId, date, time, notes } = req.body;
     const userId = req.user?.id;
 
     if (!userId) {
@@ -210,8 +211,8 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
     }
 
     // --- Input Validation ---
-    if (!serviceId || !isValidUUID(serviceId)) {
-        return res.status(400).json({ message: 'ID do serviço inválido.' });
+    if (!Array.isArray(serviceIds) || serviceIds.length === 0 || !serviceIds.every(isValidUUID)) {
+        return res.status(400).json({ message: 'IDs dos serviços inválidos.' });
     }
     if (!date || !time) {
         return res.status(400).json({ message: 'Data e hora são obrigatórios.' });
@@ -251,12 +252,16 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
         }
 
         // --- Entity Validation & Selection ---
-        const service = await serviceRepository.findById(serviceId);
-        const durationMinutes = service ? parseDuration(service.duration) : null;
-
-        if (!service || durationMinutes === null || durationMinutes <= 0) {
-            return res.status(404).json({ message: 'Serviço não encontrado ou duração inválida.' });
+        const services = await Promise.all(serviceIds.map((id: string) => serviceRepository.findById(id)));
+        if (services.some(s => !s)) {
+            return res.status(404).json({ message: 'Um ou mais serviços não encontrados.' });
         }
+        const durations = services.map(s => s ? parseDuration(s.duration) : 0);
+        if (durations.some(d => d === null || d <= 0)) {
+            return res.status(404).json({ message: 'Duração inválida para um ou mais serviços.' });
+        }
+        // For now, sum durations for multi-service booking
+        const totalDuration = durations.reduce((a, b) => (a || 0) + (b || 0), 0);
 
         if (!targetProfessionalId && companyId) {
             // TODO: Implement logic to select an available professional from the company for the service
@@ -268,21 +273,21 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
             // Then check availability for each...
         }
 
-        // Ensure the selected professional exists and offers the service
+        // Ensure the selected professional exists and offers all services
         const professionalExists = await prisma.professional.findFirst({
             where: {
                 id: targetProfessionalId,
                 ...(companyId && { companyId: companyId }), // Optional: ensure professional is in the company if companyId is given
-                services: { some: { serviceId: serviceId } }
+                services: { every: { serviceId: { in: serviceIds } } }
             }
         });
 
         if (!professionalExists) {
-            return res.status(404).json({ message: 'Profissional não encontrado, não pertence à empresa ou não oferece o serviço selecionado.' });
+            return res.status(404).json({ message: 'Profissional não encontrado, não pertence à empresa ou não oferece todos os serviços selecionados.' });
         }
 
         // --- Availability Check ---
-        const appointmentEnd = addMinutes(appointmentDate, durationMinutes);
+        const appointmentEnd = addMinutes(appointmentDate, totalDuration || 0);
         const isAvailable = await checkAvailability(targetProfessionalId, appointmentDate, appointmentEnd);
 
         if (!isAvailable) {
@@ -292,20 +297,22 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
         // --- Create Appointment ---
         const dataToCreate: Prisma.AppointmentCreateInput = {
             user: { connect: { id: userId } },
-            service: { connect: { id: serviceId } },
             professional: { connect: { id: targetProfessionalId } },
             startTime: appointmentDate,
             endTime: appointmentEnd,
             ...(companyId && { company: { connect: { id: companyId } } }),
             status: AppointmentStatus.PENDING, // Default status
             notes: notes || null,
+            services: {
+                create: serviceIds.map((id: string) => ({ service: { connect: { id } } }))
+            }
         };
 
         const newAppointment = await appointmentRepository.create(dataToCreate);
 
         // --- ACTIVITY LOG & NOTIFICATION ---
         try {
-            await logActivity(userId, "NEW_APPOINTMENT", `Você agendou ${service.name} para ${format(appointmentDate, "dd/MM/yyyy 'às' HH:mm")}.`, {
+            await logActivity(userId, "NEW_APPOINTMENT", `Você agendou ${services.filter(Boolean).map(s => s!.name).join(', ')} para ${format(appointmentDate, "dd/MM/yyyy 'às' HH:mm")}.`, {
                 id: newAppointment.id,
                 type: "Appointment"
             });
@@ -412,10 +419,10 @@ export const listAppointments = async (req: Request, res: Response, next: NextFu
             }
         }
         
-        // Filter by serviceId
+        // Filter by serviceId (now as relation)
         if (serviceId && typeof serviceId === 'string') {
             if (isValidUUID(serviceId)) {
-                filters.serviceId = serviceId;
+                filters.services = { some: { serviceId: serviceId } };
             } else {
                 return res.status(400).json({ message: 'Formato de serviceId inválido.' });
             }
@@ -583,12 +590,16 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
         let activityMessage: string | null = null;
         let gamificationEvent: GamificationEventType | null = null;
 
+        let serviceNames = Array.isArray(appointment.services) && appointment.services.length > 0
+            ? appointment.services.map((as: any) => as.service?.name).filter(Boolean).join(', ')
+            : 'serviço desconhecido';
+
         switch (newStatus) {
             case AppointmentStatus.CONFIRMED:
                 if ((isAdmin || isProfOrCompanyAdmin) && currentStatus === AppointmentStatus.PENDING) {
                     allowed = true;
                     activityType = "APPOINTMENT_CONFIRMED";
-                    activityMessage = `Seu agendamento de ${appointment.service?.name || 'serviço desconhecido'} para ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} foi confirmado.`;
+                    activityMessage = `Seu agendamento de ${serviceNames} para ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} foi confirmado.`;
                 }
                 break;
             case AppointmentStatus.CANCELLED:
@@ -605,7 +616,7 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
                 }
                 if (allowed) {
                     activityType = "APPOINTMENT_CANCELLED";
-                    activityMessage = `Seu agendamento de ${appointment.service?.name || 'serviço desconhecido'} para ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} foi cancelado.`;
+                    activityMessage = `Seu agendamento de ${serviceNames} para ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} foi cancelado.`;
                 }
                 break;
             case AppointmentStatus.COMPLETED:
@@ -613,7 +624,7 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
                    (currentStatus === AppointmentStatus.CONFIRMED || currentStatus === AppointmentStatus.IN_PROGRESS)) {
                     allowed = true;
                     activityType = "APPOINTMENT_COMPLETED";
-                    activityMessage = `Seu agendamento de ${appointment.service?.name || 'serviço desconhecido'} em ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} foi concluído.`;
+                    activityMessage = `Seu agendamento de ${serviceNames} em ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} foi concluído.`;
                     gamificationEvent = GamificationEventType.APPOINTMENT_COMPLETED;
                 }
                 break;
@@ -621,7 +632,7 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
                 if ((isAdmin || isProfOrCompanyAdmin) && currentStatus === AppointmentStatus.CONFIRMED) {
                     allowed = true;
                     activityType = "APPOINTMENT_IN_PROGRESS";
-                    activityMessage = `Seu agendamento de ${appointment.service?.name || 'serviço desconhecido'} em ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} está em andamento.`;
+                    activityMessage = `Seu agendamento de ${serviceNames} em ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} está em andamento.`;
                 }
                 break;
             case AppointmentStatus.NO_SHOW:
@@ -629,14 +640,14 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
                    (currentStatus === AppointmentStatus.CONFIRMED || currentStatus === AppointmentStatus.PENDING)) {
                     allowed = true;
                     activityType = "APPOINTMENT_NO_SHOW";
-                    activityMessage = `O cliente não compareceu ao agendamento de ${appointment.service?.name || 'serviço desconhecido'} em ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")}.`;
+                    activityMessage = `O cliente não compareceu ao agendamento de ${serviceNames} em ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")}.`;
                 }
                 break;
             case AppointmentStatus.PENDING:
                 if (isAdmin && currentStatus === AppointmentStatus.CANCELLED) {
                     allowed = true;
                     activityType = "APPOINTMENT_PENDING";
-                    activityMessage = `Seu agendamento de ${appointment.service?.name || 'serviço desconhecido'} para ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} voltou para status pendente.`;
+                    activityMessage = `Seu agendamento de ${serviceNames} para ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} voltou para status pendente.`;
                 }
                 break;
         }
@@ -882,7 +893,7 @@ export const getProfessionalFullSchedule = async (req: Request, res: Response, n
       }
       // Get scheduled appointments for this service
       const scheduled = appointments
-        .filter(a => a.serviceId === service.id)
+        .filter(a => Array.isArray(a.services) && a.services.some((as: any) => as.service && as.service.id === service.id))
         .map(a => ({
           id: a.id,
           startTime: format(a.startTime, 'HH:mm'),

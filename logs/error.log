@@ -727,3 +727,239 @@
 2025-05-13 11:34:32:3432 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
 2025-05-13 17:21:02:212 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
 2025-05-13 17:21:03:213 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments?queryKey[]=userAppointments&signal=[object+AbortSignal] - GET - 127.0.0.1[39m
+2025-05-14 15:49:46:4946 [31merror[39m: [31m500 - [39m
+[31mInvalid `this.prisma.company.findMany()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\companyRepository.ts:17:32[39m
+
+[31m  14   skip: number,[39m
+[31m  15   take: number[39m
+[31m  16 ): Promise<Partial<Company>[]> { // Return Partial<Company> as we are selecting fields[39m
+[31m→ 17   return this.prisma.company.findMany({[39m
+[31m         where: {[39m
+[31m           role: {[39m
+[31m           ~~~~[39m
+[31m             contains: "all",[39m
+[31m             mode: "insensitive"[39m
+[31m           },[39m
+[31m       ?   AND?: CompanyWhereInput | CompanyWhereInput[],[39m
+[31m       ?   OR?: CompanyWhereInput[],[39m
+[31m       ?   NOT?: CompanyWhereInput | CompanyWhereInput[],[39m
+[31m       ?   id?: StringFilter | String,[39m
+[31m       ?   name?: StringFilter | String,[39m
+[31m       ?   description?: StringFilter | String,[39m
+[31m       ?   logo?: StringNullableFilter | String | Null,[39m
+[31m       ?   coverImage?: StringNullableFilter | String | Null,[39m
+[31m       ?   rating?: FloatFilter | Float,[39m
+[31m       ?   totalReviews?: IntFilter | Int,[39m
+[31m       ?   yearEstablished?: StringNullableFilter | String | Null,[39m
+[31m       ?   phone?: StringNullableFilter | String | Null,[39m
+[31m       ?   email?: StringNullableFilter | String | Null,[39m
+[31m       ?   workingHours?: JsonNullableFilter,[39m
+[31m       ?   categories?: StringNullableListFilter,[39m
+[31m       ?   createdAt?: DateTimeFilter | DateTime,[39m
+[31m       ?   updatedAt?: DateTimeFilter | DateTime,[39m
+[31m       ?   address?: CompanyAddressNullableScalarRelationFilter | CompanyAddressWhereInput | Null,[39m
+[31m       ?   appointments?: AppointmentListRelationFilter,[39m
+[31m       ?   professionals?: ProfessionalListRelationFilter,[39m
+[31m       ?   reviews?: ReviewListRelationFilter,[39m
+[31m       ?   services?: ServiceListRelationFilter[39m
+[31m         },[39m
+[31m         orderBy: {[39m
+[31m           rating: "desc"[39m
+[31m         },[39m
+[31m         skip: 0,[39m
+[31m         take: 4,[39m
+[31m         select: {[39m
+[31m           id: true,[39m
+[31m           name: true,[39m
+[31m           logo: true,[39m
+[31m           rating: true,[39m
+[31m           totalReviews: true,[39m
+[31m           address: {[39m
+[31m             select: {[39m
+[31m               city: true,[39m
+[31m               state: true[39m
+[31m             }[39m
+[31m           },[39m
+[31m           categories: true[39m
+[31m         }[39m
+[31m       })[39m
+
+[31mUnknown argument `role`. Did you mean `name`? Available options are marked with ?. - /api/search?q=&category=&sort=rating&page=1&limit=4&type=all&professionalTipo=all - GET - 127.0.0.1[39m
+2025-05-14 15:49:47:4947 [31merror[39m: [31m500 - [39m
+[31mInvalid `this.prisma.company.findMany()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\companyRepository.ts:17:32[39m
+
+[31m  14   skip: number,[39m
+[31m  15   take: number[39m
+[31m  16 ): Promise<Partial<Company>[]> { // Return Partial<Company> as we are selecting fields[39m
+[31m→ 17   return this.prisma.company.findMany({[39m
+[31m         where: {[39m
+[31m           role: {[39m
+[31m           ~~~~[39m
+[31m             contains: "all",[39m
+[31m             mode: "insensitive"[39m
+[31m           },[39m
+[31m       ?   AND?: CompanyWhereInput | CompanyWhereInput[],[39m
+[31m       ?   OR?: CompanyWhereInput[],[39m
+[31m       ?   NOT?: CompanyWhereInput | CompanyWhereInput[],[39m
+[31m       ?   id?: StringFilter | String,[39m
+[31m       ?   name?: StringFilter | String,[39m
+[31m       ?   description?: StringFilter | String,[39m
+[31m       ?   logo?: StringNullableFilter | String | Null,[39m
+[31m       ?   coverImage?: StringNullableFilter | String | Null,[39m
+[31m       ?   rating?: FloatFilter | Float,[39m
+[31m       ?   totalReviews?: IntFilter | Int,[39m
+[31m       ?   yearEstablished?: StringNullableFilter | String | Null,[39m
+[31m       ?   phone?: StringNullableFilter | String | Null,[39m
+[31m       ?   email?: StringNullableFilter | String | Null,[39m
+[31m       ?   workingHours?: JsonNullableFilter,[39m
+[31m       ?   categories?: StringNullableListFilter,[39m
+[31m       ?   createdAt?: DateTimeFilter | DateTime,[39m
+[31m       ?   updatedAt?: DateTimeFilter | DateTime,[39m
+[31m       ?   address?: CompanyAddressNullableScalarRelationFilter | CompanyAddressWhereInput | Null,[39m
+[31m       ?   appointments?: AppointmentListRelationFilter,[39m
+[31m       ?   professionals?: ProfessionalListRelationFilter,[39m
+[31m       ?   reviews?: ReviewListRelationFilter,[39m
+[31m       ?   services?: ServiceListRelationFilter[39m
+[31m         },[39m
+[31m         orderBy: {[39m
+[31m           rating: "desc"[39m
+[31m         },[39m
+[31m         skip: 0,[39m
+[31m         take: 4,[39m
+[31m         select: {[39m
+[31m           id: true,[39m
+[31m           name: true,[39m
+[31m           logo: true,[39m
+[31m           rating: true,[39m
+[31m           totalReviews: true,[39m
+[31m           address: {[39m
+[31m             select: {[39m
+[31m               city: true,[39m
+[31m               state: true[39m
+[31m             }[39m
+[31m           },[39m
+[31m           categories: true[39m
+[31m         }[39m
+[31m       })[39m
+
+[31mUnknown argument `role`. Did you mean `name`? Available options are marked with ?. - /api/search?q=&category=&sort=rating&page=1&limit=4&type=all&professionalTipo=all - GET - 127.0.0.1[39m
+2025-05-14 15:50:09:509 [31merror[39m: [31m500 - [39m
+[31mInvalid `this.prisma.company.findMany()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\companyRepository.ts:17:32[39m
+
+[31m  14   skip: number,[39m
+[31m  15   take: number[39m
+[31m  16 ): Promise<Partial<Company>[]> { // Return Partial<Company> as we are selecting fields[39m
+[31m→ 17   return this.prisma.company.findMany({[39m
+[31m         where: {[39m
+[31m           role: {[39m
+[31m           ~~~~[39m
+[31m             contains: "all",[39m
+[31m             mode: "insensitive"[39m
+[31m           },[39m
+[31m       ?   AND?: CompanyWhereInput | CompanyWhereInput[],[39m
+[31m       ?   OR?: CompanyWhereInput[],[39m
+[31m       ?   NOT?: CompanyWhereInput | CompanyWhereInput[],[39m
+[31m       ?   id?: StringFilter | String,[39m
+[31m       ?   name?: StringFilter | String,[39m
+[31m       ?   description?: StringFilter | String,[39m
+[31m       ?   logo?: StringNullableFilter | String | Null,[39m
+[31m       ?   coverImage?: StringNullableFilter | String | Null,[39m
+[31m       ?   rating?: FloatFilter | Float,[39m
+[31m       ?   totalReviews?: IntFilter | Int,[39m
+[31m       ?   yearEstablished?: StringNullableFilter | String | Null,[39m
+[31m       ?   phone?: StringNullableFilter | String | Null,[39m
+[31m       ?   email?: StringNullableFilter | String | Null,[39m
+[31m       ?   workingHours?: JsonNullableFilter,[39m
+[31m       ?   categories?: StringNullableListFilter,[39m
+[31m       ?   createdAt?: DateTimeFilter | DateTime,[39m
+[31m       ?   updatedAt?: DateTimeFilter | DateTime,[39m
+[31m       ?   address?: CompanyAddressNullableScalarRelationFilter | CompanyAddressWhereInput | Null,[39m
+[31m       ?   appointments?: AppointmentListRelationFilter,[39m
+[31m       ?   professionals?: ProfessionalListRelationFilter,[39m
+[31m       ?   reviews?: ReviewListRelationFilter,[39m
+[31m       ?   services?: ServiceListRelationFilter[39m
+[31m         },[39m
+[31m         orderBy: {[39m
+[31m           rating: "desc"[39m
+[31m         },[39m
+[31m         skip: 0,[39m
+[31m         take: 4,[39m
+[31m         select: {[39m
+[31m           id: true,[39m
+[31m           name: true,[39m
+[31m           logo: true,[39m
+[31m           rating: true,[39m
+[31m           totalReviews: true,[39m
+[31m           address: {[39m
+[31m             select: {[39m
+[31m               city: true,[39m
+[31m               state: true[39m
+[31m             }[39m
+[31m           },[39m
+[31m           categories: true[39m
+[31m         }[39m
+[31m       })[39m
+
+[31mUnknown argument `role`. Did you mean `name`? Available options are marked with ?. - /api/search?q=&category=&sort=rating&page=1&limit=4&type=all&professionalTipo=all - GET - 127.0.0.1[39m
+2025-05-14 15:50:10:5010 [31merror[39m: [31m500 - [39m
+[31mInvalid `this.prisma.company.findMany()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\repositories\companyRepository.ts:17:32[39m
+
+[31m  14   skip: number,[39m
+[31m  15   take: number[39m
+[31m  16 ): Promise<Partial<Company>[]> { // Return Partial<Company> as we are selecting fields[39m
+[31m→ 17   return this.prisma.company.findMany({[39m
+[31m         where: {[39m
+[31m           role: {[39m
+[31m           ~~~~[39m
+[31m             contains: "all",[39m
+[31m             mode: "insensitive"[39m
+[31m           },[39m
+[31m       ?   AND?: CompanyWhereInput | CompanyWhereInput[],[39m
+[31m       ?   OR?: CompanyWhereInput[],[39m
+[31m       ?   NOT?: CompanyWhereInput | CompanyWhereInput[],[39m
+[31m       ?   id?: StringFilter | String,[39m
+[31m       ?   name?: StringFilter | String,[39m
+[31m       ?   description?: StringFilter | String,[39m
+[31m       ?   logo?: StringNullableFilter | String | Null,[39m
+[31m       ?   coverImage?: StringNullableFilter | String | Null,[39m
+[31m       ?   rating?: FloatFilter | Float,[39m
+[31m       ?   totalReviews?: IntFilter | Int,[39m
+[31m       ?   yearEstablished?: StringNullableFilter | String | Null,[39m
+[31m       ?   phone?: StringNullableFilter | String | Null,[39m
+[31m       ?   email?: StringNullableFilter | String | Null,[39m
+[31m       ?   workingHours?: JsonNullableFilter,[39m
+[31m       ?   categories?: StringNullableListFilter,[39m
+[31m       ?   createdAt?: DateTimeFilter | DateTime,[39m
+[31m       ?   updatedAt?: DateTimeFilter | DateTime,[39m
+[31m       ?   address?: CompanyAddressNullableScalarRelationFilter | CompanyAddressWhereInput | Null,[39m
+[31m       ?   appointments?: AppointmentListRelationFilter,[39m
+[31m       ?   professionals?: ProfessionalListRelationFilter,[39m
+[31m       ?   reviews?: ReviewListRelationFilter,[39m
+[31m       ?   services?: ServiceListRelationFilter[39m
+[31m         },[39m
+[31m         orderBy: {[39m
+[31m           rating: "desc"[39m
+[31m         },[39m
+[31m         skip: 0,[39m
+[31m         take: 4,[39m
+[31m         select: {[39m
+[31m           id: true,[39m
+[31m           name: true,[39m
+[31m           logo: true,[39m
+[31m           rating: true,[39m
+[31m           totalReviews: true,[39m
+[31m           address: {[39m
+[31m             select: {[39m
+[31m               city: true,[39m
+[31m               state: true[39m
+[31m             }[39m
+[31m           },[39m
+[31m           categories: true[39m
+[31m         }[39m
+[31m       })[39m
+
+[31mUnknown argument `role`. Did you mean `name`? Available options are marked with ?. - /api/search?q=&category=&sort=rating&page=1&limit=4&type=all&professionalTipo=all - GET - 127.0.0.1[39m

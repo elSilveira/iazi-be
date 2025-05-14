@@ -6,34 +6,34 @@ class CompanyRepository {
   constructor() {
     this.prisma = new PrismaClient();
   }
-
   // Implemented findMany to support filtering, ordering, and pagination
   async findMany(
     filters: Prisma.CompanyWhereInput,
     orderBy: Prisma.CompanyOrderByWithRelationInput,
     skip: number,
     take: number
-  ): Promise<Partial<Company>[]> { // Return Partial<Company> as we are selecting fields
+  ): Promise<Partial<Company>[]> {
     return this.prisma.company.findMany({
       where: filters,
       orderBy: orderBy,
       skip: skip,
-      take: take,
-      // Select only necessary fields for the list view
-      select: {
-        id: true,
-        name: true,
-        logo: true,
-        rating: true,
-        totalReviews: true,
-        address: {
-          select: {
-            city: true,
-            state: true,
+      take: take,      // Include complete company data with services and professionals
+      include: {
+        address: true, // Include full address data
+        services: {
+          include: {
+            category: true
           }
         },
-        categories: true, // Keep categories for filtering/display
-        // Add other essential fields for list view if needed
+        professionals: {
+          include: {
+            services: {
+              include: {
+                service: true
+              }
+            }
+          }
+        }
       },
     });
   }

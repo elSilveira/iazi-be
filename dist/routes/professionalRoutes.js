@@ -12,7 +12,6 @@ const validationMiddleware_1 = require("../middlewares/validationMiddleware"); /
 const asyncHandler_1 = __importDefault(require("../utils/asyncHandler")); // Corrected import
 const professionalAuthMiddleware_1 = require("../middlewares/professionalAuthMiddleware");
 const appointmentValidators_1 = require("../validators/appointmentValidators");
-const appointmentController_1 = require("../controllers/appointmentController");
 const router = (0, express_1.Router)();
 /**
  * @swagger
@@ -453,5 +452,5 @@ validationMiddleware_1.validateRequest, // Corrected
  */
 router.get("/:professionalId/services", professionalValidators_1.professionalIdValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(professionalController_1.getProfessionalServices));
 // GET /api/professionals/:id/availability - Disponibilidade pública para um profissional específico
-router.get("/:id/availability", appointmentValidators_1.getAvailabilityValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(appointmentController_1.getAvailability));
+router.get("/:id/availability", appointmentValidators_1.getAvailabilityValidator, validationMiddleware_1.validateRequest, (0, asyncHandler_1.default)(require('../controllers/appointmentController').getProfessionalFullSchedule));
 exports.default = router;

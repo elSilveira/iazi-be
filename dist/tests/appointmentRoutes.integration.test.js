@@ -203,9 +203,11 @@ describe("GET /api/appointments/availability", () => {
                 startTime: bookedTime,
                 endTime: new Date(bookedTime.getTime() + 60 * 60 * 1000), // 1 hour duration
                 userId: testUser.id,
-                serviceId: testService.id,
                 professionalId: testProfessional.id,
                 status: client_1.AppointmentStatus.CONFIRMED,
+                services: {
+                    create: [{ serviceId: testService.id }]
+                }
             }
         });
         const response = yield (0, supertest_1.default)(index_1.app)
@@ -326,13 +328,14 @@ describe("POST /api/appointments", () => {
         }
     }));
     it("should create an appointment for an authenticated user in an available slot", () => __awaiter(void 0, void 0, void 0, function* () {
+        var _a;
         const response = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
             .send({
             startTime: bookableTime,
             endTime: (0, date_fns_1.addMinutes)(bookableTime, 30),
-            serviceId: testService.id,
+            serviceIds: [testService.id],
             professionalId: testProfessional.id,
         });
         expect(response.status).toBe(201);
@@ -340,7 +343,8 @@ describe("POST /api/appointments", () => {
         createdAppointmentId = response.body.id; // Store ID for cleanup
         expect(response.body.userId).toBe(testUser.id);
         expect(response.body.professionalId).toBe(testProfessional.id);
-        expect(response.body.serviceId).toBe(testService.id);
+        expect(response.body.services).toBeInstanceOf(Array);
+        expect(response.body.services[0].serviceId || ((_a = response.body.services[0].service) === null || _a === void 0 ? void 0 : _a.id)).toBe(testService.id);
         expect(new Date(response.body.startTime)).toEqual(bookableTime);
         expect(response.body.status).toBe(client_1.AppointmentStatus.PENDING);
         // Check if ActivityLog and Gamification events were triggered (optional but good)
@@ -354,7 +358,7 @@ describe("POST /api/appointments", () => {
             .send({
             startTime: bookableTime,
             endTime: (0, date_fns_1.addMinutes)(bookableTime, 30),
-            serviceId: testService.id,
+            serviceIds: [testService.id],
             professionalId: testProfessional.id,
         });
         expect(response.status).toBe(401);
@@ -363,7 +367,7 @@ describe("POST /api/appointments", () => {
         const response = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
-            .send({ serviceId: testService.id, professionalId: testProfessional.id });
+            .send({ serviceIds: [testService.id], professionalId: testProfessional.id });
         expect(response.status).toBe(400);
         expect(response.body.errors[0].msg).toContain("Data é obrigatória");
     }));
@@ -372,7 +376,7 @@ describe("POST /api/appointments", () => {
         const response = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
-            .send({ startTime: pastDate, endTime: (0, date_fns_1.addMinutes)(pastDate, 30), serviceId: testService.id, professionalId: testProfessional.id });
+            .send({ startTime: pastDate, endTime: (0, date_fns_1.addMinutes)(pastDate, 30), serviceIds: [testService.id], professionalId: testProfessional.id });
         expect(response.status).toBe(400);
         expect(response.body.message).toContain("não pode ser no passado");
     }));
@@ -381,16 +385,16 @@ describe("POST /api/appointments", () => {
         const response = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
-            .send({ startTime: tooSoonDate, endTime: (0, date_fns_1.addMinutes)(tooSoonDate, 30), serviceId: testService.id, professionalId: testProfessional.id });
+            .send({ startTime: tooSoonDate, endTime: (0, date_fns_1.addMinutes)(tooSoonDate, 30), serviceIds: [testService.id], professionalId: testProfessional.id });
         expect(response.status).toBe(400);
         expect(response.body.message).toContain("antecedência");
     }));
-    it("should return 404 if serviceId is invalid", () => __awaiter(void 0, void 0, void 0, function* () {
+    it("should return 404 if serviceIds is invalid", () => __awaiter(void 0, void 0, void 0, function* () {
         const invalidServiceId = "00000000-0000-0000-0000-000000000000";
         const response = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
-            .send({ startTime: bookableTime, endTime: (0, date_fns_1.addMinutes)(bookableTime, 30), serviceId: invalidServiceId, professionalId: testProfessional.id });
+            .send({ startTime: bookableTime, endTime: (0, date_fns_1.addMinutes)(bookableTime, 30), serviceIds: [invalidServiceId], professionalId: testProfessional.id });
         expect(response.status).toBe(404);
         expect(response.body.message).toContain("Serviço não encontrado");
     }));
@@ -401,7 +405,7 @@ describe("POST /api/appointments", () => {
         const response = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
-            .send({ startTime: bookableTime, endTime: (0, date_fns_1.addMinutes)(bookableTime, 30), serviceId: testService.id }); // Missing professionalId
+            .send({ startTime: bookableTime, endTime: (0, date_fns_1.addMinutes)(bookableTime, 30), serviceIds: [testService.id] }); // Missing professionalId
         expect(response.status).toBe(400);
         expect(response.body.message).toContain("professionalId é obrigatório");
         // Cleanup
@@ -413,7 +417,7 @@ describe("POST /api/appointments", () => {
         const response = yield (0, supertest_1.default)(index_1.app)
             .post("/api/appointments")
             .set("Authorization", `Bearer ${userToken}`)
-            .send({ startTime: bookableTime, endTime: (0, date_fns_1.addMinutes)(bookableTime, 30), serviceId: otherService.id, professionalId: testProfessional.id });
+            .send({ startTime: bookableTime, endTime: (0, date_fns_1.addMinutes)(bookableTime, 30), serviceIds: [otherService.id], professionalId: testProfessional.id });
         expect(response.status).toBe(400);
         expect(response.body.message).toContain("profissional especificado não oferece este serviço");
         yield prismaClient_1.prisma.service.delete({ where: { id: otherService.id } });
@@ -426,7 +430,7 @@ describe("POST /api/appointments", () => {
             .send({
             startTime: bookableTime,
             endTime: (0, date_fns_1.addMinutes)(bookableTime, 30),
-            serviceId: testService.id,
+            serviceIds: [testService.id],
             professionalId: testProfessional.id,
         });
         expect(firstBooking.status).toBe(201);
@@ -438,7 +442,7 @@ describe("POST /api/appointments", () => {
             .send({
             startTime: bookableTime,
             endTime: (0, date_fns_1.addMinutes)(bookableTime, 30),
-            serviceId: testService.id,
+            serviceIds: [testService.id],
             professionalId: testProfessional.id,
         });
         expect(response.status).toBe(409); // Conflict
@@ -461,7 +465,7 @@ describe("POST /api/appointments", () => {
             .send({
             startTime: blockedTimeStart, // Try to book exactly when block starts
             endTime: (0, date_fns_1.addMinutes)(blockedTimeStart, 30),
-            serviceId: testService.id,
+            serviceIds: [testService.id],
             professionalId: testProfessional.id,
         });
         expect(response.status).toBe(409);
@@ -481,9 +485,11 @@ describe("GET /api/appointments", () => {
                 startTime: time1,
                 endTime: (0, date_fns_1.addHours)(time1, 1),
                 userId: testUser.id,
-                serviceId: testService.id,
                 professionalId: testProfessional.id,
                 status: client_1.AppointmentStatus.CONFIRMED,
+                services: {
+                    create: [{ serviceId: testService.id }]
+                }
             }
         });
         appointment2 = yield prismaClient_1.prisma.appointment.create({
@@ -491,9 +497,11 @@ describe("GET /api/appointments", () => {
                 startTime: time2,
                 endTime: (0, date_fns_1.addHours)(time2, 1),
                 userId: testUser2.id, // Different user
-                serviceId: testService.id,
                 professionalId: testProfessional.id,
                 status: client_1.AppointmentStatus.PENDING,
+                services: {
+                    create: [{ serviceId: testService.id }]
+                }
             }
         });
     }));
@@ -597,9 +605,11 @@ describe("GET /api/appointments/:id", () => {
                 startTime: time,
                 endTime: (0, date_fns_1.addMinutes)(time, 30),
                 userId: testUser.id,
-                serviceId: testService.id,
                 professionalId: testProfessional.id,
                 status: client_1.AppointmentStatus.CONFIRMED,
+                services: {
+                    create: [{ serviceId: testService.id }]
+                }
             }
         });
     }));
@@ -669,9 +679,11 @@ describe("PATCH /api/appointments/:id/status", () => {
                 startTime: timePending,
                 endTime: (0, date_fns_1.addMinutes)(timePending, 30),
                 userId: testUser.id,
-                serviceId: testService.id,
                 professionalId: testProfessional.id,
                 status: client_1.AppointmentStatus.PENDING,
+                services: {
+                    create: [{ serviceId: testService.id }]
+                }
             }
         });
         confirmedAppointment = yield prismaClient_1.prisma.appointment.create({
@@ -679,9 +691,11 @@ describe("PATCH /api/appointments/:id/status", () => {
                 startTime: timeConfirmed,
                 endTime: (0, date_fns_1.addMinutes)(timeConfirmed, 30),
                 userId: testUser2.id,
-                serviceId: testService.id,
                 professionalId: testProfessional.id,
                 status: client_1.AppointmentStatus.CONFIRMED,
+                services: {
+                    create: [{ serviceId: testService.id }]
+                }
             }
         });
     }));
@@ -727,9 +741,11 @@ describe("PATCH /api/appointments/:id/status", () => {
                 startTime: soonTime,
                 endTime: (0, date_fns_1.addMinutes)(soonTime, 30),
                 userId: testUser.id,
-                serviceId: testService.id,
                 professionalId: testProfessional.id,
                 status: client_1.AppointmentStatus.CONFIRMED,
+                services: {
+                    create: [{ serviceId: testService.id }]
+                }
             }
         });
         const response = yield (0, supertest_1.default)(index_1.app)
