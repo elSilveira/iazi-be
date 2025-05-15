@@ -152,6 +152,8 @@ O ServiConnect Backend é uma API RESTful desenvolvida com Node.js e TypeScript,
 
 ## Estrutura do Projeto
 
+- `docs/`: Documentação adicional sobre recursos específicos.
+  - `multi-service-appointments.md`: Documentação sobre a funcionalidade de agendamentos com múltiplos serviços.
 - `prisma/`: Contém o `schema.prisma`, diretório `migrations/` e `seed.ts`.
 - `src/`: Código-fonte da aplicação.
   - `controllers/`: Lógica de requisição/resposta e orquestração.
@@ -177,6 +179,29 @@ O ServiConnect Backend é uma API RESTful desenvolvida com Node.js e TypeScript,
 A documentação interativa da API está disponível através do Swagger UI.
 
 **Acesse:** `http://localhost:3002/api-docs` (quando o servidor `npm run dev` estiver em execução).
+
+## Recursos Principais
+
+### Agendamentos com Múltiplos Serviços
+
+A API agora suporta a criação de agendamentos com múltiplos serviços em uma única sessão. Esta funcionalidade permite que usuários reservem vários serviços de uma só vez, melhorando a experiência do cliente e a eficiência do processo de agendamento.
+
+**Características principais:**
+- Suporte para múltiplos serviços por agendamento usando o campo `serviceIds`
+- Compatibilidade retroativa com o formato anterior usando `serviceId`
+- Cálculo automático do tempo total baseado na soma das durações de cada serviço
+- Verificação de disponibilidade considerando a duração total
+- Documentação detalhada disponível em [`docs/multi-service-appointments.md`](./docs/multi-service-appointments.md)
+
+**Exemplo de uso:**
+```json
+{
+  "date": "2023-10-15",
+  "time": "14:30",
+  "serviceIds": ["uuid-service-1", "uuid-service-2"],
+  "professionalId": "uuid-professional"
+}
+```
 
 ## Próximos Passos (Sugestões)
 

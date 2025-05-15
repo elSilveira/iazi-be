@@ -3,13 +3,46 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getAvailabilityValidator = exports.appointmentIdValidator = exports.updateAppointmentValidator = exports.createAppointmentValidator = void 0;
 const express_validator_1 = require("express-validator"); // Adicionado 'query'
 exports.createAppointmentValidator = [
-    (0, express_validator_1.body)("serviceId").isUUID().withMessage("ID do serviço inválido."),
+    // First try to validate serviceIds as an array (new format)
+    (0, express_validator_1.body)("serviceIds")
+        .optional()
+        .custom((value, { req }) => {
+        // If serviceIds exists, it must be an array with valid UUIDs
+        if (value !== undefined) {
+            if (!Array.isArray(value)) {
+                throw new Error("serviceIds deve ser um array.");
+            }
+            if (value.length === 0) {
+                throw new Error("Pelo menos um serviço deve ser selecionado.");
+            }
+            if (!value.every((id) => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))) {
+                throw new Error("Um ou mais IDs de serviços são inválidos.");
+            }
+        }
+        // If serviceIds doesn't exist, check if serviceId exists (backward compatibility)
+        else if (!req.body.serviceId) {
+            throw new Error("Serviço é obrigatório. Forneça serviceIds ou serviceId.");
+        }
+        return true;
+    }),
+    // Legacy support for single serviceId (optional if serviceIds exists)
+    (0, express_validator_1.body)("serviceId")
+        .optional()
+        .isUUID().withMessage("ID do serviço inválido.")
+        .custom((value, { req }) => {
+        // If using old format (serviceId), convert it to the new format (serviceIds)
+        if (value && !req.body.serviceIds) {
+            req.body.serviceIds = [value];
+        }
+        return true;
+    }),
     (0, express_validator_1.body)("professionalId").optional({ nullable: true }).isUUID().withMessage("ID do profissional inválido."),
     (0, express_validator_1.body)("companyId").optional({ nullable: true }).isUUID().withMessage("ID da empresa inválido."),
     (0, express_validator_1.body)("date")
         .notEmpty().withMessage("Campo 'date' é obrigatório.")
         .isISO8601().withMessage("Formato de data inválido (ISO8601 esperado)."),
-    (0, express_validator_1.body)("time").optional()
+    (0, express_validator_1.body)("time")
+        .notEmpty().withMessage("Campo 'time' é obrigatório.")
         .matches(/^([01]\d|2[0-3]):([0-5]\d)$/).withMessage("Formato de hora inválido (HH:MM)."),
     (0, express_validator_1.body)("notes").optional({ nullable: true }).trim(),
 ];

@@ -161,12 +161,30 @@ exports.checkAvailability = checkAvailability;
 // Criar um novo agendamento
 const createAppointment = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const { serviceIds, professionalId, companyId, date, time, notes } = req.body;
+    // Extract serviceIds, ensuring backward compatibility
+    let { serviceIds, serviceId, professionalId, companyId, date, time, notes } = req.body;
+    // Handle both formats - array or single ID (validator should have normalized this)
+    if (!serviceIds && serviceId) {
+        serviceIds = [serviceId];
+    }
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    // Enhanced debug log for incoming request data structure
+    console.log(`[Appointment Controller] Request data: ${JSON.stringify({
+        hasServiceIds: Array.isArray(serviceIds),
+        serviceIdsCount: Array.isArray(serviceIds) ? serviceIds.length : 0,
+        originalServiceId: serviceId,
+        originalServiceIds: req.body.serviceIds, // What was originally sent
+        hasUserId: !!userId,
+        professionalId,
+        date,
+        time
+    })}`);
     if (!userId) {
         return res.status(401).json({ message: 'Usuário não autenticado.' });
     }
     // --- Input Validation ---
+    // Validator middleware should have caught most issues,
+    // but add defense in depth for production
     if (!Array.isArray(serviceIds) || serviceIds.length === 0 || !serviceIds.every(isValidUUID)) {
         return res.status(400).json({ message: 'IDs dos serviços inválidos.' });
     }
@@ -219,13 +237,15 @@ const createAppointment = (req, res, next) => __awaiter(void 0, void 0, void 0, 
             // Example: Find professionals in company offering the service
             // const professionals = await professionalRepository.findMany({ companyId, services: { some: { serviceId } } }, ...);
             // Then check availability for each...
-        }
-        // Ensure the selected professional exists and offers all services
-        const professionalExists = yield prisma_1.prisma.professional.findFirst({
-            where: Object.assign(Object.assign({ id: targetProfessionalId }, (companyId && { companyId: companyId })), { services: { every: { serviceId: { in: serviceIds } } } })
+        } // Ensure the selected professional exists 
+        const professional = yield prisma_1.prisma.professional.findUnique({
+            where: Object.assign({ id: targetProfessionalId }, (companyId && { companyId: companyId })),
+            include: {
+                services: true
+            }
         });
-        if (!professionalExists) {
-            return res.status(404).json({ message: 'Profissional não encontrado, não pertence à empresa ou não oferece todos os serviços selecionados.' });
+        if (!professional) {
+            return res.status(404).json({ message: 'Profissional não encontrado ou não pertence à empresa selecionada.' });
         }
         // --- Availability Check ---
         const appointmentEnd = (0, date_fns_1.addMinutes)(appointmentDate, totalDuration || 0);

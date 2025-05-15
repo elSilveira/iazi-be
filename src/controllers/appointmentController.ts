@@ -203,14 +203,35 @@ export const checkAvailability = async (professionalId: string, start: Date, end
 
 // Criar um novo agendamento
 export const createAppointment = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
-    const { serviceIds, professionalId, companyId, date, time, notes } = req.body;
+    // Extract serviceIds, ensuring backward compatibility
+    let { serviceIds, serviceId, professionalId, companyId, date, time, notes } = req.body;
+    
+    // Handle both formats - array or single ID (validator should have normalized this)
+    if (!serviceIds && serviceId) {
+        serviceIds = [serviceId];
+    }
+    
     const userId = req.user?.id;
+
+    // Enhanced debug log for incoming request data structure
+    console.log(`[Appointment Controller] Request data: ${JSON.stringify({
+        hasServiceIds: Array.isArray(serviceIds),
+        serviceIdsCount: Array.isArray(serviceIds) ? serviceIds.length : 0,
+        originalServiceId: serviceId,
+        originalServiceIds: req.body.serviceIds,  // What was originally sent
+        hasUserId: !!userId,
+        professionalId,
+        date,
+        time
+    })}`);
 
     if (!userId) {
         return res.status(401).json({ message: 'Usuário não autenticado.' });
     }
 
     // --- Input Validation ---
+    // Validator middleware should have caught most issues,
+    // but add defense in depth for production
     if (!Array.isArray(serviceIds) || serviceIds.length === 0 || !serviceIds.every(isValidUUID)) {
         return res.status(400).json({ message: 'IDs dos serviços inválidos.' });
     }

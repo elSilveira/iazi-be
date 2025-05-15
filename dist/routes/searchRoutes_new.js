@@ -8,17 +8,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __rest = (this && this.__rest) || function (s, e) {
-    var t = {};
-    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
-        t[p] = s[p];
-    if (s != null && typeof Object.getOwnPropertySymbols === "function")
-        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
-            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
-                t[p[i]] = s[p[i]];
-        }
-    return t;
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -28,6 +17,7 @@ const asyncHandler_1 = __importDefault(require("../utils/asyncHandler"));
 const professionalRepository_1 = require("../repositories/professionalRepository");
 const serviceRepository_1 = require("../repositories/serviceRepository");
 const companyRepository_1 = __importDefault(require("../repositories/companyRepository"));
+const searchUtils_1 = require("../utils/searchUtils");
 const router = (0, express_1.Router)();
 /**
  * @swagger
@@ -105,130 +95,142 @@ const router = (0, express_1.Router)();
  *                     type: object
  */
 router.get("/", (0, asyncHandler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { type, q, category, sort, page = "1", limit = "10", professionalTipo } = req.query;
+    // Extract and validate query parameters
+    const { type, q, category, sort, page = "1", limit = "10", professionalTipo, ids } = req.query;
+    // Initialize response containers
     let professionals = [];
     let services = [];
     let companies = [];
-    const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 10;
-    const skip = (pageNum - 1) * limitNum;
-    // Order by criteria
-    let orderBy = { name: "asc" };
+    // Parse pagination parameters with validation to avoid negative values
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 50);
+    const skip = (pageNum - 1) * limitNum; // Create order by object with proper typing
+    let professionalOrderBy = { name: "asc" };
+    let serviceOrderBy = { name: "asc" };
     if (sort === "rating") {
-        orderBy = { rating: "desc" };
+        // Handle rating sort for professionals only, as Service model doesn't have rating field
+        professionalOrderBy = { rating: "desc" };
+        // For services, continue using name as the fallback sort
+        serviceOrderBy = { name: "asc" };
     }
-    try {
-        // 1. Always fetch professionals with their services
-        const professionalFilters = {};
-        if (q) {
-            professionalFilters.OR = [
-                { name: { contains: q, mode: "insensitive" } },
-                { role: { contains: q, mode: "insensitive" } }
-            ];
-        }
-        if (category) {
-            professionalFilters.services = {
-                some: {
-                    service: {
-                        category: { name: { contains: category, mode: "insensitive" } }
-                    }
+    try { // Define what data types to fetch based on the 'type' parameter
+        const fetchAll = !type || type === 'all';
+        const fetchProfessionals = fetchAll || type === 'professionals';
+        const fetchServices = fetchAll || type === 'services';
+        const fetchCompanies = fetchAll || type === 'companies';
+        // 1. Fetch professionals if needed
+        if (fetchProfessionals) {
+            // Build professional filters
+            const professionalFilters = {};
+            // Handle search term filtering
+            if (q) {
+                if ((0, searchUtils_1.isUUID)(q)) {
+                    professionalFilters.id = q;
                 }
-            };
-        }
-        if (professionalTipo && professionalTipo !== 'all') {
-            professionalFilters.role = { contains: professionalTipo, mode: "insensitive" };
-        }
-        professionals = yield professionalRepository_1.professionalRepository.findMany(professionalFilters, orderBy, skip, limitNum);
-        // Map services to make them more accessible with detailed information for multi-service appointments
-        professionals = professionals.map(prof => {
-            // Transform services array to be more usable with detailed service information
-            const mappedServices = prof.services.map((ps) => ({
-                id: ps.service.id,
-                name: ps.service.name,
-                duration: ps.service.duration,
-                price: ps.price || ps.service.price,
-                description: ps.description || ps.service.description,
-                category: ps.service.category,
-                // Add multi-service support details
-                multiServiceEnabled: true,
-                averageTimeToComplete: ps.service.duration
-            }));
-            // Keep company data if it exists
-            const { services: _ } = prof, profWithoutServices = __rest(prof, ["services"]);
-            return Object.assign(Object.assign({}, profWithoutServices), { services: mappedServices, 
-                // Add availability information for appointment booking
-                hasMultiServiceSupport: true });
-        });
-        // 2. Always fetch all services with their professionals
-        services = yield serviceRepository_1.serviceRepository.findWithProfessionals();
-        // Transform services to include professional data in a standardized format with multi-service support
-        services = services.map((service) => {
-            // Add multi-service specific fields to the service
-            const enhancedService = Object.assign(Object.assign({}, service), { multiServiceEnabled: true, professionals: service.professionals.map((ps) => ({
-                    id: ps.professional.id,
-                    name: ps.professional.name,
-                    role: ps.professional.role,
-                    rating: ps.professional.rating,
-                    image: ps.professional.image,
-                    price: ps.price || service.price,
-                    company: ps.professional.company,
-                    // Add fields for multi-service appointment support
-                    hasMultiServiceSupport: true,
-                    // Include any other services the professional offers
-                    otherServices: ps.professional.services ?
-                        ps.professional.services.map((s) => ({
-                            id: s.service.id,
-                            name: s.service.name,
-                            duration: s.service.duration,
-                            price: s.price || s.service.price
-                        })) : []
-                })) });
-            return enhancedService;
-        });
-        // 3. Fetch companies with filtering
-        try {
-            // Use findAll method instead of findMany, as it's what's properly implemented in the repository
-            const result = yield companyRepository_1.default.findAll(pageNum, limitNum);
-            companies = result.companies;
-            // Enhance companies with multi-service support information
-            companies = companies.map((company) => {
-                // Filter out company data to include only what we need
-                const { id, name, description, logo, coverImage, rating, totalReviews, address, categories } = company;
-                return {
-                    id,
-                    name,
-                    description,
-                    logo,
-                    coverImage,
-                    rating,
-                    totalReviews,
-                    address,
-                    categories,
-                    // Add multi-service support indicator
-                    hasMultiServiceSupport: true,
-                    // Note that this company can handle appointments with multiple services
-                    supportsMultiServiceBooking: true
+                else {
+                    professionalFilters.OR = [
+                        { name: { contains: q, mode: "insensitive" } },
+                        { role: { contains: q, mode: "insensitive" } }
+                    ];
+                }
+            }
+            // Handle multiple IDs filtering
+            if (ids) {
+                const idList = ids.split(',').map(id => id.trim());
+                professionalFilters.id = { in: idList };
+            }
+            // Filter by category
+            if (category) {
+                professionalFilters.services = {
+                    some: {
+                        service: {
+                            category: { name: { contains: category, mode: "insensitive" } }
+                        }
+                    }
                 };
-            });
+            }
+            // Filter by professional type
+            if (professionalTipo && professionalTipo !== 'all') {
+                professionalFilters.role = { contains: professionalTipo, mode: "insensitive" };
+            }
+            // Fetch professionals
+            const professionalsData = yield professionalRepository_1.professionalRepository.findMany(professionalFilters, professionalOrderBy, skip, limitNum);
+            // Transform using the utility function with multi-service support
+            professionals = professionalsData.map(prof => (0, searchUtils_1.transformProfessional)(prof));
         }
-        catch (error) {
-            console.error('Error fetching companies:', error);
-            companies = []; // Fallback to empty array if there's an error
+        // 2. Fetch services if needed
+        if (fetchServices) {
+            // Build service filters
+            const serviceFilters = {};
+            // Handle search term filtering
+            if (q) {
+                if ((0, searchUtils_1.isUUID)(q)) {
+                    serviceFilters.id = q;
+                }
+                else {
+                    serviceFilters.name = { contains: q, mode: "insensitive" };
+                }
+            }
+            // Handle multiple IDs filtering
+            if (ids) {
+                const idList = ids.split(',').map(id => id.trim());
+                serviceFilters.id = { in: idList };
+            }
+            // Filter by category
+            if (category) {
+                serviceFilters.category = { name: { contains: category, mode: "insensitive" } };
+            }
+            // Only return services with at least one professional
+            serviceFilters.professionals = { some: {} };
+            // Fetch services with proper sort order
+            const servicesData = yield serviceRepository_1.serviceRepository.findMany(serviceFilters, serviceOrderBy, skip, limitNum);
+            // Transform using the utility function with multi-service support
+            services = servicesData.map(service => (0, searchUtils_1.transformService)(service));
         }
+        // 3. Fetch companies if needed
+        if (fetchCompanies) {
+            try {
+                // Fetch companies
+                const result = yield companyRepository_1.default.findAll(pageNum, limitNum);
+                // Transform using the utility function with multi-service support
+                companies = result.companies.map(company => (0, searchUtils_1.transformCompany)(company));
+            }
+            catch (error) {
+                console.error('Error fetching companies:', error);
+                companies = []; // Fallback to empty array if there's an error
+            }
+        }
+        // Log search statistics
         console.log(`Search results: ${professionals.length} professionals, ${services.length} services, ${companies.length} companies`);
-        // Always return all three arrays, regardless of the type parameter
-        if (type === 'services') {
-            res.json({ services });
+        // Create response object
+        const response = {};
+        // Handle type parameter to return only requested data types
+        if (type === 'professionals') {
+            // Return only professionals
+            response.professionals = professionals;
         }
-        else if (type === 'professionals') {
-            res.json({ professionals });
+        else if (type === 'services') {
+            // Return only services
+            response.services = services;
         }
         else if (type === 'companies') {
-            res.json({ companies });
+            // Return only companies
+            response.companies = companies;
         }
         else {
-            res.json({ professionals, services, companies });
+            // Return all fetched data types (default)
+            if (fetchProfessionals) {
+                response.professionals = professionals;
+            }
+            if (fetchServices) {
+                response.services = services;
+            }
+            if (fetchCompanies) {
+                response.companies = companies;
+            }
         }
+        // Return the response
+        res.json(response);
     }
     catch (error) {
         console.error('Error in search endpoint:', error);

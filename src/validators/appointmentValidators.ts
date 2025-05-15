@@ -1,12 +1,37 @@
 import { body, param, query } from "express-validator"; // Adicionado 'query'
 
 export const createAppointmentValidator = [
+  // First try to validate serviceIds as an array (new format)
   body("serviceIds")
-    .isArray().withMessage("serviceIds deve ser um array.")
-    .notEmpty().withMessage("Pelo menos um serviço deve ser selecionado.")
-    .custom((value) => {
-      if (!Array.isArray(value) || !value.every((id) => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))) {
-        throw new Error("Um ou mais IDs de serviços são inválidos.");
+    .optional()
+    .custom((value, { req }) => {
+      // If serviceIds exists, it must be an array with valid UUIDs
+      if (value !== undefined) {
+        if (!Array.isArray(value)) {
+          throw new Error("serviceIds deve ser um array.");
+        }
+        if (value.length === 0) {
+          throw new Error("Pelo menos um serviço deve ser selecionado.");
+        }
+        if (!value.every((id) => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))) {
+          throw new Error("Um ou mais IDs de serviços são inválidos.");
+        }
+      }
+      // If serviceIds doesn't exist, check if serviceId exists (backward compatibility)
+      else if (!req.body.serviceId) {
+        throw new Error("Serviço é obrigatório. Forneça serviceIds ou serviceId.");
+      }
+      return true;
+    }),
+  
+  // Legacy support for single serviceId (optional if serviceIds exists)
+  body("serviceId")
+    .optional()
+    .isUUID().withMessage("ID do serviço inválido.")
+    .custom((value, { req }) => {
+      // If using old format (serviceId), convert it to the new format (serviceIds)
+      if (value && !req.body.serviceIds) {
+        req.body.serviceIds = [value];
       }
       return true;
     }),

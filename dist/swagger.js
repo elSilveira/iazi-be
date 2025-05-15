@@ -375,8 +375,7 @@ const options = {
                         limit: { type: 'integer', description: 'Limite de itens por página' }
                     },
                     required: ['data', 'total', 'page', 'limit']
-                },
-                AppointmentCreateInput: {
+                }, AppointmentCreateInput: {
                     type: 'object',
                     properties: {
                         professionalId: { type: 'string', format: 'uuid', description: 'ID do profissional' },
@@ -386,11 +385,21 @@ const options = {
                         serviceIds: {
                             type: 'array',
                             items: { type: 'string', format: 'uuid' },
-                            description: 'IDs dos serviços a serem agendados (mínimo 1)',
+                            description: 'IDs dos serviços a serem agendados (novo formato, mínimo 1)',
                             minItems: 1
+                        },
+                        serviceId: {
+                            type: 'string',
+                            format: 'uuid',
+                            description: 'ID do serviço (formato legado - use serviceIds para múltiplos serviços)'
                         },
                         notes: { type: 'string', nullable: true, description: 'Observações adicionais' },
                     },
+                    oneOf: [
+                        { required: ['professionalId', 'date', 'time', 'serviceIds'] },
+                        { required: ['professionalId', 'date', 'time', 'serviceId'] }
+                    ],
+                    description: 'Dados para criar um agendamento. Suporta tanto múltiplos serviços (serviceIds) quanto formato legado (serviceId).',
                     required: ['professionalId', 'date', 'time', 'serviceIds'],
                 },
                 // ... outros inputs ...

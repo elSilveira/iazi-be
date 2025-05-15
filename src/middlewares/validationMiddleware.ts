@@ -3,6 +3,19 @@ import { validationResult } from 'express-validator';
 
 export const validateRequest = (req: Request, res: Response, next: NextFunction): void => {
   const errors = validationResult(req);
+  
+  // Log request body shape for debugging validation issues in production for appointment endpoint
+  if (req.path.includes('/appointments') && req.method === 'POST') {
+    console.log(`[Validation Middleware] POST /appointments - Body keys: ${Object.keys(req.body).join(', ')}`);
+    
+    // Log critical fields format without sensitive data
+    if (req.body.serviceIds) {
+      console.log(`[Validation Middleware] serviceIds type: ${typeof req.body.serviceIds}, isArray: ${Array.isArray(req.body.serviceIds)}`);
+    } else {
+      console.log('[Validation Middleware] serviceIds field not found in request body');
+    }
+  }
+  
   if (!errors.isEmpty()) {
     // Retorna todas as mensagens de erro detalhadas
     const errorDetails = errors.array().map(err => ({
