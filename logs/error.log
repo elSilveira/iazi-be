@@ -963,3 +963,4 @@
 [31m       })[39m
 
 [31mUnknown argument `role`. Did you mean `name`? Available options are marked with ?. - /api/search?q=&category=&sort=rating&page=1&limit=4&type=all&professionalTipo=all - GET - 127.0.0.1[39m
+2025-05-15 16:30:39:3039 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments - GET - 127.0.0.1[39m

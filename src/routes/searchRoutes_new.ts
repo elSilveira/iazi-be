@@ -218,18 +218,30 @@ router.get(
           serviceFilters.category = { name: { contains: category as string, mode: "insensitive" } };
         }
         
-        // Only return services with at least one professional
-        serviceFilters.professionals = { some: {} };
-          // Fetch services with proper sort order
+        // Filter by professionalId (NEW)
+        const professionalId = req.query.professionalId as string | undefined;
+        if (professionalId) {
+          serviceFilters.professionals = { some: { professionalId } };
+        } else {
+          // Only return services with at least one professional
+          serviceFilters.professionals = { some: {} };
+        }
+        // Fetch services with proper sort order
         const servicesData = await serviceRepository.findMany(
           serviceFilters,
           serviceOrderBy,
           skip,
           limitNum
         );
-        
         // Transform using the utility function with multi-service support
-        services = servicesData.map(service => transformService(service));
+        // If filtering by professionalId, only include that professional in the professionals array
+        services = servicesData.map(service => {
+          let transformed = transformService(service);
+          if (professionalId && Array.isArray(transformed.professionals)) {
+            transformed.professionals = transformed.professionals.filter(p => p.id === professionalId);
+          }
+          return transformed;
+        });
       }
       
       // 3. Fetch companies if needed
