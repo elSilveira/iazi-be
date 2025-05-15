@@ -1,13 +1,22 @@
 import { body, param, query } from "express-validator"; // Adicionado 'query'
 
 export const createAppointmentValidator = [
-  body("serviceId").isUUID().withMessage("ID do serviço inválido."),
+  body("serviceIds")
+    .isArray().withMessage("serviceIds deve ser um array.")
+    .notEmpty().withMessage("Pelo menos um serviço deve ser selecionado.")
+    .custom((value) => {
+      if (!Array.isArray(value) || !value.every((id) => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))) {
+        throw new Error("Um ou mais IDs de serviços são inválidos.");
+      }
+      return true;
+    }),
   body("professionalId").optional({ nullable: true }).isUUID().withMessage("ID do profissional inválido."),
   body("companyId").optional({ nullable: true }).isUUID().withMessage("ID da empresa inválido."),
   body("date")
     .notEmpty().withMessage("Campo 'date' é obrigatório.")
     .isISO8601().withMessage("Formato de data inválido (ISO8601 esperado)."),
-  body("time").optional()
+  body("time")
+    .notEmpty().withMessage("Campo 'time' é obrigatório.")
     .matches(/^([01]\d|2[0-3]):([0-5]\d)$/).withMessage("Formato de hora inválido (HH:MM)."),
   body("notes").optional({ nullable: true }).trim(),
 ];

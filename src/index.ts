@@ -18,7 +18,7 @@ import userRouter from './routes/userRoutes';
 import categoryRouter from './routes/categoryRoutes';
 import notificationRouter from './routes/notificationRoutes'; // Added notification routes
 import gamificationRouter from './routes/gamificationRoutes'; // Added gamification routes
-import searchRoutes from './routes/searchRoutes';
+import searchRoutes from './routes/searchRoutes_new'; // Updated to use new search implementation with multi-service support
 
 import { setupSwagger } from './swagger';
 

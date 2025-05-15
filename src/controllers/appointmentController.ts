@@ -271,19 +271,17 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
             // Example: Find professionals in company offering the service
             // const professionals = await professionalRepository.findMany({ companyId, services: { some: { serviceId } } }, ...);
             // Then check availability for each...
-        }
-
-        // Ensure the selected professional exists and offers all services
-        const professionalExists = await prisma.professional.findFirst({
+        }        // Ensure the selected professional exists 
+        const professional = await prisma.professional.findUnique({
             where: {
                 id: targetProfessionalId,
                 ...(companyId && { companyId: companyId }), // Optional: ensure professional is in the company if companyId is given
-                services: { every: { serviceId: { in: serviceIds } } }
+            },
+            include: {
+                services: true
             }
-        });
-
-        if (!professionalExists) {
-            return res.status(404).json({ message: 'Profissional não encontrado, não pertence à empresa ou não oferece todos os serviços selecionados.' });
+        });        if (!professional) {
+            return res.status(404).json({ message: 'Profissional não encontrado ou não pertence à empresa selecionada.' });
         }
 
         // --- Availability Check ---
@@ -929,4 +927,5 @@ export const getProfessionalFullSchedule = async (req: Request, res: Response, n
 // If cancelAppointment and deleteAppointment logic is needed, implement them
 // export const cancelAppointment = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => { ... };
 // export const deleteAppointment = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => { ... };
+
 

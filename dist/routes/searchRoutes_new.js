@@ -217,7 +217,18 @@ router.get("/", (0, asyncHandler_1.default)((req, res) => __awaiter(void 0, void
         }
         console.log(`Search results: ${professionals.length} professionals, ${services.length} services, ${companies.length} companies`);
         // Always return all three arrays, regardless of the type parameter
-        res.json({ professionals, services, companies });
+        if (type === 'services') {
+            res.json({ services });
+        }
+        else if (type === 'professionals') {
+            res.json({ professionals });
+        }
+        else if (type === 'companies') {
+            res.json({ companies });
+        }
+        else {
+            res.json({ professionals, services, companies });
+        }
     }
     catch (error) {
         console.error('Error in search endpoint:', error);
