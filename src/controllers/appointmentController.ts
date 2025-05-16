@@ -81,12 +81,10 @@ export const getWorkingHoursForDay = (workingHoursJson: Prisma.JsonValue | null 
     
     // Check if workingHoursJson is a valid object and not null/undefined
     if (!workingHoursJson) {
-        console.log(`No working hours data provided for date ${dateFormatted}`);
         return null;
     }
     
     if (typeof workingHoursJson !== 'object' || Array.isArray(workingHoursJson)) {
-        console.log(`Working hours is not a valid object for date ${dateFormatted}`);
         return null;
     }
 
@@ -94,34 +92,26 @@ export const getWorkingHoursForDay = (workingHoursJson: Prisma.JsonValue | null 
     const dayKey = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"][dayOfWeek];
 
     // Type assertion to treat workingHoursJson as an indexable object
-    const hoursData = (workingHoursJson as { [key: string]: any })[dayKey];
-
-    if (!hoursData) {
-        console.log(`No hours data found for ${dayKey} (${dateFormatted})`);
+    const hoursData = (workingHoursJson as { [key: string]: any })[dayKey];    if (!hoursData) {
         return null;
     }
     
     if (typeof hoursData !== 'object') {
-        console.log(`Hours data for ${dayKey} is not an object (${dateFormatted})`);
         return null;
     }
     
     // isOpen can be undefined (assume open) or explicitly true
     if (hoursData.isOpen === false) {
-        console.log(`${dayKey} is marked as closed (isOpen: false) for ${dateFormatted}`);
         return null;
     }
     
     if (!hoursData.start || !hoursData.end) {
-        console.log(`Missing start or end time for ${dayKey} (${dateFormatted})`);
         return null;
     }
 
     // Validate time format (HH:MM)
     const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-    if (!timeRegex.test(hoursData.start) || !timeRegex.test(hoursData.end)) {
-        console.error(`Invalid time format in working hours for ${dayKey} (${dateFormatted}): start=${hoursData.start}, end=${hoursData.end}`);
-        return null;
+    if (!timeRegex.test(hoursData.start) || !timeRegex.test(hoursData.end)) {        return null;
     }
 
     const [startHour, startMinute] = hoursData.start.split(':').map(Number);
@@ -132,12 +122,10 @@ export const getWorkingHoursForDay = (workingHoursJson: Prisma.JsonValue | null 
 
     // Ensure end time is after start time
     if (endTime <= startTime) {
-        console.warn(`Working hours end time is not after start time for ${dayKey} (${dateFormatted}). Adjusting end time to next day if necessary or ignoring.`);
         // Handle overnight logic if needed, or simply return null/invalid
         return null; // Or adjust endTime logic based on business rules
     }
 
-    console.log(`Working hours for ${dayKey} (${dateFormatted}): ${format(startTime, 'HH:mm')} to ${format(endTime, 'HH:mm')}`);
     return { start: startTime, end: endTime };
 };
 
@@ -148,15 +136,12 @@ export const checkAvailability = async (professionalId: string, start: Date, end
 
     // Determine working hours
     const workingHoursJson = professional.workingHours || professional.company?.workingHours || null;
-    const workingHoursToday = getWorkingHoursForDay(workingHoursJson, start);
-
-    if (!workingHoursToday) {
-        console.log(`Availability Check: No working hours defined for ${professionalId} on ${format(start,'yyyy-MM-dd')}, skipping hours check.`);
+    const workingHoursToday = getWorkingHoursForDay(workingHoursJson, start);    if (!workingHoursToday) {
+        // Skip hours check when no working hours defined
     } else {
         // Check if the requested slot is within working hours
         if (!isWithinInterval(start, { start: workingHoursToday.start, end: workingHoursToday.end }) ||
             !isWithinInterval(addMinutes(end, -1), { start: workingHoursToday.start, end: workingHoursToday.end })) {
-            console.log(`Availability Check: Slot outside working hours for ${professionalId}.`);
             return false;
         }
     }
@@ -171,13 +156,9 @@ export const checkAvailability = async (professionalId: string, start: Date, end
         // - The appointment starts during our slot
         startTime: { lt: end },
         endTime: { gt: start }
-    });
-
-    // With the startTime and endTime fields, we can directly check for conflicts
+    });    // With the startTime and endTime fields, we can directly check for conflicts
     // without needing to calculate end times
     if (conflictingAppointments.length > 0) {
-        const conflictingAppointment = conflictingAppointments[0];
-        console.log(`Availability Check: Conflict with existing appointment ${conflictingAppointment.id} [${format(conflictingAppointment.startTime, 'HH:mm')}, ${format(conflictingAppointment.endTime, 'HH:mm')})`);
         return false;
     }
 
@@ -188,14 +169,10 @@ export const checkAvailability = async (professionalId: string, start: Date, end
     //         startTime: { lt: end },
     //         endTime: { gt: start },
     //     }
-    // });
-
-    // if (conflictingBlocks.length > 0) {
-    //     console.log(`Availability Check: Found conflicting schedule blocks for professional ${professionalId}`);
+    // });    // if (conflictingBlocks.length > 0) {
     //     return false;
     // }
 
-    console.log(`Availability Check: Slot available for professional ${professionalId}`);
     return true; // Slot is available
 };
 
@@ -210,20 +187,7 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
     if (!serviceIds && serviceId) {
         serviceIds = [serviceId];
     }
-    
-    const userId = req.user?.id;
-
-    // Enhanced debug log for incoming request data structure
-    console.log(`[Appointment Controller] Request data: ${JSON.stringify({
-        hasServiceIds: Array.isArray(serviceIds),
-        serviceIdsCount: Array.isArray(serviceIds) ? serviceIds.length : 0,
-        originalServiceId: serviceId,
-        originalServiceIds: req.body.serviceIds,  // What was originally sent
-        hasUserId: !!userId,
-        professionalId,
-        date,
-        time
-    })}`);
+      const userId = req.user?.id;
 
     if (!userId) {
         return res.status(401).json({ message: 'Usuário não autenticado.' });
@@ -997,9 +961,7 @@ export const getAvailability = async (req: Request, res: Response, next: NextFun
                 continue; // Skip if not working
             }
             // Debug log working hours
-            console.log(`Using working hours for professional ${profId}: ${format(workingHoursToday.start, 'HH:mm')} to ${format(workingHoursToday.end, 'HH:mm')}`);
-
-            // Retrieve existing appointments and blocks
+                        // Retrieve existing appointments and blocks
             const dayStart = startOfDay(targetDate);
             const dayEnd = endOfDay(targetDate);
             const existingAppointments = await appointmentRepository.findMany({
