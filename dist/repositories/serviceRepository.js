@@ -21,7 +21,7 @@ exports.serviceRepository = {
             });
         });
     },
-    // Novo método findMany com filtros, ordenação e paginação
+    // Método findMany com filtros, ordenação, paginação e relações completas
     findMany(filters, orderBy, skip, take) {
         return __awaiter(this, void 0, void 0, function* () {
             return prisma_1.prisma.service.findMany({
@@ -30,12 +30,47 @@ exports.serviceRepository = {
                 skip: skip,
                 take: take,
                 include: {
-                    category: true, // Incluir dados da categoria
+                    category: true, // Include category data
                     company: {
                         select: {
                             id: true,
                             name: true,
-                            address: true // Incluir endereço da empresa
+                            address: true
+                        }
+                    },
+                    professionals: {
+                        include: {
+                            professional: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    role: true,
+                                    rating: true,
+                                    image: true,
+                                    company: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            address: true
+                                        }
+                                    },
+                                    services: {
+                                        include: {
+                                            service: {
+                                                include: {
+                                                    category: true, // Include category for each service
+                                                    company: {
+                                                        select: {
+                                                            id: true,
+                                                            name: true
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

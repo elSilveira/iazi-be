@@ -53,7 +53,7 @@ const userRoutes_1 = __importDefault(require("./routes/userRoutes"));
 const categoryRoutes_1 = __importDefault(require("./routes/categoryRoutes"));
 const notificationRoutes_1 = __importDefault(require("./routes/notificationRoutes")); // Added notification routes
 const gamificationRoutes_1 = __importDefault(require("./routes/gamificationRoutes")); // Added gamification routes
-const searchRoutes_new_1 = __importDefault(require("./routes/searchRoutes_new")); // Updated to use new search implementation with multi-service support
+const searchRoutes_1 = __importDefault(require("./routes/searchRoutes")); // Using the search routes with multi-service support
 const swagger_1 = require("./swagger");
 const app = (0, express_1.default)();
 exports.app = app;
@@ -110,7 +110,7 @@ app.use('/api/users', userRoutes_1.default);
 app.use('/api/categories', categoryRoutes_1.default);
 app.use('/api/notifications', notificationRoutes_1.default);
 app.use('/api/gamification', gamificationRoutes_1.default);
-app.use('/api/search', searchRoutes_new_1.default);
+app.use('/api/search', searchRoutes_1.default);
 const errorMiddleware_1 = require("./middlewares/errorMiddleware"); // Importar o middleware de erro
 app.use(errorMiddleware_1.errorMiddleware); // Usar o middleware de erro global
 // Iniciar o servidor apenas se não estiver em ambiente de teste

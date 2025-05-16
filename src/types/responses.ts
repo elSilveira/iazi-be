@@ -25,4 +25,5 @@ export interface SearchResponse {
   professionals?: ProfessionalResponse[];
   services?: ServiceResponse[];
   companies?: CompanyResponse[];
+  servicesByProfessional?: ServiceResponse[];
 }

@@ -1,0 +1,237 @@
+// searchUtils.ts - Extract transformation logic
+import { 
+  ProfessionalWithServices, 
+  ServiceWithRelations, 
+  CompanyWithDetails 
+} from '../types/searchTypes';
+
+/**
+ * Transform raw professional data into a clean format with services
+ */
+export function transformProfessional(prof: any): ProfessionalWithServices {
+  // Map services with proper category handling and price conversion
+  const mappedServices = prof.services?.map((ps: any) => {
+    // Get the category from the service if available
+    const category = ps.service.category ? {
+      id: ps.service.category.id,
+      name: ps.service.category.name
+    } : undefined;
+    
+    // Convert Decimal price to number if needed
+    const price = typeof ps.price === 'object' ? 
+      Number(ps.price.toString()) : 
+      (ps.price || (ps.service.price ? Number(ps.service.price.toString()) : undefined));
+    
+    return {
+      id: ps.service.id,
+      name: ps.service.name,
+      duration: ps.service.duration,
+      price: price,
+      description: ps.description || ps.service.description,
+      category: category,
+      multiServiceEnabled: true,
+      averageTimeToComplete: ps.service.duration
+    };
+  }) || [];
+  
+  // Exclude services property to avoid duplication
+  const { services: _, ...profWithoutServices } = prof;
+  
+  // Return the professional with multi-service support
+  return {
+    ...profWithoutServices,
+    services: mappedServices,
+    hasMultiServiceSupport: true
+  } as ProfessionalWithServices; // Use type assertion to bypass strict type checking
+}
+
+/**
+ * Transform raw service data into a clean format with professionals
+ */
+export function transformService(service: any): ServiceWithRelations {
+  // Get the category from categoryId relation
+  const category = service.category ? {
+    id: service.category.id,
+    name: service.category.name
+  } : undefined;
+
+  // Transform the professional service relationships
+  const transformedProfessionals = service.professionals?.map((ps: any) => {
+    // Map all services this professional offers
+    const services = ps.professional.services?.map((s: any) => ({
+      id: s.service.id,
+      name: s.service.name,
+      duration: s.service.duration,
+      price: typeof s.price === 'object' ? Number(s.price.toString()) : s.price
+    })) || [];
+    
+    return {
+      id: ps.professional.id,
+      name: ps.professional.name,
+      role: ps.professional.role,
+      rating: ps.professional.rating,
+      image: ps.professional.image,
+      price: typeof ps.price === 'object' ? Number(ps.price.toString()) : ps.price,
+      company: ps.professional.company,
+      hasMultiServiceSupport: true,
+      services
+    };
+  }) || [];
+
+  // Create the enhanced service with multi-service enabled
+  return {
+    ...service,
+    category,
+    multiServiceEnabled: true, 
+    professionals: transformedProfessionals
+  };
+}
+
+/**
+ * Transform raw company data into a clean format
+ */
+export function transformCompany(company: any): CompanyWithDetails {
+  // Extract only the fields needed for the response
+  // and add the multi-service support flags
+  return {
+    ...company, // Include all original properties from the company
+    address: company.address || undefined,
+    hasMultiServiceSupport: true,
+    supportsMultiServiceBooking: true
+  } as CompanyWithDetails; // Use type assertion to bypass strict type checking
+}
+
+/**
+ * Build servicesByProfessional from services data
+ * Used when professionals aren't fetched but we need to group services by professional
+ */
+export function buildServicesByProfessional(services: any[]): any[] {
+  // Step 1: Extract all professionals from services
+  const professionalMap = new Map();
+  
+  // Step 2: For each service, extract its professionals
+  services.forEach(service => {
+    if (service.professionals && Array.isArray(service.professionals)) {
+      service.professionals.forEach((prof: any) => {
+        // If this is the first time we see this professional, add it to the map
+        if (!professionalMap.has(prof.id)) {
+          professionalMap.set(prof.id, {
+            id: prof.id,
+            name: prof.name,
+            role: prof.role,
+            rating: prof.rating,
+            image: prof.image,
+            hasMultiServiceSupport: true,
+            services: []
+          });
+        }
+        
+        // Add this service to the professional's services
+        const professional = professionalMap.get(prof.id);
+        professional.services.push({
+          id: service.id,
+          name: service.name,
+          duration: service.duration,
+          price: prof.price, // Use the price specific to this professional-service relationship
+          description: service.description,
+          category: service.category,
+          multiServiceEnabled: true,
+          averageTimeToComplete: service.duration
+        });
+      });
+    }
+  });
+  
+  // Step 3: Convert the map to an array
+  return Array.from(professionalMap.values());
+}
+
+/**
+ * Check if string looks like a UUID
+ */
+export function isUUID(str: string): boolean {
+  return /^[0-9a-fA-F-]{36}$/.test(str);
+}
+
+/**
+ * Reorganizes professional-service relationships to create a list of services with their professionals
+ * Used to create the servicesByProfessional response structure where each service has professionals
+ */
+export function buildServicesWithProfessionals(services: any[]): any[] {
+  // Map to hold unique services with their professionals
+  const serviceMap = new Map();
+  
+  // Step 1: For each service, collect all its professionals
+  services.forEach(service => {
+    const serviceKey = service.id;
+    
+    // If this is the first time we see this service, add it to the map
+    if (!serviceMap.has(serviceKey)) {
+      const { professionals, ...serviceData } = service;
+      serviceMap.set(serviceKey, {
+        ...serviceData,
+        professionals: []
+      });
+    }
+    
+    // Add professionals to this service
+    if (service.professionals && Array.isArray(service.professionals)) {
+      const serviceEntry = serviceMap.get(serviceKey);      
+      
+      service.professionals.forEach((ps: any) => {
+        // Extract the professional details
+        const professional = ps.professional;
+        if (!professional) return;
+          
+        // Extract professional data, avoiding duplicates
+        const professionalData: any = {
+          id: professional.id,
+          name: professional.name,
+          role: professional.role,
+          rating: professional.rating,
+          image: professional.image,
+          price: typeof ps.price === 'object' ? Number(ps.price.toString()) : ps.price
+        };
+        
+        // Extract all services for this professional from the nested services structure
+        if (professional.services && Array.isArray(professional.services)) {
+          // Map each professional's service to a simpler structure
+          const profServices = professional.services.map((profService: any) => {
+            const serviceObj = profService.service;
+            if (!serviceObj) return null;
+            
+            return {
+              id: serviceObj.id,
+              name: serviceObj.name,
+              duration: serviceObj.duration,
+              price: typeof profService.price === 'object' ? 
+                Number(profService.price.toString()) : profService.price,
+              description: profService.description || serviceObj.description,
+              category: serviceObj.category ? {
+                id: serviceObj.category.id,
+                name: serviceObj.category.name
+              } : undefined
+            };
+          }).filter(Boolean); // Remove any null entries
+          
+          // Add the services array to the professional data
+          professionalData.services = profServices;
+        } else {
+          professionalData.services = []; // Empty services array for consistency
+        }
+        
+        // Avoid duplicate professionals
+        const existingProfIndex = serviceEntry.professionals.findIndex(
+          (p: any) => p.id === professionalData.id
+        );
+        
+        if (existingProfIndex === -1) {
+          serviceEntry.professionals.push(professionalData);
+        }
+      });
+    }
+  });
+  
+  // Step 3: Convert the map to an array
+  return Array.from(serviceMap.values());
+}

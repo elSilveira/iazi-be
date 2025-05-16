@@ -10,7 +10,7 @@ export const serviceRepository = {
     });
   },
 
-  // Novo método findMany com filtros, ordenação e paginação
+  // Método findMany com filtros, ordenação, paginação e relações completas
   async findMany(
     filters: Prisma.ServiceWhereInput,
     orderBy: Prisma.ServiceOrderByWithRelationInput,
@@ -23,12 +23,47 @@ export const serviceRepository = {
       skip: skip,
       take: take,
       include: { 
-        category: true, // Incluir dados da categoria
-        company: { // Incluir dados básicos da empresa
+        category: true, // Include category data
+        company: { // Include basic company data
           select: {
             id: true,
             name: true,
-            address: true // Incluir endereço da empresa
+            address: true
+          }
+        },
+        professionals: { // Include professionals linked to this service
+          include: {
+            professional: {
+              select: {
+                id: true,
+                name: true,
+                role: true,
+                rating: true,
+                image: true,
+                company: {
+                  select: {
+                    id: true,
+                    name: true,
+                    address: true
+                  }
+                },
+                services: { // Include ALL services for each professional
+                  include: {
+                    service: { // Include the full service object for each professional service
+                      include: {
+                        category: true, // Include category for each service
+                        company: {
+                          select: {
+                            id: true,
+                            name: true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       } 

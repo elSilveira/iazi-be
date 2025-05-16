@@ -11,11 +11,10 @@ export interface ServiceWithRelations extends Service {
     name: string;
     role?: string;
     rating?: number;
-    image?: string;
-    company?: any;
+    image?: string;    company?: any;
     price?: number;
     hasMultiServiceSupport?: boolean;
-    otherServices?: {
+    services?: {
       id: string;
       name: string;
       duration?: string;
@@ -49,10 +48,29 @@ export interface CompanyWithDetails extends Omit<Company, 'address'> {
   supportsMultiServiceBooking?: boolean;
 }
 
+export interface ProfessionalServiceRelation extends Service {
+  category?: {
+    id: string;
+    name: string;
+  };
+  profissional: {
+    id: string;
+    name: string;
+    role?: string;
+    rating?: number;
+    image?: string;
+    price?: number;
+    company?: any;
+    hasMultiServiceSupport?: boolean;
+  };
+  multiServiceEnabled?: boolean;
+}
+
 export interface SearchResult {
   professionals?: ProfessionalWithServices[];
   services?: ServiceWithRelations[];
   companies?: CompanyWithDetails[];
+  professional_services?: ProfessionalServiceRelation[];
 }
 
 export type SearchType = 'professionals' | 'services' | 'companies' | 'all';

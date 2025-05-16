@@ -1,0 +1,1 @@
+import searchRoutes from './routes/searchRoutes';
