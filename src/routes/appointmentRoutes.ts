@@ -97,7 +97,7 @@ router.get("/", asyncHandler(listAppointments)); // Usar asyncHandler
  * @swagger
  * /api/appointments/{id}:
  *   get:
- *     summary: Obtém um agendamento específico pelo ID
+ *     summary: Obtém um agendamento específico pelo ID ou a agenda pessoal do usuário
  *     tags: [Appointments]
  *     security:
  *       - bearerAuth: []
@@ -105,14 +105,22 @@ router.get("/", asyncHandler(listAppointments)); // Usar asyncHandler
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: string, format: uuid }
- *         description: ID do agendamento
- *     responses:
+ *         schema: 
+ *           oneOf:
+ *             - type: string
+ *               format: uuid
+ *             - type: string
+ *               enum: ['me']
+ *         description: ID do agendamento ou 'me' para obter a agenda pessoal do usuário (foco no usuário com informações simplificadas de serviços e profissionais) *     responses:
  *       200:
- *         description: Detalhes do agendamento retornados com sucesso.
+ *         description: Detalhes do agendamento ou agenda pessoal do usuário retornados com sucesso.
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/Appointment' }
+ *             schema:
+ *               oneOf:
+ *                 - $ref: '#/components/schemas/Appointment'
+ *                 - $ref: '#/components/schemas/UserScheduleResponse'
+ *                 
  *       400:
  *         description: ID inválido.
  *       401:

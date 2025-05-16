@@ -426,12 +426,98 @@ const listAppointments = (req, res, next) => __awaiter(void 0, void 0, void 0, f
 });
 exports.listAppointments = listAppointments;
 // Obter detalhes de um agendamento específico
+/**
+ * Get an appointment by ID or all appointments for the current user
+ *
+ * This endpoint serves two purposes:
+ * 1. When id is a UUID: Returns a specific appointment if the user has permission to view it
+ * 2. When id is 'me': Returns all appointments where the current user is the client
+ *    - Returns the user's appointments WITH professionals (user's schedule with professionals)
+ *    - For professionals to see appointments scheduled WITH them, they should use the standard list endpoint with filters
+ */
 const getAppointmentById = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     const user = req.user;
     const { include } = req.query;
     if (!user) {
         return res.status(401).json({ message: 'Usuário não autenticado.' });
+    } // Special case for 'me' - return the user's appointments WITH professionals (user as client)
+    if (id === 'me') {
+        try {
+            const { status, dateFrom, dateTo, serviceId, professionalId, companyId, limit, sort, page = "1" } = req.query;
+            // Create proper filters object for the repository
+            let filters = {
+                userId: user.id // Filter by userId to get the user's appointments WITH professionals
+            };
+            // Add other filters similar to listAppointments
+            // Filter by status
+            if (status && typeof status === 'string' && status in client_1.AppointmentStatus) {
+                filters.status = status;
+            }
+            // Filter by date range
+            if (dateFrom && typeof dateFrom === 'string') {
+                const parsedFromDate = (0, date_fns_1.parse)(dateFrom, 'yyyy-MM-dd', new Date());
+                if ((0, date_fns_1.isValid)(parsedFromDate)) {
+                    filters.startTime = filters.startTime || {};
+                    Object.assign(filters.startTime, {
+                        gte: (0, date_fns_1.startOfDay)(parsedFromDate),
+                    });
+                }
+            }
+            if (dateTo && typeof dateTo === 'string') {
+                const parsedToDate = (0, date_fns_1.parse)(dateTo, 'yyyy-MM-dd', new Date());
+                if ((0, date_fns_1.isValid)(parsedToDate)) {
+                    filters.startTime = filters.startTime || {};
+                    Object.assign(filters.startTime, {
+                        lte: (0, date_fns_1.endOfDay)(parsedToDate),
+                    });
+                }
+            }
+            // Filter by serviceId
+            if (serviceId && typeof serviceId === 'string' && isValidUUID(serviceId)) {
+                filters.services = { some: { serviceId: serviceId } };
+            }
+            // Filter by professionalId
+            if (professionalId && typeof professionalId === 'string' && isValidUUID(professionalId)) {
+                filters.professionalId = professionalId;
+            }
+            // Filter by companyId
+            if (companyId && typeof companyId === 'string' && isValidUUID(companyId)) {
+                filters.companyId = companyId;
+            }
+            // Setup pagination
+            const pageSize = limit ? parseInt(limit) : 100;
+            const currentPage = parseInt(page) || 1;
+            const skip = (currentPage - 1) * pageSize;
+            // Setup ordering
+            let orderBy = { startTime: 'asc' };
+            if (sort === 'startTime_desc') {
+                orderBy = { startTime: 'desc' };
+            }
+            // Count total appointments matching the filters
+            const totalCount = yield prisma_1.prisma.appointment.count({ where: filters });
+            // Get appointments for the current user with pagination and ordering
+            const appointments = yield prisma_1.prisma.appointment.findMany({
+                where: filters,
+                include: appointmentRepository_1.appointmentRepository.includeDetails,
+                orderBy: orderBy,
+                skip: skip,
+                take: pageSize,
+            });
+            // Return in the same format as listAppointments
+            return res.json({
+                data: appointments,
+                meta: {
+                    total: totalCount,
+                    page: currentPage,
+                    limit: pageSize
+                }
+            });
+        }
+        catch (error) {
+            console.error("Error fetching user appointments:", error);
+            return res.status(500).json({ message: 'Erro ao buscar agendamentos do usuário.' });
+        }
     }
     if (!isValidUUID(id)) {
         return res.status(400).json({ message: 'ID de agendamento inválido.' });

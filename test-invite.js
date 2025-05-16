@@ -9,7 +9,7 @@ try {
 }
 
 // Configuration
-const baseUrl = 'http://localhost:3002'; // Running on the configured port from index.ts
+const baseUrl = 'http://localhost:3003'; // Running on the configured port from index.ts
 const apiEndpoint = '/api/auth/invites';
 const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI4ZTc2ODY0MS0wYTIyLTRkNzQtOGVkOS01YzkyMGRhYWI0MzMiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc0NzEwNTU4OCwiZXhwIjoxNzQ3MTA5MTg4fQ.ViM_j_AueuKpFiWw637RTuwEksX_XczF60PvcDMsMu8'; // Replace with a valid JWT token
 

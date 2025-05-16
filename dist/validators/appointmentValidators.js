@@ -66,7 +66,15 @@ exports.updateAppointmentValidator = [
     (0, express_validator_1.body)("notes").optional({ nullable: true }).trim(),
 ];
 exports.appointmentIdValidator = [
-    (0, express_validator_1.param)("id").isUUID().withMessage("ID do agendamento inválido."),
+    (0, express_validator_1.param)("id").custom((value) => {
+        // Special case: 'me' is used to retrieve appointments where the user is the client (user's schedule with professionals)
+        if (value === 'me')
+            return true;
+        // Regular case: validate UUID format for specific appointment IDs
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value))
+            return true;
+        throw new Error("ID do agendamento inválido.");
+    }),
 ];
 // Novo validador para a rota de disponibilidade
 exports.getAvailabilityValidator = [

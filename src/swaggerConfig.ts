@@ -15,7 +15,7 @@ const options: swaggerJsdoc.Options = {
     },
     servers: [
       {
-        url: `http://localhost:${process.env.PORT || 3002}`, // Use PORT from .env or default
+        url: `http://localhost:${process.env.PORT || 3003}`, // Use PORT from .env or default
         description: "Servidor de Desenvolvimento",
       },
     ],

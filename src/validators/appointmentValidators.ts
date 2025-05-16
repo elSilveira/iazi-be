@@ -67,7 +67,14 @@ export const updateAppointmentValidator = [
 ];
 
 export const appointmentIdValidator = [
-  param("id").isUUID().withMessage("ID do agendamento inválido."),
+  param("id").custom((value) => {
+    // Special case: 'me' is used to retrieve the user's personal schedule in a user-centric format
+    // This returns appointments where the user is the client, formatted to emphasize the user's schedule
+    if (value === 'me') return true;
+    // Regular case: validate UUID format for specific appointment IDs
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) return true;
+    throw new Error("ID do agendamento inválido.");
+  }),
 ];
 
 // Novo validador para a rota de disponibilidade

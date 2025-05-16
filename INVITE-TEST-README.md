@@ -5,7 +5,7 @@ This folder contains scripts for testing the invite code generation endpoint in 
 ## Prerequisites
 
 - Node.js and npm installed
-- IAZI-BE server running (default port: 3002)
+- IAZI-BE server running (default port: 3003)
 - Database properly configured
 
 ## Setup

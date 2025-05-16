@@ -505,6 +505,16 @@ export const listAppointments = async (req: Request, res: Response, next: NextFu
 };
 
 // Obter detalhes de um agendamento específico
+/**
+ * Get an appointment by ID or the user's appointment schedule
+ * 
+ * This endpoint serves two purposes:
+ * 1. When id is a UUID: Returns a specific appointment if the user has permission to view it
+ * 2. When id is 'me': Returns the user's appointment schedule in a user-centric format
+ *    - The response is structured around the user's appointments with simplified professional and service details
+ *    - The data is formatted to show the user's schedule with associated services and professionals
+ *    - For professionals to see appointments scheduled with them, they should use the standard list endpoint with filters
+ */
 export const getAppointmentById = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
     const { id } = req.params;
     const user = req.user;
@@ -512,7 +522,198 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
 
     if (!user) {
         return res.status(401).json({ message: 'Usuário não autenticado.' });
+    }    // Special case for 'me' - return the user's personal schedule in a user-centric format
+    if (id === 'me') {
+        try {
+            const { 
+                status, dateFrom, dateTo, serviceId, professionalId, 
+                companyId, limit, sort, page = "1" 
+            } = req.query;
+            
+            // Create proper filters object for the repository
+            let filters: Prisma.AppointmentWhereInput = {
+                userId: user.id // Filter by userId to get the user's appointments WITH professionals
+            };
+            
+            // Add other filters similar to listAppointments
+            // Filter by status
+            if (status && typeof status === 'string' && status in AppointmentStatus) {
+                filters.status = status as AppointmentStatus;
+            }
+            
+            // Filter by date range
+            if (dateFrom && typeof dateFrom === 'string') {
+                const parsedFromDate = parse(dateFrom as string, 'yyyy-MM-dd', new Date());
+                if (isValid(parsedFromDate)) {
+                    filters.startTime = filters.startTime || {};
+                    Object.assign(filters.startTime, { 
+                        gte: startOfDay(parsedFromDate),
+                    });
+                }
+            }
+            
+            if (dateTo && typeof dateTo === 'string') {
+                const parsedToDate = parse(dateTo as string, 'yyyy-MM-dd', new Date());
+                if (isValid(parsedToDate)) {
+                    filters.startTime = filters.startTime || {};
+                    Object.assign(filters.startTime, { 
+                        lte: endOfDay(parsedToDate),
+                    });
+                }
+            }
+            
+            // Filter by serviceId
+            if (serviceId && typeof serviceId === 'string' && isValidUUID(serviceId)) {
+                filters.services = { some: { serviceId: serviceId } };
+            }
+            
+            // Filter by professionalId
+            if (professionalId && typeof professionalId === 'string' && isValidUUID(professionalId)) {
+                filters.professionalId = professionalId;
+            }
+            
+            // Filter by companyId
+            if (companyId && typeof companyId === 'string' && isValidUUID(companyId)) {
+                filters.companyId = companyId;
+            }
+            
+            // Setup pagination
+            const pageSize = limit ? parseInt(limit as string) : 100;
+            const currentPage = parseInt(page as string) || 1;
+            const skip = (currentPage - 1) * pageSize;
+            
+            // Setup ordering
+            let orderBy: any = { startTime: 'asc' };
+            if (sort === 'startTime_desc') {
+                orderBy = { startTime: 'desc' };
+            }
+            
+            // Count total appointments matching the filters
+            const totalCount = await prisma.appointment.count({ where: filters });
+              // Get appointments for the current user with pagination and ordering
+            // Use a more focused include object that prioritizes the user's schedule view
+            const appointments = await prisma.appointment.findMany({
+                where: filters,
+                include: {
+                    services: { 
+                        include: { 
+                            service: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    description: true,
+                                    duration: true,
+                                    price: true,
+                                    categoryId: true,
+                                    image: true
+                                }
+                            } 
+                        } 
+                    },                    professional: {
+                        select: {
+                            id: true,
+                            name: true,
+                            role: true,
+                            image: true,
+                            phone: true,
+                            services: {
+                                include: {
+                                    service: true
+                                }
+                            },
+                            company: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    logo: true,
+                                    address: {
+                                        select: {
+                                            street: true,
+                                            number: true,
+                                            neighborhood: true,
+                                            city: true,
+                                            state: true,
+                                            zipCode: true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    company: {
+                        select: {
+                            id: true,
+                            name: true,
+                            logo: true
+                        }
+                    }
+                    // Don't include user details since we're already filtering by the current user
+                },
+                orderBy: orderBy,
+                skip: skip,
+                take: pageSize,
+            });
+              // Transform the appointments to focus on the user's schedule view
+            const userSchedule = appointments.map(appointment => ({
+                id: appointment.id,
+                startTime: appointment.startTime,
+                endTime: appointment.endTime,
+                status: appointment.status,
+                notes: appointment.notes,
+                createdAt: appointment.createdAt,                services: appointment.services.map(svc => {
+                    // Find if there's a matching professional service with custom price/description
+                    const professionalService = appointment.professional?.services?.find(
+                        ps => ps.serviceId === svc.serviceId
+                    );
+                    
+                    return {
+                        id: svc.service.id,
+                        name: svc.service.name,
+                        description: professionalService?.description || svc.service.description,
+                        duration: svc.service.duration,
+                        price: professionalService?.price || svc.service.price
+                    };
+                }),professional: appointment.professional ? {
+                    id: appointment.professional.id,
+                    name: appointment.professional.name,
+                    role: appointment.professional.role,
+                    image: appointment.professional.image,
+                    phone: appointment.professional.phone,                    services: appointment.professional.services ? 
+                        appointment.professional.services.map(ps => ({
+                            id: ps.service.id,
+                            name: ps.service.name,
+                            description: ps.description || ps.service.description,
+                            price: ps.price || ps.service.price,
+                            duration: ps.service.duration
+                        })) : [],
+                    company: appointment.professional.company ? {
+                        id: appointment.professional.company.id,
+                        name: appointment.professional.company.name,
+                        location: appointment.professional.company.address ? 
+                            `${appointment.professional.company.address.city}, ${appointment.professional.company.address.state}` : null
+                    } : null
+                } : null,
+                location: appointment.company ? {
+                    id: appointment.company.id,
+                    name: appointment.company.name
+                } : null
+            }));
+            
+            // Return the user's schedule in a clear format
+            return res.json({
+                data: userSchedule,
+                meta: {
+                    total: totalCount,
+                    page: currentPage,
+                    limit: pageSize
+                }
+            });
+        } catch (error) {
+            console.error("Error fetching user appointments:", error);
+            return res.status(500).json({ message: 'Erro ao buscar agendamentos do usuário.' });
+        }
     }
+    
     if (!isValidUUID(id)) {
         return res.status(400).json({ message: 'ID de agendamento inválido.' });
     }
