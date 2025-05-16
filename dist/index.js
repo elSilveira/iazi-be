@@ -57,7 +57,7 @@ const searchRoutes_1 = __importDefault(require("./routes/searchRoutes")); // Usi
 const swagger_1 = require("./swagger");
 const app = (0, express_1.default)();
 exports.app = app;
-const port = process.env.PORT || 3003;
+const port = process.env.PORT || 3002;
 // Confia no primeiro proxy
 app.set('trust proxy', 1);
 // --- Rate Limiting Configuration ---

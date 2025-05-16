@@ -73,7 +73,7 @@ O ServiConnect Backend é uma API RESTful desenvolvida com Node.js e TypeScript,
         JWT_REFRESH_EXPIRATION="7d"
 
         # Porta em que o servidor irá rodar
-        PORT=3003
+        PORT=3002
 
         # Ambiente (development, production, test)
         NODE_ENV=development
@@ -105,7 +105,7 @@ O ServiConnect Backend é uma API RESTful desenvolvida com Node.js e TypeScript,
     ```bash
     npm run dev
     ```
-    O servidor estará disponível em `http://localhost:3003` (ou a porta definida em `PORT`).
+    O servidor estará disponível em `http://localhost:3002` (ou a porta definida em `PORT`).
 
 *   **Compilar para Produção (Build):**
     Compila o código TypeScript para JavaScript no diretório `dist/`.
@@ -178,7 +178,7 @@ O ServiConnect Backend é uma API RESTful desenvolvida com Node.js e TypeScript,
 
 A documentação interativa da API está disponível através do Swagger UI.
 
-**Acesse:** `http://localhost:3003/api-docs` (quando o servidor `npm run dev` estiver em execução).
+**Acesse:** `http://localhost:3002/api-docs` (quando o servidor `npm run dev` estiver em execução).
 
 ## Recursos Principais
 
@@ -278,7 +278,7 @@ As variáveis de ambiente são cruciais para a configuração em produção. **N
 *   **Docker:**
     *   Passe as variáveis ao executar o contêiner usando a flag `-e` ou um arquivo `env-file`:
         ```bash
-        docker run -p 3003:3003 \
+        docker run -p 3002:3002 \
           -e DATABASE_URL="..." \
           -e JWT_SECRET="..." \
           -e NODE_ENV=production \

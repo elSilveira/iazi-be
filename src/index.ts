@@ -23,7 +23,7 @@ import searchRoutes from './routes/searchRoutes'; // Using the search routes wit
 import { setupSwagger } from './swagger';
 
 const app: Express = express();
-const port = process.env.PORT || 3003;
+const port = process.env.PORT || 3002;
 
 // Confia no primeiro proxy
 app.set('trust proxy', 1);

@@ -12,7 +12,7 @@ const options = {
     },
     servers: [
       {
-        url: 'http://localhost:3003', // Ajuste a URL base conforme necessário
+        url: 'http://localhost:3002', // Ajuste a URL base conforme necessário
         description: 'Servidor de Desenvolvimento',
       },
     ],
@@ -712,6 +712,6 @@ const swaggerSpec = swaggerJsdoc(options);
 export const setupSwagger = (app: Express) => {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
   console.log(`[swagger]: Documentação da API disponível em /api-docs`);
-  console.log(`[swagger]: Documentação da API disponível em http://localhost:3003/api-docs`); // Log the full URL
+  console.log(`[swagger]: Documentação da API disponível em http://localhost:3002/api-docs`); // Log the full URL
 };
 

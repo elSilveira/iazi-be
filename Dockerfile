@@ -39,12 +39,12 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./
 
-# Expose the application port (ensure it matches the PORT env var, default 3003)
-EXPOSE 3003
+# Expose the application port (ensure it matches the PORT env var, default 3002)
+EXPOSE 3002
 
 # Define environment variables (can be overridden at runtime)
 ENV NODE_ENV=production
-# PORT=3003 # Already set in .env, but can be set here as default
+# PORT=3002 # Already set in .env, but can be set here as default
 
 # Command to run migrations and start the application
 # Option 1: Run migrations before starting (simpler for some platforms)
@@ -55,5 +55,5 @@ ENV NODE_ENV=production
 CMD ["node", "dist/index.js"]
 
 # Healthcheck (optional but recommended)
-# HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD curl --fail http://localhost:3003/api/health || exit 1
+# HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD curl --fail http://localhost:3002/api/health || exit 1
 
