@@ -13,7 +13,6 @@ if (-not (Get-Command railway -ErrorAction SilentlyContinue)) {
 # Copy our direct approach files to make them the defaults
 Write-Host "Setting up direct approach files..." -ForegroundColor Green
 Copy-Item -Path .\railway-direct.json -Destination .\railway.json -Force
-Copy-Item -Path .\new-fallback-server.js -Destination .\fallback-server.js -Force
 Copy-Item -Path .\Dockerfile.direct -Destination .\Dockerfile -Force
 
 # Login to Railway if needed

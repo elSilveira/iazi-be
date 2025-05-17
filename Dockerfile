@@ -159,6 +159,6 @@ ENV NODE_ENV=production
 HEALTHCHECK --interval=30s --timeout=20s --start-period=30s --retries=3 \
   CMD ./healthcheck.sh
 
-# Command to run the fallback server directly
-CMD node fallback-server.js
+# Command to run the direct starter
+CMD ["node", "railway-direct-starter.js"]
 

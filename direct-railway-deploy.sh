@@ -14,7 +14,6 @@ fi
 # Copy our direct approach files to make them the defaults
 echo "Setting up direct approach files..."
 cp railway-direct.json railway.json
-cp new-fallback-server.js fallback-server.js
 cp Dockerfile.direct Dockerfile
 
 # Login to Railway if needed

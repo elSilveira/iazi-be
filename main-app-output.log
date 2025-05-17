@@ -1,0 +1,37 @@
+Not all input has been taken into account at your final specification.
+Here's the report: 
+
+
+ Error in ./src/routes/appointmentRoutes.ts :
+YAMLSyntaxError: All collection items must start at the same column at line 3, column 5:
+
+    summary: Obtém um agendamento específico pelo ID ou a agenda pessoal do usu…
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^…
+
+YAMLSemanticError: Nested mappings are not allowed in compact mappings at line 17, column 22:
+
+        description: ID do agendamento ou 'me' para obter a agenda pessoal do u…
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^…
+
+[swagger]: Documentação da API disponível em /api-docs
+[swagger]: Documentação da API disponível em http://localhost:3002/api-docs
+node:events:485
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use 0.0.0.0:3003
+    at Server.setupListenHandle [as _listen2] (node:net:1937:16)
+    at listenInCluster (node:net:1994:12)
+    at node:net:2203:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1973:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 3003
+}
+
+Node.js v23.9.0
