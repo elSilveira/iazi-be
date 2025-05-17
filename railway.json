@@ -1,0 +1,9 @@
+{
+  "name": "iazi-api",
+  "version": 2,
+  "buildCommand": "sh railway-build.sh",
+  "startCommand": "npx prisma generate && node dist/index.js",
+  "healthcheckPath": "/api/health",
+  "healthcheckTimeout": 5,
+  "restartPolicyType": "ON_FAILURE"
+}

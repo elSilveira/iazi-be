@@ -39,6 +39,10 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./
 
+# Make sure Prisma client is properly generated and available
+RUN npm install --only=production
+RUN npx prisma generate
+
 # Expose the application port (ensure it matches the PORT env var, default 3002)
 EXPOSE 3002
 
@@ -52,7 +56,7 @@ ENV NODE_ENV=production
 
 # Option 2: Start the application directly (migrations handled externally)
 # This is often preferred as the container shouldn't necessarily handle migrations.
-CMD ["node", "dist/index.js"]
+CMD npx prisma generate && node dist/index.js
 
 # Healthcheck (optional but recommended)
 # HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD curl --fail http://localhost:3002/api/health || exit 1

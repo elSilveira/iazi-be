@@ -2,23 +2,24 @@
   "name": "serviconnect-backend",
   "version": "1.0.0",
   "description": "Backend para o projeto ServiConnect",
-  "main": "dist/index.js",
-  "scripts": {
+  "main": "dist/index.js",  "scripts": {
     "start": "node dist/index.js",
     "dev": "cross-env PORT=3002 nodemon src/index.ts",
     "build": "tsc",
     "test": "jest",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
-    "prisma:seed": "prisma db seed"
+    "prisma:seed": "prisma db seed",
+    "railway:build": "sh railway-build.sh",
+    "postinstall": "prisma generate"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "dependencies": {
+  "license": "ISC",  "dependencies": {
+    "@prisma/client": "^6.7.0",
     "@types/helmet": "^0.0.48",
     "@types/node-cron": "^3.0.11",
     "cors": "^2.8.5",
@@ -36,7 +37,6 @@
     "winston": "^3.17.0"
   },
   "devDependencies": {
-    "@prisma/client": "^6.7.0",
     "@types/bcrypt": "^5.0.2",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
