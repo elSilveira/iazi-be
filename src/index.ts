@@ -108,23 +108,45 @@ export { app };
 if (process.env.NODE_ENV !== 'test') {
   // Adiciona manipulação de erros durante a inicialização
   try {
-    // Usa o NODE_ENV para determinar o host de bind - isso é importante para Railway
-    const host = process.env.NODE_ENV === 'production' ? '::' : '0.0.0.0';
+    // Use environment variable BIND_IP if set, otherwise use appropriate default
+    // This allows for explicit configuration in Railway
+    const host = process.env.BIND_IP || (process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost');
     
     console.log(`[startup]: Iniciando servidor na porta ${port} e host ${host}`);
     console.log(`[startup]: Variáveis de ambiente: PORT=${process.env.PORT}, NODE_ENV=${process.env.NODE_ENV}`);
     
-    // Ao usar :: como host, o Node.js aceita tanto IPv6 quanto IPv4
-    const server = app.listen(Number(port), host, () => {
+    // Create HTTP server explicitly to have more control over binding
+    const http = require('http');
+    const server = http.createServer(app);
+    
+    // Function to handle successful server start
+    const handleServerStart = () => {
       console.log(`[server]: Servidor rodando em http://localhost:${port}`);
       console.log(`[swagger]: Documentação da API disponível em http://localhost:${port}/api-docs`);
-      console.log(`[server]: Servidor vinculado às interfaces ${host}`);
-    });
+      console.log(`[server]: Servidor vinculado à interface ${host}`);
+      
+      // Additional Railway diagnostics
+      if (process.env.NODE_ENV === 'production') {
+        const os = require('os');
+        console.log(`[server]: Hostname: ${os.hostname()}`);
+        console.log(`[server]: Network interfaces:`, JSON.stringify(os.networkInterfaces()));
+      }
+    };
+    
+    // Start server with proper error handling
+    server.listen(Number(port), host, handleServerStart);
     
     // Manipuladores de eventos do servidor para capturar erros
-    server.on('error', (error) => {
+    server.on('error', (error: any) => {
       console.error('[server]: Erro ao iniciar o servidor:', error);
-      process.exit(1);
+      
+      // If we couldn't bind to the specified host, try again with '0.0.0.0'
+      if (error.code === 'EADDRNOTAVAIL' && host !== '0.0.0.0') {
+        console.log('[server]: Tentando iniciar novamente com host 0.0.0.0...');
+        server.listen(Number(port), '0.0.0.0', handleServerStart);
+      } else {
+        process.exit(1);
+      }
     });
     
   } catch (error) {

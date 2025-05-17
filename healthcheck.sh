@@ -74,12 +74,3 @@ check_health() {
 
 # Executar verificação de saúde
 check_health
-      sleep $RETRY_INTERVAL
-    fi
-  done
-  
-  echo "❌ Falha após $MAX_RETRIES tentativas"
-  exit 1
-}
-
-check_health

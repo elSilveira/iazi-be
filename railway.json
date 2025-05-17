@@ -2,7 +2,7 @@
   "name": "iazi-api",
   "version": 2,
   "buildCommand": "bash -c \"chmod +x docker-memory-optimize.sh && source docker-memory-optimize.sh && chmod +x railway-build.sh && ./railway-build.sh\" || powershell -c \"$env:NODE_OPTIONS='--max-old-space-size=512 --expose-gc --gc-global'; & .\\railway-build.bat\"",
-  "startCommand": "bash -c \"chmod +x railway-startup-fix.sh && ./railway-startup-fix.sh && source docker-memory-optimize.sh && npx prisma generate && export DEBUG=express:* && node --max-old-space-size=512 app-startup.mjs\" || powershell -c \"$env:NODE_OPTIONS='--max-old-space-size=512'; $env:DEBUG='express:*'; npx prisma generate && node app-startup.mjs\"",
+  "startCommand": "bash -c \"chmod +x railway-startup-fix.sh && chmod +x railway-network-fix.sh && ./railway-startup-fix.sh && ./railway-network-fix.sh && source docker-memory-optimize.sh && npx prisma generate && export DEBUG=express:* && node --max-old-space-size=512 --dns-result-order=ipv4first app-startup.mjs\" || powershell -c \"$env:NODE_OPTIONS='--max-old-space-size=512 --dns-result-order=ipv4first'; $env:DEBUG='express:*'; npx prisma generate && node app-startup.mjs\"",
   "healthcheckPath": "/api/health",
   "healthcheckTimeout": 60,
   "restartPolicyType": "ON_FAILURE",
