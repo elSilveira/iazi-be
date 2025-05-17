@@ -36,14 +36,23 @@ RUN npm cache clean --force && \
 # Copy Prisma schema
 COPY prisma ./prisma/
 
+# Copy Docker-specific TypeScript config and build script
+COPY tsconfig.docker.json ./
+COPY docker-typescript-build.sh ./
+RUN chmod +x docker-typescript-build.sh
+
 # Generate Prisma Client
 RUN npx prisma generate
 
 # Copy the rest of the application source code
 COPY . .
 
-# Build the TypeScript project
-RUN npm run build
+# Fix Prisma client type issues
+RUN sed -i 's/import { PrismaClient } from "@prisma\/client";/import { PrismaClient, Prisma } from "@prisma\/client";/' src/utils/prismaClient.ts && \
+    sed -i 's/\[\(.*\)\]/[\1] as Prisma.LogLevel[]/' src/utils/prismaClient.ts
+
+# Run Docker-specific TypeScript build
+RUN ./docker-typescript-build.sh
 
 # Stage 2: Runner
 FROM node:18-alpine AS runtime
