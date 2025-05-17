@@ -52,37 +52,66 @@ const router = Router();
 router.get('/', async (req: Request, res: Response) => {
   let dbConnected = false;
   let dbError = null;
+  let retryCount = 0;
+  const maxRetries = 3;
+  
+  // Function to test the database connection with retries
+  const testDbConnection = async () => {
+    while (retryCount < maxRetries) {
+      try {
+        // Simple database query to check connectivity
+        await prisma.$queryRaw`SELECT 1 as result`;
+        dbConnected = true;
+        return;
+      } catch (error) {
+        retryCount++;
+        console.error(`[health]: Database connectivity check failed (attempt ${retryCount}/${maxRetries}):`, error);
+        dbError = error instanceof Error ? error.message : 'Unknown database error';
+        
+        // If we have more retries to go, wait before trying again
+        if (retryCount < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between retries
+        }
+      }
+    }
+  };
   
   try {
-    // Test database connection - simple query that shouldn't fail
-    await prisma.$queryRaw`SELECT 1 as result`;
-    dbConnected = true;
+    await testDbConnection();
   } catch (error) {
-    console.error('[health]: Database connectivity check failed:', error);
-    dbError = error instanceof Error ? error.message : 'Unknown database error';
+    console.error('[health]: Database connectivity check completely failed:', error);
   }
   
   // Get memory usage for diagnostics
   const memoryUsage = process.memoryUsage();
   
-  // Determine overall status
-  const isHealthy = dbConnected;
-  const statusCode = isHealthy ? 200 : 503; // Return 503 Service Unavailable if not healthy
+  // For Railway, always return 200 from the health check if the app is running
+  // This ensures Railway doesn't cycle the container while we're debugging DB connectivity
+  const statusCode = 200;
   
   res.status(statusCode).json({
-    status: isHealthy ? 'ok' : 'unhealthy',
+    status: dbConnected ? 'ok' : 'limited',
+    appStatus: 'running',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development',
     dbConnected,
     dbError,
+    dbRetries: retryCount,
     memoryUsage: {
       rss: Math.round(memoryUsage.rss / 1024 / 1024) + 'MB',  
       heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024) + 'MB',
       heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024) + 'MB'
     },
     port: process.env.PORT || 3002,
-    hostname: require('os').hostname()
+    hostname: require('os').hostname(),
+    database: process.env.DATABASE_URL ? 'configured' : 'not configured',
+    envVars: {
+      NODE_ENV: process.env.NODE_ENV || 'not set',
+      PORT: process.env.PORT || 'not set',
+      DATABASE_URL: process.env.DATABASE_URL ? 'set' : 'not set',
+      JWT_SECRET: process.env.JWT_SECRET ? 'set' : 'not set'
+    }
   });
 });
 

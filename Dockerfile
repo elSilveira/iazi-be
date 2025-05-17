@@ -132,10 +132,13 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/healthcheck.sh ./healthcheck.sh
 COPY --from=builder /app/docker-memory-optimize.sh /usr/local/bin/docker-memory-optimize.sh
 COPY --from=builder /app/deployment-diagnostics.js ./deployment-diagnostics.js
+COPY --from=builder /app/app-startup.mjs ./app-startup.mjs
+COPY --from=builder /app/railway-startup-fix.sh ./railway-startup-fix.sh
 
 # Ensure scripts are executable
 RUN chmod +x healthcheck.sh && \
-    chmod +x /usr/local/bin/docker-memory-optimize.sh
+    chmod +x /usr/local/bin/docker-memory-optimize.sh && \
+    chmod +x railway-startup-fix.sh
 
 # Generate Prisma client with memory optimization
 RUN PRISMA_CLI_MEMORY_MIN=64 PRISMA_CLI_MEMORY_MAX=512 npx prisma generate
@@ -152,6 +155,7 @@ HEALTHCHECK --interval=30s --timeout=20s --start-period=30s --retries=3 \
 
 # Command to run migrations and start the application with memory optimizations
 CMD . /usr/local/bin/docker-memory-optimize.sh && \
+    ./railway-startup-fix.sh && \
     npx prisma generate && \
-    DEBUG=express:* node dist/index.js
+    DEBUG=express:* node app-startup.mjs
 
