@@ -1,0 +1,67 @@
+# Dockerfile for pre-built node_modules approach
+# Use this as a last resort if all other optimization attempts fail
+
+# Stage 0: Build node_modules locally first with:
+# npm install
+# npm rebuild bcrypt
+# mkdir -p ./docker-build-context
+# cp -r node_modules ./docker-build-context/
+# cp -r dist ./docker-build-context/ (if already built)
+# cp -r package*.json ./docker-build-context/
+# cp -r prisma ./docker-build-context/
+
+# Stage 1: Copy pre-built files
+FROM node:18-alpine AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Set memory optimization environment variables
+ENV NODE_OPTIONS="--max-old-space-size=512" \
+    NODE_ENV=production
+
+# Copy pre-built files
+COPY docker-build-context/node_modules ./node_modules
+COPY docker-build-context/package*.json ./
+
+# Copy source code only if not pre-built
+COPY src ./src
+COPY tsconfig.json ./
+
+# Copy Prisma schema
+COPY docker-build-context/prisma ./prisma/
+
+# If dist is not pre-built, build it (uncomment if needed)
+# RUN npm run build
+
+# Stage 2: Runtime
+FROM node:18-alpine AS runtime
+
+# Memory optimization environment variables
+ENV NODE_OPTIONS="--max-old-space-size=512" \
+    NODE_ENV=production
+
+WORKDIR /app
+
+# Install only wget for healthcheck
+RUN apk add --no-cache wget
+
+# Copy from builder stage
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/dist ./dist
+
+# Copy healthcheck script
+COPY healthcheck.sh ./
+RUN chmod +x healthcheck.sh
+
+# Expose port
+EXPOSE 3002
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=30s --start-period=30s --retries=3 \
+  CMD ./healthcheck.sh
+
+# Start command
+CMD npx prisma generate && node dist/index.js
