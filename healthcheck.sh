@@ -6,7 +6,7 @@
 HOST="localhost"
 PORT="${PORT:-3002}" # Usa valor da variável PORT ou 3002 como padrão
 ENDPOINT="/api/health"
-TIMEOUT=5
+TIMEOUT=10
 
 echo "🩺 Verificando saúde da aplicação em http://$HOST:$PORT$ENDPOINT"
 

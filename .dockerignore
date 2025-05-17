@@ -3,11 +3,17 @@ node_modules
 npm-debug.log
 yarn-debug.log
 yarn-error.log
+.npm
+.yarn
+.pnp.*
 
 # Docker files
 Dockerfile
 docker-compose.yml
 .dockerignore
+*.dockerignore
+validate-docker*.sh
+docker-validation-logs.txt
 
 # Git files
 .git
@@ -18,10 +24,16 @@ docker-compose.yml
 dist
 build
 coverage
+.cache
+*.tsbuildinfo
 
 # Log files
 logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+tsc_errors*.log
 
 # Environment variables
 .env
@@ -29,6 +41,76 @@ logs
 !.env.example
 
 # Testing
+__tests__
+test
+tests
+jest.config.js
+*.spec.*
+*.test.*
+
+# Editor files
+.idea
+.vscode
+*.swp
+*.swo
+.DS_Store
+.editorconfig
+Thumbs.db
+
+# Temporary files
+tmp
+temp
+.tmp
+*.tmp
+*.bak
+.temp
+
+# Documentation - keep essentials only
+docs
+*.md
+!README.md
+!RAILWAY-DOCKER-DEPLOY.md
+!NPM-INSTALL-TROUBLESHOOTING.md
+
+# Railway scripts we don't need in the image
+railway-test.sh
+monitor-railway-deploy.sh
+pre-deploy-check.sh
+
+# Debug files
+*.debug
+debug
+
+# Large binary files (if any)
+*.zip
+*.tar.gz
+*.tgz
+*.rar
+tests
+jest.config.js
+*.spec.*
+*.test.*
+
+# Editor files
+.idea
+.vscode
+*.swp
+*.swo
+.DS_Store
+.editorconfig
+
+# Temporary files
+tmp
+temp
+.tmp
+*.tmp
+*.bak
+
+# Documentation
+docs
+*.md
+!README.md
+!RAILWAY-DOCKER-DEPLOY.md
 __tests__
 tests
 test
