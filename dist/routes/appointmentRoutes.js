@@ -89,7 +89,7 @@ router.get("/", (0, asyncHandler_1.default)(appointmentController_1.listAppointm
  * @swagger
  * /api/appointments/{id}:
  *   get:
- *     summary: Obtém um agendamento específico pelo ID ou lista os agendamentos do usuário
+ *     summary: Obtém um agendamento específico pelo ID ou a agenda pessoal do usuário
  *     tags: [Appointments]
  *     security:
  *       - bearerAuth: []
@@ -103,16 +103,15 @@ router.get("/", (0, asyncHandler_1.default)(appointmentController_1.listAppointm
  *               format: uuid
  *             - type: string
  *               enum: ['me']
- *         description: ID do agendamento ou 'me' para obter a agenda do usuário com profissionais (onde o usuário é o cliente)
- *     responses:
+ *         description: ID do agendamento ou 'me' para obter a agenda pessoal do usuário (foco no usuário com informações simplificadas de serviços e profissionais) *     responses:
  *       200:
- *         description: Detalhes do agendamento ou lista de agendamentos retornados com sucesso.
+ *         description: Detalhes do agendamento ou agenda pessoal do usuário retornados com sucesso.
  *         content:
  *           application/json:
  *             schema:
  *               oneOf:
  *                 - $ref: '#/components/schemas/Appointment'
- *                 - $ref: '#/components/schemas/AppointmentListResponse'
+ *                 - $ref: '#/components/schemas/UserScheduleResponse'
  *
  *       400:
  *         description: ID inválido.

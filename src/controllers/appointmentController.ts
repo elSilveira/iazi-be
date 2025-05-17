@@ -778,40 +778,40 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
             ? appointment.services.map((as: any) => as.service?.name).filter(Boolean).join(', ')
             : 'serviço desconhecido';
 
-        switch (newStatus) {
-            case AppointmentStatus.CONFIRMED:
+        switch (newStatus) {            case AppointmentStatus.CONFIRMED:
                 if ((isAdmin || isProfOrCompanyAdmin) && currentStatus === AppointmentStatus.PENDING) {
                     allowed = true;
                     activityType = "APPOINTMENT_CONFIRMED";
                     activityMessage = `Seu agendamento de ${serviceNames} para ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} foi confirmado.`;
                 }
-                break;            case AppointmentStatus.CANCELLED:
+                break;
+            case AppointmentStatus.CANCELLED:
                 // Permitir que qualquer agendamento seja cancelado a qualquer momento
                 if (isAdmin || isProfOrCompanyAdmin) {
                     allowed = true;
                 } else if (isOwner) {
                     allowed = true;
-                }
-                if (allowed) {
+                }                if (allowed) {
                     activityType = "APPOINTMENT_CANCELLED";
                     activityMessage = `Seu agendamento de ${serviceNames} para ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} foi cancelado.`;
                 }
-                break;case AppointmentStatus.COMPLETED:
+                break;
+            case AppointmentStatus.COMPLETED:
                 // Permitir que qualquer agendamento seja marcado como concluído a qualquer momento
                 if (isAdmin || isProfOrCompanyAdmin) {
                     allowed = true;
-                    activityType = "APPOINTMENT_COMPLETED";
-                    activityMessage = `Seu agendamento de ${serviceNames} em ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} foi concluído.`;
+                    activityType = "APPOINTMENT_COMPLETED";                    activityMessage = `Seu agendamento de ${serviceNames} em ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} foi concluído.`;
                     gamificationEvent = GamificationEventType.APPOINTMENT_COMPLETED;
                 }
-                break;            case AppointmentStatus.IN_PROGRESS:
+                break;
+            case AppointmentStatus.IN_PROGRESS:
                 // Permitir a transição para IN_PROGRESS a partir de qualquer status (exceto os finais)
                 if (isAdmin || isProfOrCompanyAdmin) {
-                    allowed = true;
-                    activityType = "APPOINTMENT_IN_PROGRESS";
+                    allowed = true;                    activityType = "APPOINTMENT_IN_PROGRESS";
                     activityMessage = `Seu agendamento de ${serviceNames} em ${format(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} está em andamento.`;
                 }
-                break;case AppointmentStatus.NO_SHOW:
+                break;
+            case AppointmentStatus.NO_SHOW:
                 // Permitir que qualquer agendamento seja marcado como não compareceu a qualquer momento
                 if (isAdmin || isProfOrCompanyAdmin) {
                     allowed = true;

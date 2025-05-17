@@ -965,3 +965,53 @@
 [31mUnknown argument `role`. Did you mean `name`? Available options are marked with ?. - /api/search?q=&category=&sort=rating&page=1&limit=4&type=all&professionalTipo=all - GET - 127.0.0.1[39m
 2025-05-15 16:30:39:3039 [31merror[39m: [31m401 - Not authorized, no token - /api/appointments - GET - 127.0.0.1[39m
 2025-05-15 19:33:06:336 [31merror[39m: [31m401 - Credenciais inválidas - /api/auth/login - POST - 127.0.0.1[39m
+2025-05-16 16:09:57:957 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?include=service,professional,services.service&limit=10&sort=startTime_asc - GET - 127.0.0.1[39m
+2025-05-16 16:09:57:957 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?include=service,professional,services.service&limit=5&sort=startTime_asc - GET - 127.0.0.1[39m
+2025-05-16 16:09:57:957 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?include=professional&limit=5&sort=startTime_desc - GET - 127.0.0.1[39m
+2025-05-16 16:09:57:957 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?include=service,professional,services.service&status=completed&limit=5&sort=endTime_desc - GET - 127.0.0.1[39m
+2025-05-16 16:09:57:957 [31merror[39m: [31m400 - Refresh token não fornecido - /api/auth/refresh - POST - 127.0.0.1[39m
+2025-05-16 16:16:52:1652 [31merror[39m: [31m401 - Not authorized, token failed - /api/appointments?professionalId=your-professional-id&status=pending,confirmed - GET - 127.0.0.1[39m
+2025-05-16 19:30:05:305 [31merror[39m: [31m500 - [39m
+[31mInvalid `prisma.appointment.count()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\controllers\appointmentController.ts:444:53[39m
+
+[31m  441 }[39m
+[31m  442 [39m
+[31m  443 // Count total matching appointments for pagination[39m
+[31m→ 444 const totalCount = await prisma.appointment.count([39m
+[31mCan't reach database server at `aws-0-sa-east-1.pooler.supabase.com:5432`[39m
+
+[31mPlease make sure your database server is running at `aws-0-sa-east-1.pooler.supabase.com:5432`. - /api/appointments?professionalId=6e5a52d5-3974-48fd-b974-f7f4e7b20d27&status=pending,confirmed,in-progress&include=user,service,services.service&sort=startTime_asc - GET - undefined[39m
+2025-05-16 19:30:07:307 [31merror[39m: [31m500 - [39m
+[31mInvalid `prisma.appointment.count()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\controllers\appointmentController.ts:444:53[39m
+
+[31m  441 }[39m
+[31m  442 [39m
+[31m  443 // Count total matching appointments for pagination[39m
+[31m→ 444 const totalCount = await prisma.appointment.count([39m
+[31mCan't reach database server at `aws-0-sa-east-1.pooler.supabase.com:5432`[39m
+
+[31mPlease make sure your database server is running at `aws-0-sa-east-1.pooler.supabase.com:5432`. - /api/appointments?professionalId=6e5a52d5-3974-48fd-b974-f7f4e7b20d27&status=pending,confirmed,in-progress&include=user,service,services.service&sort=startTime_asc - GET - 127.0.0.1[39m
+2025-05-16 19:30:11:3011 [31merror[39m: [31m500 - [39m
+[31mInvalid `prisma.appointment.count()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\controllers\appointmentController.ts:444:53[39m
+
+[31m  441 }[39m
+[31m  442 [39m
+[31m  443 // Count total matching appointments for pagination[39m
+[31m→ 444 const totalCount = await prisma.appointment.count([39m
+[31mCan't reach database server at `aws-0-sa-east-1.pooler.supabase.com:5432`[39m
+
+[31mPlease make sure your database server is running at `aws-0-sa-east-1.pooler.supabase.com:5432`. - /api/appointments?professionalId=6e5a52d5-3974-48fd-b974-f7f4e7b20d27&status=pending,confirmed,in-progress&include=user,service,services.service&sort=startTime_asc - GET - 127.0.0.1[39m
+2025-05-16 19:30:17:3017 [31merror[39m: [31m500 - [39m
+[31mInvalid `prisma.appointment.count()` invocation in[39m
+[31mC:\Users\duti_\apps\iazi-be\src\controllers\appointmentController.ts:444:53[39m
+
+[31m  441 }[39m
+[31m  442 [39m
+[31m  443 // Count total matching appointments for pagination[39m
+[31m→ 444 const totalCount = await prisma.appointment.count([39m
+[31mCan't reach database server at `aws-0-sa-east-1.pooler.supabase.com:5432`[39m
+
+[31mPlease make sure your database server is running at `aws-0-sa-east-1.pooler.supabase.com:5432`. - /api/appointments?professionalId=6e5a52d5-3974-48fd-b974-f7f4e7b20d27&status=pending,confirmed,in-progress&include=user,service,services.service&sort=startTime_asc - GET - 127.0.0.1[39m

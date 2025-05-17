@@ -67,7 +67,8 @@ exports.updateAppointmentValidator = [
 ];
 exports.appointmentIdValidator = [
     (0, express_validator_1.param)("id").custom((value) => {
-        // Special case: 'me' is used to retrieve appointments where the user is the client (user's schedule with professionals)
+        // Special case: 'me' is used to retrieve the user's personal schedule in a user-centric format
+        // This returns appointments where the user is the client, formatted to emphasize the user's schedule
         if (value === 'me')
             return true;
         // Regular case: validate UUID format for specific appointment IDs

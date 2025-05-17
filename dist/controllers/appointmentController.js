@@ -55,11 +55,9 @@ const getWorkingHoursForDay = (workingHoursJson, date) => {
     const dateFormatted = (0, date_fns_1.format)(date, 'yyyy-MM-dd');
     // Check if workingHoursJson is a valid object and not null/undefined
     if (!workingHoursJson) {
-        console.log(`No working hours data provided for date ${dateFormatted}`);
         return null;
     }
     if (typeof workingHoursJson !== 'object' || Array.isArray(workingHoursJson)) {
-        console.log(`Working hours is not a valid object for date ${dateFormatted}`);
         return null;
     }
     const dayOfWeek = (0, date_fns_1.getDay)(date); // 0 (Sunday) to 6 (Saturday)
@@ -67,26 +65,21 @@ const getWorkingHoursForDay = (workingHoursJson, date) => {
     // Type assertion to treat workingHoursJson as an indexable object
     const hoursData = workingHoursJson[dayKey];
     if (!hoursData) {
-        console.log(`No hours data found for ${dayKey} (${dateFormatted})`);
         return null;
     }
     if (typeof hoursData !== 'object') {
-        console.log(`Hours data for ${dayKey} is not an object (${dateFormatted})`);
         return null;
     }
     // isOpen can be undefined (assume open) or explicitly true
     if (hoursData.isOpen === false) {
-        console.log(`${dayKey} is marked as closed (isOpen: false) for ${dateFormatted}`);
         return null;
     }
     if (!hoursData.start || !hoursData.end) {
-        console.log(`Missing start or end time for ${dayKey} (${dateFormatted})`);
         return null;
     }
     // Validate time format (HH:MM)
     const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
     if (!timeRegex.test(hoursData.start) || !timeRegex.test(hoursData.end)) {
-        console.error(`Invalid time format in working hours for ${dayKey} (${dateFormatted}): start=${hoursData.start}, end=${hoursData.end}`);
         return null;
     }
     const [startHour, startMinute] = hoursData.start.split(':').map(Number);
@@ -95,11 +88,9 @@ const getWorkingHoursForDay = (workingHoursJson, date) => {
     const endTime = (0, date_fns_1.setSeconds)((0, date_fns_1.setMinutes)((0, date_fns_1.setHours)(date, endHour), endMinute), 0);
     // Ensure end time is after start time
     if (endTime <= startTime) {
-        console.warn(`Working hours end time is not after start time for ${dayKey} (${dateFormatted}). Adjusting end time to next day if necessary or ignoring.`);
         // Handle overnight logic if needed, or simply return null/invalid
         return null; // Or adjust endTime logic based on business rules
     }
-    console.log(`Working hours for ${dayKey} (${dateFormatted}): ${(0, date_fns_1.format)(startTime, 'HH:mm')} to ${(0, date_fns_1.format)(endTime, 'HH:mm')}`);
     return { start: startTime, end: endTime };
 };
 exports.getWorkingHoursForDay = getWorkingHoursForDay;
@@ -113,13 +104,12 @@ const checkAvailability = (professionalId, start, end) => __awaiter(void 0, void
     const workingHoursJson = professional.workingHours || ((_a = professional.company) === null || _a === void 0 ? void 0 : _a.workingHours) || null;
     const workingHoursToday = (0, exports.getWorkingHoursForDay)(workingHoursJson, start);
     if (!workingHoursToday) {
-        console.log(`Availability Check: No working hours defined for ${professionalId} on ${(0, date_fns_1.format)(start, 'yyyy-MM-dd')}, skipping hours check.`);
+        // Skip hours check when no working hours defined
     }
     else {
         // Check if the requested slot is within working hours
         if (!(0, date_fns_1.isWithinInterval)(start, { start: workingHoursToday.start, end: workingHoursToday.end }) ||
             !(0, date_fns_1.isWithinInterval)((0, date_fns_1.addMinutes)(end, -1), { start: workingHoursToday.start, end: workingHoursToday.end })) {
-            console.log(`Availability Check: Slot outside working hours for ${professionalId}.`);
             return false;
         }
     }
@@ -133,12 +123,9 @@ const checkAvailability = (professionalId, start, end) => __awaiter(void 0, void
         // - The appointment starts during our slot
         startTime: { lt: end },
         endTime: { gt: start }
-    });
-    // With the startTime and endTime fields, we can directly check for conflicts
+    }); // With the startTime and endTime fields, we can directly check for conflicts
     // without needing to calculate end times
     if (conflictingAppointments.length > 0) {
-        const conflictingAppointment = conflictingAppointments[0];
-        console.log(`Availability Check: Conflict with existing appointment ${conflictingAppointment.id} [${(0, date_fns_1.format)(conflictingAppointment.startTime, 'HH:mm')}, ${(0, date_fns_1.format)(conflictingAppointment.endTime, 'HH:mm')})`);
         return false;
     }
     // 3. Check for Schedule Blocks (disabled)
@@ -148,12 +135,9 @@ const checkAvailability = (professionalId, start, end) => __awaiter(void 0, void
     //         startTime: { lt: end },
     //         endTime: { gt: start },
     //     }
-    // });
-    // if (conflictingBlocks.length > 0) {
-    //     console.log(`Availability Check: Found conflicting schedule blocks for professional ${professionalId}`);
+    // });    // if (conflictingBlocks.length > 0) {
     //     return false;
     // }
-    console.log(`Availability Check: Slot available for professional ${professionalId}`);
     return true; // Slot is available
 });
 exports.checkAvailability = checkAvailability;
@@ -168,17 +152,6 @@ const createAppointment = (req, res, next) => __awaiter(void 0, void 0, void 0, 
         serviceIds = [serviceId];
     }
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
-    // Enhanced debug log for incoming request data structure
-    console.log(`[Appointment Controller] Request data: ${JSON.stringify({
-        hasServiceIds: Array.isArray(serviceIds),
-        serviceIdsCount: Array.isArray(serviceIds) ? serviceIds.length : 0,
-        originalServiceId: serviceId,
-        originalServiceIds: req.body.serviceIds, // What was originally sent
-        hasUserId: !!userId,
-        professionalId,
-        date,
-        time
-    })}`);
     if (!userId) {
         return res.status(401).json({ message: 'Usuário não autenticado.' });
     }
@@ -427,13 +400,14 @@ const listAppointments = (req, res, next) => __awaiter(void 0, void 0, void 0, f
 exports.listAppointments = listAppointments;
 // Obter detalhes de um agendamento específico
 /**
- * Get an appointment by ID or all appointments for the current user
+ * Get an appointment by ID or the user's appointment schedule
  *
  * This endpoint serves two purposes:
  * 1. When id is a UUID: Returns a specific appointment if the user has permission to view it
- * 2. When id is 'me': Returns all appointments where the current user is the client
- *    - Returns the user's appointments WITH professionals (user's schedule with professionals)
- *    - For professionals to see appointments scheduled WITH them, they should use the standard list endpoint with filters
+ * 2. When id is 'me': Returns the user's appointment schedule in a user-centric format
+ *    - The response is structured around the user's appointments with simplified professional and service details
+ *    - The data is formatted to show the user's schedule with associated services and professionals
+ *    - For professionals to see appointments scheduled with them, they should use the standard list endpoint with filters
  */
 const getAppointmentById = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
@@ -441,7 +415,7 @@ const getAppointmentById = (req, res, next) => __awaiter(void 0, void 0, void 0,
     const { include } = req.query;
     if (!user) {
         return res.status(401).json({ message: 'Usuário não autenticado.' });
-    } // Special case for 'me' - return the user's appointments WITH professionals (user as client)
+    } // Special case for 'me' - return the user's personal schedule in a user-centric format
     if (id === 'me') {
         try {
             const { status, dateFrom, dateTo, serviceId, professionalId, companyId, limit, sort, page = "1" } = req.query;
@@ -497,16 +471,114 @@ const getAppointmentById = (req, res, next) => __awaiter(void 0, void 0, void 0,
             // Count total appointments matching the filters
             const totalCount = yield prisma_1.prisma.appointment.count({ where: filters });
             // Get appointments for the current user with pagination and ordering
+            // Use a more focused include object that prioritizes the user's schedule view
             const appointments = yield prisma_1.prisma.appointment.findMany({
                 where: filters,
-                include: appointmentRepository_1.appointmentRepository.includeDetails,
+                include: {
+                    services: {
+                        include: {
+                            service: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    description: true,
+                                    duration: true,
+                                    price: true,
+                                    categoryId: true,
+                                    image: true
+                                }
+                            }
+                        }
+                    }, professional: {
+                        select: {
+                            id: true,
+                            name: true,
+                            role: true,
+                            image: true,
+                            phone: true,
+                            services: {
+                                include: {
+                                    service: true
+                                }
+                            },
+                            company: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    logo: true,
+                                    address: {
+                                        select: {
+                                            street: true,
+                                            number: true,
+                                            neighborhood: true,
+                                            city: true,
+                                            state: true,
+                                            zipCode: true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    company: {
+                        select: {
+                            id: true,
+                            name: true,
+                            logo: true
+                        }
+                    }
+                    // Don't include user details since we're already filtering by the current user
+                },
                 orderBy: orderBy,
                 skip: skip,
                 take: pageSize,
             });
-            // Return in the same format as listAppointments
+            // Transform the appointments to focus on the user's schedule view
+            const userSchedule = appointments.map(appointment => ({
+                id: appointment.id,
+                startTime: appointment.startTime,
+                endTime: appointment.endTime,
+                status: appointment.status,
+                notes: appointment.notes,
+                createdAt: appointment.createdAt, services: appointment.services.map(svc => {
+                    var _a, _b;
+                    // Find if there's a matching professional service with custom price/description
+                    const professionalService = (_b = (_a = appointment.professional) === null || _a === void 0 ? void 0 : _a.services) === null || _b === void 0 ? void 0 : _b.find(ps => ps.serviceId === svc.serviceId);
+                    return {
+                        id: svc.service.id,
+                        name: svc.service.name,
+                        description: (professionalService === null || professionalService === void 0 ? void 0 : professionalService.description) || svc.service.description,
+                        duration: svc.service.duration,
+                        price: (professionalService === null || professionalService === void 0 ? void 0 : professionalService.price) || svc.service.price
+                    };
+                }), professional: appointment.professional ? {
+                    id: appointment.professional.id,
+                    name: appointment.professional.name,
+                    role: appointment.professional.role,
+                    image: appointment.professional.image,
+                    phone: appointment.professional.phone, services: appointment.professional.services ?
+                        appointment.professional.services.map(ps => ({
+                            id: ps.service.id,
+                            name: ps.service.name,
+                            description: ps.description || ps.service.description,
+                            price: ps.price || ps.service.price,
+                            duration: ps.service.duration
+                        })) : [],
+                    company: appointment.professional.company ? {
+                        id: appointment.professional.company.id,
+                        name: appointment.professional.company.name,
+                        location: appointment.professional.company.address ?
+                            `${appointment.professional.company.address.city}, ${appointment.professional.company.address.state}` : null
+                    } : null
+                } : null,
+                location: appointment.company ? {
+                    id: appointment.company.id,
+                    name: appointment.company.name
+                } : null
+            }));
+            // Return the user's schedule in a clear format
             return res.json({
-                data: appointments,
+                data: userSchedule,
                 meta: {
                     total: totalCount,
                     page: currentPage,
@@ -619,18 +691,12 @@ const updateAppointmentStatus = (req, res, next) => __awaiter(void 0, void 0, vo
                 }
                 break;
             case client_1.AppointmentStatus.CANCELLED:
-                const now = new Date();
-                const hoursUntilAppointment = (0, date_fns_1.differenceInHours)(appointment.startTime, now);
+                // Permitir que qualquer agendamento seja cancelado a qualquer momento
                 if (isAdmin || isProfOrCompanyAdmin) {
                     allowed = true;
                 }
-                else if (isOwner && (currentStatus === client_1.AppointmentStatus.PENDING || currentStatus === client_1.AppointmentStatus.CONFIRMED)) {
-                    if (hoursUntilAppointment >= exports.MIN_CANCELLATION_HOURS) {
-                        allowed = true;
-                    }
-                    else {
-                        return res.status(400).json({ message: `Não é possível cancelar com menos de ${exports.MIN_CANCELLATION_HOURS} horas de antecedência.` });
-                    }
+                else if (isOwner) {
+                    allowed = true;
                 }
                 if (allowed) {
                     activityType = "APPOINTMENT_CANCELLED";
@@ -638,8 +704,8 @@ const updateAppointmentStatus = (req, res, next) => __awaiter(void 0, void 0, vo
                 }
                 break;
             case client_1.AppointmentStatus.COMPLETED:
-                if ((isAdmin || isProfOrCompanyAdmin) &&
-                    (currentStatus === client_1.AppointmentStatus.CONFIRMED || currentStatus === client_1.AppointmentStatus.IN_PROGRESS)) {
+                // Permitir que qualquer agendamento seja marcado como concluído a qualquer momento
+                if (isAdmin || isProfOrCompanyAdmin) {
                     allowed = true;
                     activityType = "APPOINTMENT_COMPLETED";
                     activityMessage = `Seu agendamento de ${serviceNames} em ${(0, date_fns_1.format)(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} foi concluído.`;
@@ -647,15 +713,16 @@ const updateAppointmentStatus = (req, res, next) => __awaiter(void 0, void 0, vo
                 }
                 break;
             case client_1.AppointmentStatus.IN_PROGRESS:
-                if ((isAdmin || isProfOrCompanyAdmin) && currentStatus === client_1.AppointmentStatus.CONFIRMED) {
+                // Permitir a transição para IN_PROGRESS a partir de qualquer status (exceto os finais)
+                if (isAdmin || isProfOrCompanyAdmin) {
                     allowed = true;
                     activityType = "APPOINTMENT_IN_PROGRESS";
                     activityMessage = `Seu agendamento de ${serviceNames} em ${(0, date_fns_1.format)(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")} está em andamento.`;
                 }
                 break;
             case client_1.AppointmentStatus.NO_SHOW:
-                if ((isAdmin || isProfOrCompanyAdmin) &&
-                    (currentStatus === client_1.AppointmentStatus.CONFIRMED || currentStatus === client_1.AppointmentStatus.PENDING)) {
+                // Permitir que qualquer agendamento seja marcado como não compareceu a qualquer momento
+                if (isAdmin || isProfOrCompanyAdmin) {
                     allowed = true;
                     activityType = "APPOINTMENT_NO_SHOW";
                     activityMessage = `O cliente não compareceu ao agendamento de ${serviceNames} em ${(0, date_fns_1.format)(appointment.startTime, "dd/MM/yyyy 'às' HH:mm")}.`;
@@ -782,7 +849,6 @@ const getAvailability = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
                 continue; // Skip if not working
             }
             // Debug log working hours
-            console.log(`Using working hours for professional ${profId}: ${(0, date_fns_1.format)(workingHoursToday.start, 'HH:mm')} to ${(0, date_fns_1.format)(workingHoursToday.end, 'HH:mm')}`);
             // Retrieve existing appointments and blocks
             const dayStart = (0, date_fns_1.startOfDay)(targetDate);
             const dayEnd = (0, date_fns_1.endOfDay)(targetDate);
