@@ -1,0 +1,12 @@
+{
+  "name": "iazi-fallback-server",
+  "version": "1.0.0",
+  "description": "Ultra minimal fallback server for Railway deployment",
+  "main": "fallback-server.js",
+  "scripts": {
+    "start": "node fallback-server.js"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

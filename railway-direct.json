@@ -1,6 +1,7 @@
 {
   "name": "iazi-api",
-  "version": 2,  "buildCommand": "bash -c \"chmod +x docker-memory-optimize.sh && source docker-memory-optimize.sh && chmod +x railway-build.sh && ./railway-build.sh\" || powershell -c \"$env:NODE_OPTIONS='--max-old-space-size=512 --expose-gc --gc-global'; & .\\railway-build.bat\"",
+  "version": 2,
+  "buildCommand": "cp new-fallback-server.js fallback-server.js && npm run build",
   "startCommand": "node railway-direct-starter.js",
   "healthcheckPath": "/api/health",
   "healthcheckTimeout": 60,

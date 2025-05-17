@@ -198,180 +198,96 @@ const server = http.createServer((req, res) => {
   }
 });
 
-// Create basic HTTP server
-const server = http.createServer((req, res) => {
-    const startTime = Date.now();
-    
-    // Log request details
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-    
-    // Set CORS headers to allow all origins
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-    res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type,Authorization');
-    
-    // Handle OPTIONS requests for CORS preflight
-    if (req.method === 'OPTIONS') {
-        res.statusCode = 200;
-        res.end();
-        return;
-    }
-    
-    // Handle health check endpoint
-    if (req.url === '/api/health') {
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'application/json');
-        const healthResponse = {
-            status: 'ok',
-            mode: 'fallback',
-            timestamp: new Date().toISOString(),
-            appStatus: 'running',
-            dbConnected: false,
-            uptime: process.uptime(),
-            memory: process.memoryUsage(),
-            hostname: os.hostname(),
-            environment: process.env.NODE_ENV || 'development'
-        };
-        res.end(JSON.stringify(healthResponse, null, 2));
-        return;
-    }
-    
-    // Handle auth endpoints with mock responses
-    if (req.url.startsWith('/api/auth/')) {
-        let body = '';
-        req.on('data', chunk => {
-            body += chunk.toString();
-        });
-        
-        req.on('end', () => {
-            res.statusCode = 200;
-            res.setHeader('Content-Type', 'application/json');
-            
-            // Mock response for login endpoint
-            if (req.url === '/api/auth/login') {
-                const mockResponse = {
-                    status: 'success',
-                    message: 'FALLBACK SERVER: Login request received',
-                    user: { id: 1, email: 'fallback@example.com', role: 'user' },
-                    token: 'fallback-mock-token',
-                    refreshToken: 'fallback-mock-refresh-token'
-                };
-                res.end(JSON.stringify(mockResponse, null, 2));
-                return;
-            }
-            
-            // Default response for other auth endpoints
-            const mockResponse = {
-                status: 'success',
-                message: `FALLBACK SERVER: Request to ${req.url} received`,
-                info: 'This is a fallback server running in Railway'
-            };
-            res.end(JSON.stringify(mockResponse, null, 2));
-        });
-        return;
-    }
-    
-    // Default response for all other requests
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'application/json');
-    
-    const responseData = {
-        status: 'fallback',
-        message: 'Railway Fallback Server is running',
-        info: 'The main application is not available, this is a fallback server',
-        requestDetails: {
-            method: req.method,
-            url: req.url,
-            headers: req.headers,
-            processingTime: `${Date.now() - startTime}ms`
-        },
-        serverInfo: {
-            nodeVersion: process.version,
-            platform: os.platform(),
-            release: os.release(),
-            uptime: process.uptime(),
-            memory: process.memoryUsage()
-        }
-    };
-    
-    res.end(JSON.stringify(responseData, null, 2));
-});
-
 // Handle uncaught exceptions and unhandled rejections
 process.on('uncaughtException', (err) => {
-    console.error('UNCAUGHT EXCEPTION:', err);
-    console.error('Stack trace:', err.stack);
-    // Don't exit the process, try to keep the server running
+  console.error('UNCAUGHT EXCEPTION:', err);
+  console.error('Stack trace:', err.stack);
+  // Don't exit the process, try to keep the server running
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('UNHANDLED REJECTION:', reason);
-    // Don't exit the process, try to keep the server running
+  console.error('UNHANDLED REJECTION:', reason);
+  // Don't exit the process, try to keep the server running
 });
 
-// Start the server and handle any errors
-try {
-    server.listen(port, bindAddress, () => {
+// Function to start the server with a specific port and bind address
+function startServer(port, bindAddress) {
+  return new Promise((resolve, reject) => {
+    try {
+      server.listen(port, bindAddress, () => {
         console.log(`Fallback server running at http://${bindAddress}:${port}`);
-        
-        // Try to start the main app in background
-        setTimeout(tryStartMainApp, 5000);
-        
-        // Create a status file to indicate that the fallback server is running
-        try {
-            const statusFile = path.join(__dirname, 'fallback-server-running.txt');
-            fs.writeFileSync(statusFile, `Fallback server started at ${new Date().toISOString()}\nPort: ${port}\nBind address: ${bindAddress}\n`, 'utf8');
-            console.log(`Status file created at ${statusFile}`);
-        } catch (err) {
-            console.error(`Could not create status file: ${err.message}`);
-        }
-    });
-} catch (error) {
-    console.error('CRITICAL ERROR starting server:', error);
-    
-    // Try with a different port and bind address as a last resort
-    const fallbackPort = 8080;
-    console.log(`Attempting to start on fallback port ${fallbackPort}...`);
-    
-    server.listen(fallbackPort, '0.0.0.0', () => {
-        console.log(`Last resort fallback server running at http://0.0.0.0:${fallbackPort}`);
-    });
+        resolve(true);
+      });
+      
+      server.on('error', (err) => {
+        console.error(`Server error on ${bindAddress}:${port}: ${err.message}`);
+        reject(err);
+      });
+    } catch (err) {
+      console.error(`Error starting server on ${bindAddress}:${port}: ${err.message}`);
+      reject(err);
+    }
+  });
 }
 
-server.on('error', (error) => {
-    console.error('Server error:', error);
-    
-    // Try to bind to a different port if the original port is in use
-    if (error.code === 'EADDRINUSE') {
-        const newPort = parseInt(port) + 100;
-        console.log(`Port ${port} is in use, trying port ${newPort}...`);
-        
-        // Close the current server
-        server.close();
-        
-        // Start on new port
-        server.listen(newPort, bindAddress, () => {
-            console.log(`Fallback server running at http://${bindAddress}:${newPort}`);
-        });
+// Try multiple server configurations if the first one fails
+async function tryMultipleServerConfigs() {
+  const configs = [
+    { port: port, bindAddress: bindAddress },
+    { port: port, bindAddress: '0.0.0.0' },
+    { port: 8080, bindAddress: '0.0.0.0' },
+    { port: 80, bindAddress: '0.0.0.0' }
+  ];
+  
+  for (const config of configs) {
+    try {
+      console.log(`Attempting to start server on ${config.bindAddress}:${config.port}...`);
+      await startServer(config.port, config.bindAddress);
+      
+      // If we get here, server started successfully
+      console.log(`Server successfully started on ${config.bindAddress}:${config.port}`);
+      
+      // Create a status file to indicate that the fallback server is running
+      try {
+        const statusFile = path.join(__dirname, 'fallback-server-running.txt');
+        const content = `Fallback server started at ${new Date().toISOString()}
+Port: ${config.port}
+Bind address: ${config.bindAddress}
+Node version: ${process.version}
+Platform: ${os.platform()} ${os.release()}
+Hostname: ${os.hostname()}
+`;
+        fs.writeFileSync(statusFile, content, 'utf8');
+        console.log(`Status file created at ${statusFile}`);
+      } catch (err) {
+        console.error(`Could not create status file: ${err.message}`);
+      }
+      
+      // Try to start the main app in background after a delay
+      setTimeout(tryStartMainApp, 5000);
+      
+      return; // Exit the function since we successfully started a server
+    } catch (err) {
+      console.error(`Failed to start server with config ${JSON.stringify(config)}: ${err.message}`);
+      // Continue to the next configuration
     }
-});
-
-// Handle process termination
-process.on('SIGTERM', () => {
-    console.log('SIGTERM received, shutting down fallback server...');
-    server.close(() => {
-        console.log('Fallback server closed.');
+  }
+  
+  // If we get here, all server configurations failed
+  console.error('ALL SERVER CONFIGURATIONS FAILED!');
+  
+  // Last resort: create a minimal server on a random port
+  const randomPort = Math.floor(Math.random() * 10000) + 10000;
+  console.log(`Last resort: trying random port ${randomPort}...`);
+  
+  try {
+    server.listen(randomPort, '0.0.0.0', () => {
+      console.log(`Last resort fallback server running at http://0.0.0.0:${randomPort}`);
     });
-});
+  } catch (err) {
+    console.error(`Even last resort server failed: ${err.message}`);
+  }
+}
 
-process.on('SIGINT', () => {
-    console.log('SIGINT received, shutting down fallback server...');
-    server.close(() => {
-        console.log('Fallback server closed.');
-    });
-});
-
-// Keep the process alive
-setInterval(() => {
-    console.log(`[${new Date().toISOString()}] Fallback server heartbeat. Uptime: ${process.uptime().toFixed(2)}s`);
-}, 60000);
+// Start the server with multiple fallback configurations
+tryMultipleServerConfigs();
