@@ -60,8 +60,15 @@ RUN npx prisma generate
 # Copy the rest of the application source code
 COPY . .
 
-# Run the permission fix script to ensure all scripts are executable
-RUN ./fix-permissions.sh
+# Explicitly set permissions for all scripts after full source copy
+RUN find . -name "*.sh" -type f -exec chmod +x {} \; && \
+    # Ensure critical scripts are definitely executable
+    chmod +x ./fix-permissions.sh && \
+    chmod +x ./comprehensive-ts-build.sh && \
+    chmod +x ./emergency-build-ultra.sh && \
+    chmod +x ./diagnose-ts-errors.sh && \
+    # Now run the permission fix script
+    ./fix-permissions.sh
 
 # Fix Prisma client type issues and TypeScript event listener types
 RUN sed -i 's/import { PrismaClient } from "@prisma\/client";/import { PrismaClient, Prisma } from "@prisma\/client";/' src/utils/prismaClient.ts && \
@@ -71,6 +78,10 @@ RUN sed -i 's/import { PrismaClient } from "@prisma\/client";/import { PrismaCli
 
 # Execute the comprehensive TypeScript build process
 RUN echo "Starting TypeScript build process..." && \
+    # Ensure scripts are executable
+    chmod +x ./diagnose-ts-errors.sh && \
+    chmod +x ./comprehensive-ts-build.sh && \
+    chmod +x ./emergency-build-ultra.sh && \
     # First run diagnostics to collect information
     ./diagnose-ts-errors.sh > ts-diagnostic-output.log 2>&1 || true && \
     # Then run the comprehensive build
