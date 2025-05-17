@@ -106,8 +106,29 @@ export { app };
 
 // Iniciar o servidor apenas se não estiver em ambiente de teste
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(Number(port), '0.0.0.0', () => {
-    console.log(`[server]: Servidor rodando em http://localhost:${port}`);
-    console.log(`[swagger]: Documentação da API disponível em http://localhost:${port}/api-docs`);
-  });
+  // Adiciona manipulação de erros durante a inicialização
+  try {
+    // Usa o NODE_ENV para determinar o host de bind - isso é importante para Railway
+    const host = process.env.NODE_ENV === 'production' ? '::' : '0.0.0.0';
+    
+    console.log(`[startup]: Iniciando servidor na porta ${port} e host ${host}`);
+    console.log(`[startup]: Variáveis de ambiente: PORT=${process.env.PORT}, NODE_ENV=${process.env.NODE_ENV}`);
+    
+    // Ao usar :: como host, o Node.js aceita tanto IPv6 quanto IPv4
+    const server = app.listen(Number(port), host, () => {
+      console.log(`[server]: Servidor rodando em http://localhost:${port}`);
+      console.log(`[swagger]: Documentação da API disponível em http://localhost:${port}/api-docs`);
+      console.log(`[server]: Servidor vinculado às interfaces ${host}`);
+    });
+    
+    // Manipuladores de eventos do servidor para capturar erros
+    server.on('error', (error) => {
+      console.error('[server]: Erro ao iniciar o servidor:', error);
+      process.exit(1);
+    });
+    
+  } catch (error) {
+    console.error('[startup]: Erro crítico durante a inicialização do servidor:', error);
+    process.exit(1);
+  }
 }

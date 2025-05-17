@@ -99,9 +99,14 @@ RUN chmod +x /usr/local/bin/docker-memory-optimize.sh
 ENV NODE_ENV=production
 
 # Healthcheck configuration with increased timeouts
-HEALTHCHECK --interval=30s --timeout=20s --start-period=20s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=20s --start-period=30s --retries=3 \
   CMD ./healthcheck.sh
 
+# Copy the diagnostic script
+COPY deployment-diagnostics.js ./deployment-diagnostics.js
+
 # Command to run migrations and start the application with memory optimizations
-CMD source /usr/local/bin/docker-memory-optimize.sh && npx prisma generate && node dist/index.js
+CMD source /usr/local/bin/docker-memory-optimize.sh && \
+    npx prisma generate && \
+    DEBUG=express:* node dist/index.js
 

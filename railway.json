@@ -2,22 +2,22 @@
   "name": "iazi-api",
   "version": 2,
   "buildCommand": "bash -c \"chmod +x docker-memory-optimize.sh && source docker-memory-optimize.sh && chmod +x railway-build.sh && ./railway-build.sh\" || powershell -c \"$env:NODE_OPTIONS='--max-old-space-size=512 --expose-gc --gc-global'; & .\\railway-build.bat\"",
-  "startCommand": "bash -c \"source docker-memory-optimize.sh && npx prisma generate && node --max-old-space-size=512 dist/index.js\" || powershell -c \"$env:NODE_OPTIONS='--max-old-space-size=512'; npx prisma generate && node dist/index.js\"",
+  "startCommand": "bash -c \"source docker-memory-optimize.sh && npx prisma generate && export DEBUG=express:* && node --max-old-space-size=512 dist/index.js\" || powershell -c \"$env:NODE_OPTIONS='--max-old-space-size=512'; $env:DEBUG='express:*'; npx prisma generate && node dist/index.js\"",
   "healthcheckPath": "/api/health",
-  "healthcheckTimeout": 30,
+  "healthcheckTimeout": 45,
   "restartPolicyType": "ON_FAILURE",
   "restartPolicyMaxRetries": 5,
   "environments": {
     "production": {
       "healthcheck": {
         "path": "/api/health",
-        "timeout": 30
+        "timeout": 45
       },
       "restartPolicyType": "ON_FAILURE",
       "restartPolicyMaxRetries": 5,
       "deploymentStrategy": {
         "batchSize": 1,
-        "minReadySeconds": 45
+        "minReadySeconds": 60
       }
     }
   }
