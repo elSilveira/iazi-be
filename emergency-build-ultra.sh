@@ -39,27 +39,65 @@ EOF
   # Fix require statements for local imports
   sed -i 's/require("\(.*\)\.ts")/require("\1.js")/g' "$JS_FILE"
   sed -i 's/from "\(.*\)\.ts"/from "\1.js"/g' "$JS_FILE"
+  
+  # Remove the original TS file to avoid confusion
+  rm "$TS_FILE" 2>/dev/null || echo "Could not remove original TS file: $TS_FILE"
+done
 
-# Create empty index.js if not present
+# 5. Ensure critical files exist
+echo "Ensuring critical server files are present..."
+
+# 5.1 Create failsafe index.js if needed
 if [ ! -f "dist/index.js" ]; then
-  echo "Warning: No index.js found, creating a minimal version..."
-  echo "// Emergency generated index.js" > dist/index.js
-  echo "console.log('Server starting in emergency mode...');" >> dist/index.js
-  echo "const express = require('express');" >> dist/index.js
-  echo "const app = express();" >> dist/index.js
-  echo "const port = process.env.PORT || 3002;" >> dist/index.js
-  echo "app.get('/', (req, res) => { res.send('Emergency server running!'); });" >> dist/index.js
-  echo "app.get('/api/health', (req, res) => { res.json({status: 'ok', mode: 'emergency'}); });" >> dist/index.js
-  echo "app.listen(port, '0.0.0.0', () => { console.log(\`Server running on port \${port}\`); });" >> dist/index.js
+  echo "Creating emergency index.js file..."
+  cat > "dist/index.js" << EOF
+// Emergency generated index.js
+console.log('Server starting in emergency mode...');
+try {
+  require('dotenv').config();
+} catch (e) {
+  console.log('Warning: Could not load dotenv');
+}
+
+const express = require('express');
+const app = express();
+const port = process.env.PORT || 3002;
+
+// Basic middleware
+app.use(express.json());
+
+app.get('/', (req, res) => { 
+  res.send('Emergency server running! This is a simplified build.'); 
+});
+
+app.get('/api/health', (req, res) => { 
+  res.json({
+    status: 'ok', 
+    mode: 'emergency',
+    message: 'Server is running in emergency mode due to build issues'
+  }); 
+});
+
+// Start server on all interfaces for Railway compatibility
+const server = app.listen(port, '0.0.0.0', () => { 
+  console.log(\`Emergency server running on port \${port}\`); 
+});
+
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down');
+  server.close();
+  process.exit(0);
+});
+EOF
 fi
 
-# Check if the build has a bare minimum of files
-echo "Verifying dist directory contents..."
-find dist -type f | wc -l
+# 6. Verify the build
+echo "Verifying emergency build output..."
+find dist -type f | grep -c "\.js$"
 ls -la dist/
 
 echo "=== EMERGENCY BUILD COMPLETE ==="
 echo "Warning: This is a simplified build without TypeScript compilation."
-echo "The application may have limited functionality."
+echo "The application may have limited functionality but will start successfully."
 
 exit 0
