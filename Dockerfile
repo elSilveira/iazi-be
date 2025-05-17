@@ -135,12 +135,16 @@ COPY --from=builder /app/deployment-diagnostics.js ./deployment-diagnostics.js
 COPY --from=builder /app/app-startup.mjs ./app-startup.mjs
 COPY --from=builder /app/railway-startup-fix.sh ./railway-startup-fix.sh
 COPY --from=builder /app/railway-network-fix.sh ./railway-network-fix.sh
+COPY --from=builder /app/fallback-server.js ./fallback-server.js
+COPY --from=builder /app/railway-startup-wrapper.sh ./railway-startup-wrapper.sh
+COPY --from=builder /app/minimal-express-app.js ./minimal-express-app.js
 
 # Ensure scripts are executable
 RUN chmod +x healthcheck.sh && \
     chmod +x /usr/local/bin/docker-memory-optimize.sh && \
     chmod +x railway-startup-fix.sh && \
-    chmod +x railway-network-fix.sh
+    chmod +x railway-network-fix.sh && \
+    chmod +x railway-startup-wrapper.sh
 
 # Generate Prisma client with memory optimization
 RUN PRISMA_CLI_MEMORY_MIN=64 PRISMA_CLI_MEMORY_MAX=512 npx prisma generate
@@ -155,10 +159,6 @@ ENV NODE_ENV=production
 HEALTHCHECK --interval=30s --timeout=20s --start-period=30s --retries=3 \
   CMD ./healthcheck.sh
 
-# Command to run migrations and start the application with memory optimizations
-CMD . /usr/local/bin/docker-memory-optimize.sh && \
-    ./railway-startup-fix.sh && \
-    ./railway-network-fix.sh && \
-    npx prisma generate && \
-    DEBUG=express:* node --dns-result-order=ipv4first app-startup.mjs
+# Command to run migrations and start the application with fallback mechanism
+CMD ./railway-startup-wrapper.sh
 
