@@ -19,6 +19,10 @@ import categoryRouter from './routes/categoryRoutes';
 import notificationRouter from './routes/notificationRoutes'; // Added notification routes
 import gamificationRouter from './routes/gamificationRoutes'; // Added gamification routes
 import searchRoutes from './routes/searchRoutes'; // Using the search routes with multi-service support
+import healthRoutes from './routes/healthRoutes'; // Added health routes for monitoring
+import postRoutes from './routes/postRoutes';
+import commentRoutes from './routes/commentRoutes';
+import likeRoutes from './routes/likeRoutes';
 
 import { setupSwagger } from './swagger';
 
@@ -87,6 +91,12 @@ app.use('/api/categories', categoryRouter);
 app.use('/api/notifications', notificationRouter);
 app.use('/api/gamification', gamificationRouter);
 app.use('/api/search', searchRoutes);
+app.use('/api/health', healthRoutes); // Rota de verificação de saúde para monitoramento
+
+// Rotas Sociais
+app.use("/api/posts", postRoutes); 
+app.use("/api/comments", commentRoutes);
+app.use("/api", likeRoutes);
 
 import { errorMiddleware } from './middlewares/errorMiddleware'; // Importar o middleware de erro
 app.use(errorMiddleware); // Usar o middleware de erro global
@@ -101,14 +111,3 @@ if (process.env.NODE_ENV !== 'test') {
     console.log(`[swagger]: Documentação da API disponível em http://localhost:${port}/api-docs`);
   });
 }
-
-
-import postRoutes from './routes/postRoutes';
-import commentRoutes from './routes/commentRoutes';
-import likeRoutes from './routes/likeRoutes';
-
-
-
-// Rotas Sociais
-app.use("/api/posts", postRoutes); 
-app.use("/api", likeRoutes);

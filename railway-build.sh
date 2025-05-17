@@ -4,9 +4,13 @@
 
 echo "🚀 Iniciando script de build para Railway..."
 
-# Instalação de dependências
+# Limpeza de cache e instalação de dependências
+echo "🧹 Limpando cache npm..."
+npm cache clean --force
+
+# Instalação de dependências com flags específicas
 echo "📦 Instalando dependências..."
-npm install
+npm ci || npm install --no-audit --no-fund
 
 # Gerando cliente Prisma
 echo "🔄 Gerando cliente Prisma..."

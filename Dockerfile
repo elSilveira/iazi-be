@@ -1,17 +1,18 @@
 # Stage 1: Builder
-FROM node:20-alpine AS builder
+FROM node:18-alpine AS builder
 
 # Set working directory
 WORKDIR /app
 
-# Install Prisma CLI globally (optional, but can be useful)
-# RUN npm install -g prisma
+# Install build dependencies
+RUN apk add --no-cache python3 make g++ git
 
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies (including devDependencies needed for build and prisma generate)
-RUN npm install
+# Clear npm cache and install dependencies with specific flags
+RUN npm cache clean --force && \
+    npm ci --no-audit --no-fund --verbose || npm install --no-audit --no-fund --verbose
 
 # Copy Prisma schema
 COPY prisma ./prisma/
@@ -25,39 +26,40 @@ COPY . .
 # Build the TypeScript project
 RUN npm run build
 
-# Prune devDependencies for the final stage
-RUN npm prune --production
-
 # Stage 2: Runner
-FROM node:20-alpine
+FROM node:18-alpine
+
+# Install dependencies for healthcheck
+RUN apk add --no-cache wget
 
 WORKDIR /app
 
+# Copy package files
+COPY package*.json ./
+
+# Install only production dependencies with specific flags for better reliability
+RUN npm ci --only=production --no-audit --no-fund || npm install --only=production --no-audit --no-fund
+
 # Copy necessary files from the builder stage
-COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/package.json ./
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY healthcheck.sh ./healthcheck.sh
+RUN chmod +x healthcheck.sh
 
-# Make sure Prisma client is properly generated and available
-RUN npm install --only=production
+# Generate Prisma client
 RUN npx prisma generate
 
 # Expose the application port (ensure it matches the PORT env var, default 3002)
 EXPOSE 3002
 
-# Define environment variables (can be overridden at runtime)
+# Define environment variables
 ENV NODE_ENV=production
-# PORT=3002 # Already set in .env, but can be set here as default
+
+# Healthcheck configuration
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ./healthcheck.sh
 
 # Command to run migrations and start the application
-# Option 1: Run migrations before starting (simpler for some platforms)
-# CMD npx prisma migrate deploy && node dist/index.js
-
-# Option 2: Start the application directly (migrations handled externally)
-# This is often preferred as the container shouldn't necessarily handle migrations.
 CMD npx prisma generate && node dist/index.js
-
-# Healthcheck (optional but recommended)
-# HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD curl --fail http://localhost:3002/api/health || exit 1
 

@@ -2,3 +2,6 @@ node_modules
 .env
 coverage/
 coverage
+.env
+API_DOCUMENTATION.md
+APPOINTMENT_STATUS.md
