@@ -1,11 +1,13 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 
 // Initialize Prisma Client with improved error handling
 let prisma: PrismaClient;
 
 try {
   prisma = new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    log: process.env.NODE_ENV === 'development' 
+      ? ['query', 'info', 'warn', 'error'] as Prisma.LogLevel[]
+      : ['error'] as Prisma.LogLevel[],
   });
   
   // Test the connection immediately
