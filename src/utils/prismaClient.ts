@@ -14,13 +14,15 @@ try {
   console.log('[database]: Initializing Prisma Client and testing connection...');
   
   // Add event listeners for connection issues
-  prisma.$on('query', (e) => {
+  // @ts-ignore - Prisma event types are sometimes inconsistent
+  prisma.$on('query', (e: any) => {
     if (process.env.NODE_ENV === 'development') {
       console.log('[prisma:query]', e);
     }
   });
   
-  prisma.$on('error', (e) => {
+  // @ts-ignore - Prisma event types are sometimes inconsistent
+  prisma.$on('error', (e: any) => {
     console.error('[prisma:error]', e);
   });
   

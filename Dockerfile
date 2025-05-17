@@ -39,13 +39,16 @@ COPY prisma ./prisma/
 # Copy Docker-specific TypeScript config and build script
 COPY tsconfig.docker.json ./
 COPY docker-typescript-build.sh ./
+COPY emergency-build.sh ./
 
-# Make the script executable and convert to Unix line endings
+# Make scripts executable and convert to Unix line endings
 RUN apk add --no-cache dos2unix && \
     dos2unix docker-typescript-build.sh && \
+    dos2unix emergency-build.sh && \
     chmod +x docker-typescript-build.sh && \
+    chmod +x emergency-build.sh && \
     # Verify execution permissions to debug
-    ls -la docker-typescript-build.sh
+    ls -la *.sh
 
 # Generate Prisma Client
 RUN npx prisma generate
@@ -77,9 +80,7 @@ RUN echo "Attempting to build TypeScript project..." && \
       NODE_OPTIONS="--max-old-space-size=512" npx tsc --project tsconfig.docker.json; \
     else \
       echo "Emergency build: bypassing normal TypeScript compilation..." && \
-      mkdir -p dist && \
-      cp -r src/* dist/ && \
-      find dist -name "*.ts" -type f -exec sh -c 'mv "$1" "${1%.ts}.js"' _ {} \;; \
+      ./emergency-build.sh; \
     fi
 
 # Stage 2: Runner
