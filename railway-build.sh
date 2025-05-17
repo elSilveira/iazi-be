@@ -1,54 +1,49 @@
 #!/bin/bash
+set -e
 
-# Script de construção para Railway e outros ambientes similares de PaaS
+# Railway build script with advanced memory optimizations
 
-echo "🚀 Iniciando script de build para Railway..."
+# Print system information for debugging
+echo "🖥️ System Information:"
+free -h || true
+df -h || true
 
-# Configurar npm para melhor desempenho e resiliência
-echo "⚙️ Configurando npm para melhor desempenho..."
-npm config set network-timeout 300000
-npm config set fetch-retries 3
-npm config set fetch-retry-mintimeout 15000
-npm config set fetch-retry-maxtimeout 120000
+# Set memory limits
+echo "🧠 Setting memory optimization parameters..."
+export NODE_OPTIONS="--max-old-space-size=2048"
+export NPM_CONFIG_REGISTRY=https://registry.npmjs.org/
+export NPM_CONFIG_PREFER_OFFLINE=true
+export NPM_CONFIG_LOGLEVEL=error
+export NPM_CONFIG_AUDIT=false
+export NPM_CONFIG_FUND=false
 
-# Limpeza de cache e instalação de dependências
-echo "🧹 Limpando cache npm..."
+# Clean npm cache
+echo "🧹 Cleaning npm cache..."
 npm cache clean --force
 
-# Instalação de dependências com flags específicas
-echo "📦 Instalando dependências (tentativa 1)..."
-if npm ci --no-audit --no-fund --loglevel verbose; then
-  echo "✅ Instalação concluída com sucesso usando npm ci!"
-else
-  echo "⚠️ Falha na primeira tentativa de instalação, tentando com npm install..."
-  if npm install --no-audit --no-fund --loglevel verbose; then
-    echo "✅ Instalação concluída com sucesso usando npm install!"
-  else
-    echo "⚠️ Falha na segunda tentativa, tentando com --legacy-peer-deps..."
-    if npm install --no-audit --no-fund --loglevel verbose --legacy-peer-deps; then
-      echo "✅ Instalação concluída com sucesso usando --legacy-peer-deps!"
-    else
-      echo "⚠️ Falha na terceira tentativa, tentando com --no-optional..."
-      if npm install --no-audit --no-fund --loglevel verbose --legacy-peer-deps --no-optional; then
-        echo "✅ Instalação concluída com sucesso usando --no-optional!"
-      else
-        echo "❌ Todas as tentativas de instalação falharam. Verificando detalhes..."
-        npm --version
-        node --version
-        echo "Conteúdo de package.json:"
-        cat package.json
-        exit 1
-      fi
-    fi
-  fi
-fi
+# Staged installation approach to minimize memory usage
+echo "📦 Installing dependencies with memory-efficient approach..."
+echo "Stage 1: Installing production dependencies without scripts..."
+npm install --only=production --no-audit --no-fund --ignore-scripts --prefer-offline || {
+    echo "⚠️ Production install failed, trying with less memory usage..."
+    npm install --only=production --no-audit --no-fund --ignore-scripts --prefer-offline --no-optional
+}
 
-# Gerando cliente Prisma
-echo "🔄 Gerando cliente Prisma..."
+echo "Stage 2: Rebuilding native modules..."
+npm rebuild || {
+    echo "⚠️ Rebuild failed, trying individual rebuilds..."
+    for pkg in bcrypt; do
+        echo "Rebuilding $pkg..."
+        npm rebuild $pkg || true
+    done
+}
+
+# Generate Prisma client
+echo "🔧 Generating Prisma client..."
 npx prisma generate
 
-# Construindo a aplicação TypeScript
-echo "🏗️ Construindo a aplicação..."
+# Build TypeScript application
+echo "🏗️ Building TypeScript application..."
 npm run build
 
-echo "✅ Build concluído com sucesso!"
+echo "✅ Railway build completed successfully!"

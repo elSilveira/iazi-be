@@ -1,20 +1,24 @@
 {
   "name": "iazi-api",
   "version": 2,
-  "buildCommand": "powershell -c \"& .\\railway-build.bat\"",
-  "startCommand": "npx prisma generate && node dist/index.js",
+  "buildCommand": "bash -c \"chmod +x railway-build.sh && NODE_OPTIONS='--max-old-space-size=2048' ./railway-build.sh\" || powershell -c \"$env:NODE_OPTIONS='--max-old-space-size=2048'; & .\\railway-build.bat\"",
+  "startCommand": "npx prisma generate && node --max-old-space-size=2048 dist/index.js",
   "healthcheckPath": "/api/health",
-  "healthcheckTimeout": 15,
+  "healthcheckTimeout": 20,
   "restartPolicyType": "ON_FAILURE",
   "restartPolicyMaxRetries": 5,
   "environments": {
     "production": {
       "healthcheck": {
         "path": "/api/health",
-        "timeout": 15
+        "timeout": 20
       },
       "restartPolicyType": "ON_FAILURE",
-      "restartPolicyMaxRetries": 5
+      "restartPolicyMaxRetries": 5,
+      "deploymentStrategy": {
+        "batchSize": 1,
+        "minReadySeconds": 30
+      }
     }
   }
 }

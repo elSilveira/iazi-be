@@ -6,6 +6,7 @@ yarn-error.log
 .npm
 .yarn
 .pnp.*
+package-lock.json
 
 # Docker files
 Dockerfile
@@ -14,6 +15,10 @@ docker-compose.yml
 *.dockerignore
 validate-docker*.sh
 docker-validation-logs.txt
+**/Dockerfile
+test-docker-build*.bat
+test-docker-build*.sh
+DOCKER-*.md
 
 # Git files
 .git

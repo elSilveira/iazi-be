@@ -1,5 +1,6 @@
 @echo off
 echo ===== Testing Docker Build with Memory-Optimized Configuration =====
+
 echo Building Docker image with memory optimization flags...
 docker build -t iazi-be-test --memory=4g --memory-swap=4g .
 
@@ -22,6 +23,6 @@ if %ERRORLEVEL% == 0 (
         echo ===== Second build attempt succeeded! =====
     ) else (
         echo ===== All build attempts failed =====
-        echo Please check the error messages above and refer to DOCKER-MEMORY-OPTIMIZATIONS.md
+        echo Please check the error messages above.
     )
 )

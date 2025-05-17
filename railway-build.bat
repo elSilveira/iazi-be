@@ -1,13 +1,19 @@
-#!/bin/bash
-set -e
+@echo off
+echo ===== Starting Railway build with optimized configuration =====
 
-# Simple Railway build script
-echo "Starting Railway build with simplified configuration..."
+echo Setting memory-efficient npm options...
+set NODE_OPTIONS=--max-old-space-size=2048
 
-# Generate Prisma client during build phase
-npx prisma generate
+echo Cleaning npm cache...
+call npm cache clean --force
 
-# Build TypeScript application
-npm run build
+echo Installing dependencies with memory optimizations...
+call npm ci --no-audit --no-fund || call npm install --no-audit --no-fund
 
-echo "Railway build completed successfully!"
+echo Generating Prisma client...
+call npx prisma generate
+
+echo Building TypeScript application...
+call npm run build
+
+echo ===== Railway build completed successfully! =====
