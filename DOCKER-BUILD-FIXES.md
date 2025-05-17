@@ -11,47 +11,54 @@ Este documento resume as mudanças feitas para resolver o problema de falha no `
 
 ### 2. Configurações npm Otimizadas
 
-- Criado arquivo `.npmrc` com configurações de resiliência para instalações npm
-  - Aumentado timeout de rede
-  - Configurado retries para falhas de rede
-  - Otimizado para ambientes cloud
+- Simplificado arquivo `.npmrc` para maior compatibilidade:
+  ```
+  registry=https://registry.npmjs.org/
+  prefer-offline=true
+  ```
 
 ### 3. Scripts Docker Melhorados
 
-- Otimizado `Dockerfile` com:
-  - Estratégia de fallback para instalação de pacotes
+- Simplificado `Dockerfile` com:
+  - Abordagem mais direta para instalação de pacotes:
+    ```dockerfile
+    RUN npm cache clean --force && \
+        npm ci || npm install
+    ```
   - Dependências de build necessárias (python3, make, g++, git)
   - Multi-stage build para menor tamanho de imagem
-
-- Melhorado `railway-build.sh` com:
-  - Tentativas múltiplas de instalação (npm ci → npm install → flags adicionais)
-  - Melhor diagnóstico em caso de falha
-  - Limpeza de cache npm
+  - Removido comando `ping` que pode não estar disponível
 
 ### 4. Healthcheck Aprimorado
 
-- Aumentado timeout no healthcheck (de 5s para 10s)
-- Melhorado script de healthcheck.sh com mais diagnósticos
+- Aumentado timeout no healthcheck (de 5s para 15s)
+- Aumentado o tempo de inicialização (start-period) para 15s
 
 ### 5. Configuração do Railway
 
 - Atualizado `railway.json` com:
-  - Maior timeout para healthcheck
+  - Maior timeout para healthcheck (15s)
   - Configuração de retries para reinicialização
+  - Comando de build compatível com Windows:
+    ```json
+    "buildCommand": "powershell -c \"& .\\railway-build.bat\""
+    ```
 
-### 6. Ferramentas de Diagnóstico Adicionadas
+### 6. Ferramentas para Windows
 
-- Criado `validate-docker-build.sh` para testar builds localmente
-- Criado `check-dependencies.sh` para verificar dependências problemáticas
-- Criado `railway-npm-fix.sh` para corrigir problemas específicos do npm
-- Documentado soluções de problemas em `NPM-INSTALL-TROUBLESHOOTING.md`
+- Criado `test-docker-build.bat` para testar builds localmente
+- Criado `deploy-to-railway.bat` para realizar o deploy
+- Criado `validate-railway-deployment.bat` para validar o deploy
+- Criado `check-deployment-requirements.ps1` para verificar requisitos
+- Criado `monitor-railway-deployment.ps1` para monitorar o deploy
 
 ## Como Testar
 
-1. Execute `./check-dependencies.sh` para verificar se as dependências estão corretas
-2. Execute `./validate-docker-build.sh` para testar o build do Docker localmente
-3. Faça commit das alterações e push para o repositório
-4. Deploy no Railway com `railway up`
+1. Execute `check-deployment-requirements.ps1` para verificar requisitos
+2. Execute `test-docker-build.bat` para testar o build do Docker localmente
+3. Se o build for bem-sucedido, faça o deploy com `deploy-to-railway.bat`
+4. Valide o deploy com `validate-railway-deployment.bat`
+5. Monitore o deploy com `monitor-railway-deployment.ps1`
 
 ## Monitoramento
 
@@ -59,6 +66,13 @@ Após o deploy, monitore:
 
 1. Logs do build para verificar se a instalação npm está funcionando
 2. Healthcheck para garantir que a aplicação está iniciando corretamente
+3. Performance da aplicação e uso de recursos
+
+## Próximos Passos
+
+1. Configure alertas para falhas no Railway
+2. Implemente monitoramento contínuo
+3. Configure sistemas de backup e recuperação automática
 3. Logs da aplicação para identificar possíveis problemas em runtime
 
 Se encontrar problemas, consulte `NPM-INSTALL-TROUBLESHOOTING.md` para soluções adicionais.
